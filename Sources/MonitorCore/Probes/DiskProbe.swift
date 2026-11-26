@@ -5,6 +5,11 @@ public struct DiskSpace: Equatable, Sendable {
     public var availableBytes: UInt64
     public var totalBytes: UInt64
 
+    public init(availableBytes: UInt64, totalBytes: UInt64) {
+        self.availableBytes = availableBytes
+        self.totalBytes = totalBytes
+    }
+
     public var freeFraction: Float {
         totalBytes == 0 ? 0 : Float(Double(availableBytes) / Double(totalBytes))
     }

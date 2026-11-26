@@ -1,5 +1,6 @@
 import AppKit
 import MonitorCore
+import MonitorUI
 import SwiftUI
 
 /// Owns the menu bar item and the popover. The popover's SwiftUI tree is created
@@ -66,7 +67,12 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            let model = PopoverModel(snapshot: latest)
+            let model = PopoverModel(snapshot: latest, launchAtLogin: LoginItem.isEnabled)
+            model.setLaunchAtLogin = { enabled in
+                LoginItem.setEnabled(enabled)
+                return LoginItem.isEnabled
+            }
+            model.quit = { NSApplication.shared.terminate(nil) }
             model.onRangeChange = { [weak self] range in self?.sampler.setDetailed(true, range: range) }
             self.model = model
             sampler.setDetailed(true, range: model.range)

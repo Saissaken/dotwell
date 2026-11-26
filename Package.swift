@@ -6,10 +6,12 @@ let package = Package(
     platforms: [.macOS(.v13)],
     targets: [
         .target(name: "MonitorCore"),
+        .target(name: "MonitorUI", dependencies: ["MonitorCore"]),
         .executableTarget(
             name: "MonitorApp",
-            dependencies: ["MonitorCore"]
+            dependencies: ["MonitorCore", "MonitorUI"]
         ),
         .testTarget(name: "MonitorCoreTests", dependencies: ["MonitorCore"]),
+        .testTarget(name: "MonitorUITests", dependencies: ["MonitorCore", "MonitorUI"]),
     ]
 )
