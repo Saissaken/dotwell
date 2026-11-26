@@ -21,6 +21,8 @@ All notable changes to this project are documented here. The format is based on
   they could read 20–35 ms too high, so the Router row showed 37 ms while the route above it showed 1.3 ms.
   Replies are now timestamped by macOS as they arrive. As a bonus, ICMP replies are read once per tick
   instead of waking the app for each one.
+- Ping: AWS and Azure rows (timed with a TCP handshake) now use the round trip measured by macOS itself, so
+  they can't include any delay of Dotwell's either.
 - The route under Ping now also appears when every widget's top app is turned off.
 - CPU temperature on Apple silicon read about 10 °C high on M3 chips (55 °C while btop showed 45 °C). It
   averaged every SMC key starting with `Tp` or `Te`, but on M3 those keys aren't the CPU cores. It now
