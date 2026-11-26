@@ -126,7 +126,8 @@ public struct PopoverView: View {
         case .network:
             NetworkModule(
                 snapshot: snap, unit: settings.networkUnit,
-                addresses: settings.showsIPAddresses ? model.addresses : nil, down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
+                addresses: settings.showsIPAddresses ? model.addresses : nil,
+                down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
         case .thermal:
             MetricModule(
                 symbol: "thermometer.medium", title: "Thermal", level: level,
