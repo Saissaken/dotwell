@@ -27,6 +27,8 @@ public struct Snapshot: Sendable {
     public var networkDownBitsPerSec: Double = 0
     public var networkUpBitsPerSec: Double = 0
     public var thermal: ProcessInfo.ThermalState = .nominal
+    /// Average CPU die temperature in °C, when the Mac exposes its sensors.
+    public var cpuTemperature: Float?
     public var ping: [PingTargetState] = []
     public var levels: [MetricKind: HealthLevel] = [:]
     /// Only filled while the popover is open (`detailed == true`).
@@ -67,6 +69,7 @@ public final class Sampler: @unchecked Sendable {
     private let networkProbe = NetworkProbe()
     private let diskProbe = DiskProbe()
     private let powerProbe = PowerProbe()
+    private let temperatureProbe = TemperatureProbe()
     private let ping: PingEngine
 
     private var timer: DispatchSourceTimer?
@@ -186,6 +189,7 @@ public final class Sampler: @unchecked Sendable {
         }
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
+        if tick % 5 == 1 { current.cpuTemperature = temperatureProbe.sample() }
 
         evaluate()
         publish()

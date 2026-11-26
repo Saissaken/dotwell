@@ -36,6 +36,7 @@ Details:
 │   ├─ DiskProbe     URL resource values + IOKit block stats    │
 │   ├─ PowerProbe    IOKit AppleSmartBattery                    │
 │   ├─ NetworkProbe  sysctl NET_RT_IFLIST2                      │
+│   ├─ TemperatureProbe  AppleSMC CPU die sensors               │
 │   └─ PingEngine    unprivileged ICMP socket / TCP handshake   │
 │          │                                                    │
 │          ▼                                                    │
@@ -62,6 +63,8 @@ Modules (Swift Package):
 | Disk I/O | IOKit `IOBlockStorageDriver` `Statistics`, delta | 1 IOKit query |
 | Battery W | IOKit `AppleSmartBattery`: `Voltage × InstantAmperage`. On AC: `PowerTelemetryData.SystemPowerIn` | 1 IOKit query |
 | Network | `sysctl(NET_RT_IFLIST2)` 64-bit counters (`getifaddrs` uses 32-bit counters that wrap at 4 GB). Loopback and point-to-point (VPN) interfaces are excluded to avoid double counting | 1 syscall |
+| Thermal state | `ProcessInfo.thermalState`: serious = yellow, critical = red (macOS is throttling) | 1 property read |
+| CPU temperature | `AppleSMC` user client: CPU die sensors (`Tp*`/`Te*` floats on Apple silicon, `TC*` sp78 on Intel), found once by listing the SMC keys, averaged, every 5 s. No root or entitlements; hidden when no sensor answers (VMs) | 1 IOKit call per sensor |
 | Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
 | Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
 

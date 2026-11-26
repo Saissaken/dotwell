@@ -101,7 +101,7 @@ public struct PopoverView: View {
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
-                caption: "\(ProcessInfo.processInfo.activeProcessorCount) cores",
+                caption: cpuCaption,
                 values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
             MetricModule(
@@ -123,7 +123,7 @@ public struct PopoverView: View {
         case .thermal:
             MetricModule(
                 symbol: "thermometer.medium", title: "Thermal", level: level,
-                reading: Reading(value: thermalText, unit: ""), caption: "macOS is limiting performance",
+                reading: Reading(value: thermalText, unit: ""), caption: thermalCaption,
                 values: [], maxValue: nil)
         }
     }
@@ -155,6 +155,17 @@ public struct PopoverView: View {
         case .battery: return "Drawing from battery"
         case .adapter: return power.isCharging ? "Charging" : "Plugged in"
         }
+    }
+
+    private var cpuCaption: String {
+        let cores = "\(ProcessInfo.processInfo.activeProcessorCount) cores"
+        guard let temperature = Format.temperature(snap.cpuTemperature) else { return cores }
+        return "\(cores) · \(temperature)"
+    }
+
+    private var thermalCaption: String {
+        guard let temperature = Format.temperature(snap.cpuTemperature) else { return "macOS is limiting performance" }
+        return "Slowed down to cool · \(temperature)"
     }
 
     private var thermalText: String {
