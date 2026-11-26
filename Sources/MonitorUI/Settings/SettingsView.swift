@@ -77,6 +77,13 @@ struct GeneralSettingsView: View {
             }
             .pickerStyle(.radioGroup)
             Spacer().frame(height: 8)
+            Picker("Show app CPU use as:", selection: $settings.processCPUScale) {
+                Text("Share of the whole Mac").tag(ProcessCPUScale.wholeMac)
+                Text("Share of one core, like Activity Monitor").tag(ProcessCPUScale.perCore)
+            }
+            .pickerStyle(.radioGroup)
+            SettingNote("With one core, an app busy on several cores can go over 100%.")
+            Spacer().frame(height: 8)
             LabeledContent("IP addresses:") {
                 Toggle("Show local and public IP addresses", isOn: $settings.showsIPAddresses)
             }

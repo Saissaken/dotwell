@@ -109,9 +109,13 @@ enum Format {
         return formatter
     }()
 
-    /// Per-process CPU as Activity Monitor shows it, where 100 % is one full core.
-    static func processCPU(_ fraction: Float) -> String {
-        let percent = fraction * 100
+    /// An app's CPU use. `fraction` is in cores (1.5 = one and a half cores busy); `.wholeMac` divides it by
+    /// `cores` so it reads on the same scale as the CPU card's total.
+    static func processCPU(
+        _ fraction: Float, scale: ProcessCPUScale = .perCore,
+        cores: Int = ProcessInfo.processInfo.activeProcessorCount
+    ) -> String {
+        let percent = (scale == .wholeMac ? fraction / Float(max(cores, 1)) : fraction) * 100
         return percent < 9.95 ? String(format: "%.1f%%", percent) : String(format: "%.0f%%", percent)
     }
 

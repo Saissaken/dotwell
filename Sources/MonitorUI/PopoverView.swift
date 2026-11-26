@@ -103,7 +103,10 @@ public struct PopoverView: View {
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
-                caption: cpuCaption, topApp: topApp(.cpu, \.byCPU, column: "CPU") { Format.processCPU($0.cpu) },
+                caption: cpuCaption,
+                topApp: topApp(.cpu, \.byCPU, column: "CPU") {
+                    Format.processCPU($0.cpu, scale: settings.processCPUScale)
+                },
                 values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
             MetricModule(

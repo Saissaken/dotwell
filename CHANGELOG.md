@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- CPU: the app using the most CPU now shows its share of the whole Mac, on the same scale as the CPU total
+  above it (like btop). Before, it used Activity Monitor's scale, where 100% is one core, so an app could
+  read 46% while the whole Mac was at 21%. Settings → General can switch back to the per-core scale.
+
 ## [0.6.0] - 2026-11-26
 
 ### Added
