@@ -39,9 +39,11 @@ Built for one thing above all: **using as few resources as possible** while it r
 
 ## Install
 
-1. Download `Dotwell-X.Y.Z.dmg` from the
-   [latest release](https://github.com/Saissaken/dotwell/releases/latest), open it and drag
-   **Dotwell** to **Applications**. The build is universal (Apple silicon and Intel).
+**[Download Dotwell.dmg](https://github.com/Saissaken/dotwell/releases/latest/download/Dotwell.dmg)**
+(universal: Apple silicon and Intel, macOS 13 or later).
+
+1. Open the disk image and drag **Dotwell** onto **Applications**. If you open the app from anywhere else,
+   it offers to move itself there, because updates need a stable location.
 2. The build is not notarized yet, so Gatekeeper blocks the first launch. Allow it once, using either option:
    - **System Settings:** try to open the app and click **Done** on the warning. Then go to
      **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to
@@ -53,6 +55,15 @@ Built for one thing above all: **using as few resources as possible** while it r
      ```
 
 > On macOS 15 Sequoia and later, the old right-click → Open shortcut no longer bypasses Gatekeeper.
+
+Dotwell opens at login from then on; turn that off in the popover's ⋯ menu.
+
+### Homebrew
+
+```sh
+brew tap saissaken/dotwell https://github.com/Saissaken/dotwell
+brew install --cask dotwell
+```
 
 ### Updates
 
@@ -82,6 +93,7 @@ Sources/MonitorUI     Popover views and sparklines (SwiftUI)
 Sources/Dotwell       App: menu bar item, updates and launch-at-login
 Tests/                Unit tests for MonitorCore
 scripts/              Bundling, packaging and release helpers
+Casks/                Homebrew cask (this repository is also a tap)
 docs/                 Requirements, design and release process
 ```
 
