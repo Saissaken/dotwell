@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- CPU: fan speed next to the temperature ("2,140 rpm", or "fans off" while they're stopped). Hidden on Macs
+  without fans, such as the MacBook Air.
+- Power: the battery temperature, as the battery itself reports it. Heat is what wears a battery the most.
+
 ### Changed
 - CPU: the app using the most CPU now shows its share of the whole Mac, on the same scale as the CPU total
   above it (like btop). Before, it used Activity Monitor's scale, where 100% is one core, so an app could

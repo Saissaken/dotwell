@@ -67,6 +67,18 @@ final class ProbeMathTests: XCTestCase {
         XCTAssertEqual(PowerProbe.watts(millivolts: 12_000, milliamps: -1_500), 18, accuracy: 0.0001)
     }
 
+    /// The battery gauge reports hundredths of a degree: 3062 is 30.62 °C.
+    func testBatteryTemperature() throws {
+        XCTAssertEqual(try XCTUnwrap(PowerProbe.batteryCelsius(hundredths: 3062)), 30.62, accuracy: 0.001)
+        XCTAssertNil(PowerProbe.batteryCelsius(hundredths: 0xFFFF))  // unreadable gauge
+        XCTAssertNil(PowerProbe.batteryCelsius(hundredths: -4000))
+        // On a Mac with a battery the live reading must be a plausible room-to-warm temperature.
+        if let celsius = PowerProbe().sample()?.batteryCelsius {
+            XCTAssertGreaterThan(celsius, 5)
+            XCTAssertLessThan(celsius, 60)
+        }
+    }
+
     /// Smoke test: real probes return sane values on the CI Mac.
     func testLiveProbes() {
         let cpu = CPUProbe()

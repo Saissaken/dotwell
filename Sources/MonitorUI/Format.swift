@@ -100,6 +100,14 @@ enum Format {
         return temperatureFormatter.string(from: Measurement(value: Double(celsius), unit: UnitTemperature.celsius))
     }
 
+    /// Fan speed: "2,140 rpm", or "fans off" while they're stopped (below the slowest real spin).
+    static func fanRPM(_ rpm: Double?, locale: Locale = .autoupdatingCurrent) -> String? {
+        guard let rpm else { return nil }
+        if rpm < 100 { return "fans off" }
+        let rounded = Int((rpm / 10).rounded()) * 10
+        return "\(rounded.formatted(.number.locale(locale))) rpm"
+    }
+
     /// Internal so tests and screenshots can pin a locale.
     static let temperatureFormatter: MeasurementFormatter = {
         let formatter = MeasurementFormatter()
