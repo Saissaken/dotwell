@@ -23,7 +23,7 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>SUFeedURL</key>
-    <string>https://github.com/Saissaken/mac-resource-monitor/releases/latest/download/appcast.xml</string>
+    <string>https://github.com/Saissaken/dotwell/releases/latest/download/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>Jguo8r2QGmw5bBIdzwOchO9VXNSlgy9nkqvBcPt4WMg=</string>
     <key>SUEnableAutomaticChecks</key>

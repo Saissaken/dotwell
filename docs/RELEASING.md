@@ -25,7 +25,7 @@ GitHub Release. Installed copies pick it up through [Sparkle](https://sparkle-pr
      and writes `appcast.xml` with the changelog section as release notes;
    - publishes the release with all three files attached.
 
-The appcast is served from `https://github.com/Saissaken/mac-resource-monitor/releases/latest/download/appcast.xml`,
+The appcast is served from `https://github.com/Saissaken/dotwell/releases/latest/download/appcast.xml`,
 so the newest release always carries the current feed and there is nothing else to host.
 
 ## How updates reach users

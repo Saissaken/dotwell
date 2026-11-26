@@ -28,7 +28,7 @@ cat > build/appcast.xml <<XML
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <title>Dotwell</title>
-    <link>https://github.com/Saissaken/mac-resource-monitor</link>
+    <link>https://github.com/Saissaken/dotwell</link>
     <item>
       <title>Version $VERSION</title>
       <pubDate>$PUB_DATE</pubDate>

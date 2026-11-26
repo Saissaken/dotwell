@@ -1,6 +1,6 @@
 # Dotwell
 
-[![CI](https://github.com/Saissaken/mac-resource-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/Saissaken/mac-resource-monitor/actions/workflows/ci.yml)
+[![CI](https://github.com/Saissaken/dotwell/actions/workflows/ci.yml/badge.svg)](https://github.com/Saissaken/dotwell/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-lightgrey)
 
@@ -40,7 +40,7 @@ Built for one thing above all: **using as few resources as possible** while it r
 ## Install
 
 1. Download `Dotwell-X.Y.Z.dmg` from the
-   [latest release](https://github.com/Saissaken/mac-resource-monitor/releases/latest), open it and drag
+   [latest release](https://github.com/Saissaken/dotwell/releases/latest), open it and drag
    **Dotwell** to **Applications**. The build is universal (Apple silicon and Intel).
 2. The build is not notarized yet, so Gatekeeper blocks the first launch. Allow it once, using either option:
    - **System Settings:** try to open the app and click **Done** on the warning. Then go to
@@ -65,8 +65,8 @@ verified with an EdDSA signature before they are installed. See [docs/RELEASING.
 Requirements: macOS 13+ and Xcode 15+ (or the matching Swift toolchain).
 
 ```sh
-git clone https://github.com/Saissaken/mac-resource-monitor.git
-cd mac-resource-monitor
+git clone https://github.com/Saissaken/dotwell.git
+cd dotwell
 make test      # run unit tests
 make app       # build build/Dotwell.app
 open build/Dotwell.app
