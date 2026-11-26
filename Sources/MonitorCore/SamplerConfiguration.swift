@@ -1,19 +1,49 @@
-/// How often the sampler takes a reading.
-public enum SamplingInterval: Int, CaseIterable, Codable, Sendable {
-    case oneSecond = 1
-    case twoSeconds = 2
-    case fiveSeconds = 5
-    case tenSeconds = 10
+/// How often the sampler takes a reading, in milliseconds. The popover has its own, faster choices: while it
+/// is closed the readings only keep the menu bar light current, and they run all day.
+public enum SamplingInterval: Int, CaseIterable, Codable, Comparable, Sendable {
+    case halfSecond = 500
+    case oneSecond = 1000
+    case twoSeconds = 2000
+    case fiveSeconds = 5000
+    case tenSeconds = 10000
+    case thirtySeconds = 30000
 
-    public var seconds: Int { rawValue }
+    /// Choices while the popover is open: it is only on screen for a moment, so faster is fine.
+    public static let whileOpen: [SamplingInterval] = [.halfSecond, .oneSecond, .twoSeconds]
+    /// Choices while the popover is closed.
+    public static let whileClosed: [SamplingInterval] = [
+        .oneSecond, .twoSeconds, .fiveSeconds, .tenSeconds, .thirtySeconds,
+    ]
 
-    public var label: String { rawValue == 1 ? "1 second" : "\(rawValue) seconds" }
+    public var milliseconds: Int { rawValue }
+
+    public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
+
+    /// Half-second history slots one reading covers (see `TieredSeries`).
+    public var slots: Int { rawValue / TieredSeries.slotMilliseconds }
+
+    public var label: String {
+        switch self {
+        case .halfSecond: return "Every 0.5 seconds"
+        case .oneSecond: return "Every second"
+        default: return "Every \(rawValue / 1000) seconds"
+        }
+    }
+
+    /// The closest choice to a saved number of seconds, for settings saved before the open and closed split.
+    public init(legacySeconds seconds: Int) {
+        let ms = seconds * 1000
+        self = Self.allCases.min { abs($0.rawValue - ms) < abs($1.rawValue - ms) } ?? .oneSecond
+    }
 }
 
 /// Everything about sampling that can change while the app runs. The sampler applies a new
 /// configuration on the next tick, without restarting or losing history.
 public struct SamplerConfiguration: Sendable, Equatable {
-    public var interval: SamplingInterval
+    /// Reading interval while the popover is open.
+    public var openInterval: SamplingInterval
+    /// Reading interval while the popover is closed. Keeps the menu bar light current all day.
+    public var closedInterval: SamplingInterval
     public var targets: [PingTarget]
     /// Index into `targets` of the host that drives the ping alert.
     public var primaryIndex: Int
@@ -28,7 +58,8 @@ public struct SamplerConfiguration: Sendable, Equatable {
     public var sampleGPU: Bool
 
     public init(
-        interval: SamplingInterval = .oneSecond,
+        openInterval: SamplingInterval = .oneSecond,
+        closedInterval: SamplingInterval = .fiveSeconds,
         targets: [PingTarget] = PingTarget.defaults,
         primaryIndex: Int = PingTarget.defaultPrimaryIndex,
         thresholds: Thresholds = Thresholds(),
@@ -37,7 +68,8 @@ public struct SamplerConfiguration: Sendable, Equatable {
         sampleTopApps: Bool = true,
         sampleGPU: Bool = true
     ) {
-        self.interval = interval
+        self.openInterval = openInterval
+        self.closedInterval = closedInterval
         self.targets = targets
         self.primaryIndex = primaryIndex
         self.thresholds = thresholds

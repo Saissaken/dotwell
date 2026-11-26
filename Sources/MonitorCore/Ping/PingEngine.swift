@@ -11,7 +11,7 @@ public final class PingEngine {
     public var targets: [PingTarget] {
         didSet { addresses.removeAll() }
     }
-    /// Probes without a reply after this long, or still unanswered at the next `collect()`, are reported as lost.
+    /// Probes without a reply after this long are reported as lost by the next `collect()`.
     public var timeoutNanos: UInt64 = 1_000_000_000
     /// Called on `queue` with the target index and RTT in ms, or nil if lost.
     public var onResult: ((Int, Float?) -> Void)?
@@ -63,21 +63,28 @@ public final class PingEngine {
         }
     }
 
-    /// Reports the ICMP replies received since the last call, and every probe still unanswered as lost.
+    /// Reports the ICMP and DNS replies received since the last call, and every probe unanswered for
+    /// `timeoutNanos` as lost. Younger probes stay pending, so a 0.5 s tick doesn't cut the timeout short.
     /// Call once per tick, before `probe()`, on `queue`.
     public func collect() {
         dispatchPrecondition(condition: .onQueue(queue))
         drainICMP()
         drainDNS()
-        for (_, p) in pendingICMP { onResult?(p.target, nil) }
-        pendingICMP.removeAll(keepingCapacity: true)
-        for (_, p) in pendingDNS { onResult?(p.target, nil) }
-        pendingDNS.removeAll()
-        for (_, p) in pendingTCP {
+        let now = Self.now()
+        func expired(_ sentAt: UInt64) -> Bool { now &- sentAt >= timeoutNanos }
+        for (seq, p) in pendingICMP where expired(p.sentAt) {
+            pendingICMP[seq] = nil
+            onResult?(p.target, nil)
+        }
+        for (id, p) in pendingDNS where expired(p.sentAt) {
+            pendingDNS[id] = nil
+            onResult?(p.target, nil)
+        }
+        for (fd, p) in pendingTCP where expired(p.sentAt) {
+            pendingTCP[fd] = nil
             p.source.cancel()
             onResult?(p.target, nil)
         }
-        pendingTCP.removeAll()
     }
 
     /// Drop sockets and cached addresses (e.g. on sleep or network change).
@@ -351,7 +358,20 @@ public final class PingEngine {
         pending.source.cancel()
         // A refused connection still completed a round trip.
         let ok = (err == 0 || err == ECONNREFUSED) && now &- pending.sentAt < timeoutNanos
-        onResult?(pending.target, ok ? Float(Double(now - pending.sentAt) / 1_000_000) : nil)
+        let ms = err == 0 ? Self.kernelRTT(fd) : nil
+        onResult?(pending.target, ok ? ms ?? Float(Double(now &- pending.sentAt) / 1_000_000) : nil)
+    }
+
+    /// The handshake's round trip as the kernel measured it (SYN sent to SYN-ACK received), in whole
+    /// milliseconds, so it doesn't include how long this queue took to notice the connection. Nil when the
+    /// kernel has no sample (under 1 ms, e.g. on the local network); the caller then uses its own timing.
+    static func kernelRTT(_ fd: Int32) -> Float? {
+        var info = tcp_connection_info()
+        var size = socklen_t(MemoryLayout<tcp_connection_info>.size)
+        guard getsockopt(fd, IPPROTO_TCP, TCP_CONNECTION_INFO, &info, &size) == 0, info.tcpi_rttcur > 0 else {
+            return nil
+        }
+        return Float(info.tcpi_rttcur)
     }
 
     static func now() -> UInt64 { ICMPSocket.now() }

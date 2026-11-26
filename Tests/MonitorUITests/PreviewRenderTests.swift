@@ -45,6 +45,14 @@ final class PreviewRenderTests: XCTestCase {
             let data = try render(module, appearance: appearance)
             try data.write(to: url.appendingPathComponent("ping-path-\(mode).png"))
         }
+        // The list that opens from a top app line.
+        for (mode, appearance) in appearances {
+            let list = TopAppsList(
+                title: "Top Apps by CPU", column: "CPU", apps: SampleData.healthy.topApps?.byCPU ?? [],
+                value: { Format.processCPU($0.cpu) }, icons: IconCache())
+            let data = try render(list, appearance: appearance)
+            try data.write(to: url.appendingPathComponent("top-apps-\(mode).png"))
+        }
     }
 
     /// Renders the real Settings window, title bar and toolbar included, on one tab.
@@ -142,9 +150,13 @@ enum SampleData {
             SeriesKey.netUp: wave(30, base: 20e6, amplitude: 10e6, seed: 7),
         ]
         s.topApps = TopApps(
-            cpu: app("Safari", cpu: 0.214), memory: app("Safari", memory: 2.4),
-            disk: app("Photos", disk: 1_800_000), power: app("Safari", watts: 2.1),
-            gpu: app("Safari", gpu: 0.06))
+            byCPU: [
+                app("Safari", cpu: 0.214), app("Photos", cpu: 0.12), app("Music", cpu: 0.064),
+                app("Mail", cpu: 0.021), app("Notes", cpu: 0.008),
+            ],
+            byMemory: [app("Safari", memory: 2.4), app("Photos", memory: 1.1), app("Mail", memory: 0.62)],
+            byDisk: [app("Photos", disk: 1_800_000)], byPower: [app("Safari", watts: 2.1)],
+            byGPU: [app("Safari", gpu: 0.06), app("Photos", gpu: 0.02)])
         s.path = path(ispMs: 9, internetMs: 12, serverMs: 14, serverLost: 0)
         return s
     }
@@ -168,7 +180,8 @@ enum SampleData {
         pingHistory[24] = PingStats.lost
         s.history[SeriesKey.ping(PingTarget.defaultPrimaryIndex)] = pingHistory
         s.history[SeriesKey.cpu] = wave(30, base: 0.85, amplitude: 0.08, seed: 3)
-        s.topApps?.cpu = app("Photos", cpu: 2.864)
+        s.topApps?.byCPU.insert(app("Photos", cpu: 2.864), at: 0)
+        s.topApps?.byCPU.removeAll { $0.name == "Photos" && $0.cpu < 1 }
         s.path = path(ispMs: 72, internetMs: 81, serverMs: 96, serverLost: 1)
         return s
     }
@@ -201,9 +214,10 @@ enum SampleData {
     ) -> ProcessUsage {
         let path = name == "Safari" ? "/Applications/Safari.app" : "/System/Applications/\(name).app"
         let bytes = UInt64(gigabytes * 1_073_741_824)
+        let pids = ["Safari": 1279, "Photos": 4021, "Music": 1104, "Mail": 990, "Notes": 1146]
         return ProcessUsage(
             id: path, name: name, path: path, cpu: cpu, memoryBytes: bytes, diskBytesPerSec: disk, watts: watts,
-            gpu: gpu)
+            pid: pid_t(pids[name] ?? 500), processCount: name == "Safari" ? 14 : 2, gpu: gpu)
     }
 
     private static func pingTargets(primaryMs: Float, primaryLoss: Float) -> [PingTargetState] {

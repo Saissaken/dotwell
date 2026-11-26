@@ -75,7 +75,7 @@ Modules (Swift Package):
 | ISP router | the `@isp` ping target: a two-round traceroute to 1.1.1.1 picks the first hop past the gateway with a public or carrier-grade NAT (100.64/10) address. Kept 5 min (1 min when none was found), redone when the gateway changes (checked every 30 s) | ~60 packets per 5 min |
 | DNS server | the `@dns` ping target: the first IPv4 `ServerAddresses` entry of `State:/Network/Global/DNS` in the `SCDynamicStore` (what `scutil --dns` lists first), re-read every 30 s. Timed with a real DNS query (A `www.apple.com`, UDP 53, kernel receive timestamp) every 5 s; SERVFAIL, REFUSED or no answer count as lost | 1 `configd` call per 30 s, 1 small UDP packet per 5 s |
 | Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
-| Top app per metric | `proc_listallpids` + `proc_pid_rusage(RUSAGE_INFO_V6)`: deltas of CPU time, disk bytes read+written and `ri_energy_nj`, plus the physical footprint. Per-app network traffic is not available without private APIs (NetworkStatistics) or spawning `nettop`, so the Network module has no top app. Helpers are grouped under their outermost `.app` bundle (`proc_pidpath`, cached per pid and start time). Only the current user's processes are readable without root, so system daemons are left out. **Only while the popover is open**, every 2 s | 1 syscall per process |
+| Top app per metric | `proc_listallpids` + `proc_pid_rusage(RUSAGE_INFO_V6)`: deltas of CPU time, disk bytes read+written and `ri_energy_nj`, plus the physical footprint. Per-app network traffic is not available without private APIs (NetworkStatistics) or spawning `nettop`, so the Network module has no top app. Helpers are grouped under their outermost `.app` bundle (`proc_pidpath`, cached per pid and start time); the five largest per resource are kept, each with its main pid (the bundle's own `Contents/MacOS/` executable, else the oldest process) for the click-to-copy list. Only the current user's processes are readable without root, so system daemons are left out. **Only while the popover is open**, every 2 s | 1 syscall per process |
 
 The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by far the most expensive option.
 
@@ -83,19 +83,28 @@ The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by 
 
 | | CPU/Mem/Net/Disk I/O | ICMP ping | TCP ping | Battery | Disk space |
 |---|---|---|---|---|---|
-| Running (popover open or closed) | 1 s | 1 s, all targets | 5 s | 2 s | 30 s |
+| Popover open | 1 s (0.5–2 s) | every reading | 5 s | 2 s | 30 s |
+| Popover closed | 5 s (1–30 s) | every reading | 5 s (or every reading, if slower) | 2 s (or every reading) | 30 s |
 | Mac or displays asleep | paused | paused | paused | paused | paused |
 
-The interval is 1 s by default and can be set to 2, 5 or 10 s in Settings; every other column is a
-duration and keeps it (or runs every tick, if the interval is longer). History ranges, ping statistics
-(at least 5 samples) and alert hold times are also defined in seconds, so they adapt to the interval.
+The popover has two reading intervals, both set in Settings: while it is open (0.5, 1 or 2 s, default 1 s)
+and while it is closed (1, 2, 5, 10 or 30 s, default 5 s). The closed one runs all day, so it is the one that
+matters for battery; at 5 s the Mac wakes five times less often than at 1 s, and the menu bar light still
+reacts to a problem within one reading. Opening or closing the popover reschedules the timer right away.
+Every other column is a duration and keeps it (or runs every reading, if the interval is longer).
+
+History is kept on a clock of half-second slots (`TieredSeries`): a reading fills every slot since the
+previous one. CPU, network and disk readings are already averages over that time, and a held ping reply
+weighs as much as the time it stands for, so the charts keep one time scale and latency and loss over the
+10 s window stay right when the interval changes. Alert hold times are counted in the same slots. A probe
+is only reported lost once its 1 s timeout has passed, even when readings come every 0.5 s.
 Settings are applied live through `Sampler.apply(_:)` without restarting the timer's history.
 
 Sampling at a fixed interval keeps history continuous; each tick is a handful of syscalls (microseconds).
 With the popover closed no history is copied for the UI, nothing is drawn, processes and the CPU temperature
 are not sampled (the process probe drops its caches on close), and snapshots only reach the main thread when
 the overall level changes (the menu bar dot is all that shows them). If real measurements exceed the
-budget, the closed-popover cadence drops to 2 s.
+budget, the default closed-popover interval goes up.
 
 - **One timer** with `leeway` so the system can coalesce wakeups.
 - All probes run on one serial `.utility` queue and never block a thread waiting for a reply.

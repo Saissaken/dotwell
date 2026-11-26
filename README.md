@@ -30,10 +30,10 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **Your IP addresses**: the Mac's local IP (Wi‑Fi or Ethernet) and its public IPv4 and IPv6. Click one to copy it.
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
 - **What's using it**: CPU, GPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
-  the popover is open.
+  the popover is open. Click it to see the top five with their process IDs, and click one to copy its PID.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
 - **Yours to arrange**: a native Settings window to pick and reorder cards, choose ping hosts (presets for
-  public DNS and every major AWS region), tune alert thresholds and the sampling interval.
+  public DNS and every major AWS region), tune alert thresholds and how often readings are taken with the popover open and closed.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
 - **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
 - **Private by default.** Besides ping and update checks, the only request it makes is the public IP lookup

@@ -44,6 +44,9 @@ public struct Snapshot: Sendable {
     public var topApps: TopApps?
     /// Route to the primary ping target, traced only while the popover is open.
     public var path: PathTrace?
+    /// How far the charts have scrolled toward their next point, so they can slide instead of jumping.
+    /// Only filled while the popover is open.
+    public var chartMotion: ChartMotion?
 
     public init() {}
 
@@ -51,6 +54,31 @@ public struct Snapshot: Sendable {
     public func level(_ kind: MetricKind) -> HealthLevel { levels[kind] ?? .ok }
 
     public var primaryPing: PingTargetState? { ping.first(where: \.isPrimary) }
+}
+
+/// Lets the popover's charts scroll smoothly: each new point slides in from the right over the time it takes
+/// to get the next one, instead of the whole line jumping one step when it arrives.
+public struct ChartMotion: Sendable, Equatable {
+    /// When the tick that produced the history ran.
+    public var takenAt: Date
+    /// Fraction (0..<1) of the time between two chart points that had already passed at `takenAt`. It is not
+    /// zero on the 5 min and 1 h ranges, where one point averages 5 or 30 samples.
+    public var phase: Double
+    /// Seconds between two chart points.
+    public var period: Double
+
+    public init(takenAt: Date, phase: Double, period: Double) {
+        self.takenAt = takenAt
+        self.phase = phase
+        self.period = period
+    }
+
+    /// How far the newest point has slid in at `date`, from 0 (just arrived, one step past the right edge)
+    /// to 1 (at rest at the right edge).
+    public func progress(at date: Date) -> Double {
+        guard period > 0 else { return 1 }
+        return min(1, max(0, phase + date.timeIntervalSince(takenAt) / period))
+    }
 }
 
 /// History keys used in `Snapshot.history`.
@@ -75,7 +103,10 @@ public final class Sampler: @unchecked Sendable {
     public var onSnapshot: ((Snapshot) -> Void)?
 
     private var configuration: SamplerConfiguration
-    private var step: Int { configuration.interval.seconds }
+    /// The reading interval in force: the popover's while it is open, the slower one while it is closed.
+    private var interval: SamplingInterval {
+        detailedFlag ? configuration.openInterval : configuration.closedInterval
+    }
 
     private let cpuProbe = CPUProbe()
     private let memoryProbe = MemoryProbe()
@@ -90,6 +121,13 @@ public final class Sampler: @unchecked Sendable {
 
     private var timer: DispatchSourceTimer?
     private var tick: UInt64 = 0
+    /// Half-second history slots covered so far (see `TieredSeries`). Drives the time-based schedules, so
+    /// "every 5 s" means 5 seconds whatever the reading interval.
+    private var slots: UInt64 = 0
+    private var slotsBeforeTick: UInt64 = 0
+    /// The slot count when each ping row last recorded a reply, so a reply fills the time since the last one.
+    private var pingSlots: [UInt64]
+    private var lastTickDate: Date?
     private var lastNet: (NetworkCounters, UInt64)?
     private var lastDiskIO: (DiskIOCounters, UInt64)?
     private var current = Snapshot()
@@ -122,9 +160,10 @@ public final class Sampler: @unchecked Sendable {
         let targets = configuration.activeTargets
         ping = PingEngine(targets: targets, queue: queue)
         pingSeries = Array(repeating: TieredSeries(), count: targets.count)
+        pingSlots = Array(repeating: 0, count: targets.count)
         primaryIndex = configuration.activePrimaryIndex
         current.thresholds = configuration.thresholds
-        debouncers = Self.makeDebouncers(step: configuration.interval.seconds)
+        debouncers = Self.makeDebouncers()
         ping.onResult = { [weak self] index, ms in self?.pendingPing[index] = ms ?? PingStats.lost }
     }
 
@@ -132,10 +171,11 @@ public final class Sampler: @unchecked Sendable {
         self.init(configuration: SamplerConfiguration(targets: targets, primaryIndex: primaryIndex))
     }
 
-    private static func makeDebouncers(step: Int) -> [MetricKind: LevelDebouncer] {
-        func ticks(_ seconds: Int) -> Int { (seconds + step - 1) / step }
+    /// Holds are counted in half-second slots, and each reading feeds the slots it covers.
+    private static func makeDebouncers() -> [MetricKind: LevelDebouncer] {
+        func slots(_ seconds: Int) -> Int { seconds * 1000 / TieredSeries.slotMilliseconds }
         return holdSeconds.mapValues { hold in
-            LevelDebouncer(raiseWarning: ticks(hold.0), raiseCritical: ticks(hold.1), lowerAfter: ticks(hold.2))
+            LevelDebouncer(raiseWarning: slots(hold.0), raiseCritical: slots(hold.1), lowerAfter: slots(hold.2))
         }
     }
 
@@ -150,15 +190,17 @@ public final class Sampler: @unchecked Sendable {
             let t = DispatchSource.makeTimerSource(queue: queue)
             t.setEventHandler { [weak self] in self?.tickOnce() }
             timer = t
-            schedule()
+            // The first reading comes a second after the CPU deltas are primed, not a whole closed interval later.
+            schedule(firstAfter: min(interval.milliseconds, 1000))
             t.resume()
         }
     }
 
     /// A quarter of the interval as leeway lets macOS coalesce wakeups with other work.
-    private func schedule() {
-        let interval = DispatchTimeInterval.seconds(step)
-        timer?.schedule(deadline: .now() + interval, repeating: interval, leeway: .milliseconds(step * 250))
+    private func schedule(firstAfter first: Int? = nil) {
+        let ms = interval.milliseconds
+        timer?.schedule(
+            deadline: .now() + .milliseconds(first ?? ms), repeating: .milliseconds(ms), leeway: .milliseconds(ms / 4))
     }
 
     public func stop() {
@@ -181,8 +223,9 @@ public final class Sampler: @unchecked Sendable {
             let old = configuration
             guard newConfiguration != old else { return }
             configuration = newConfiguration
-            if newConfiguration.interval != old.interval {
-                debouncers = Self.makeDebouncers(step: step)
+            if newConfiguration.openInterval != old.openInterval
+                || newConfiguration.closedInterval != old.closedInterval
+            {
                 schedule()
             }
             let targets = newConfiguration.activeTargets
@@ -195,6 +238,7 @@ public final class Sampler: @unchecked Sendable {
                 ping.targets = targets
                 pendingPing.removeAll()
                 pingSeries = targets.map { previous[$0] ?? TieredSeries() }
+                pingSlots = Array(repeating: slots, count: targets.count)
             }
             let oldPrimary = primaryIndex
             primaryIndex = newConfiguration.activePrimaryIndex
@@ -227,7 +271,9 @@ public final class Sampler: @unchecked Sendable {
     public func setDetailed(_ detailed: Bool, range: HistoryRange) {
         queue.async { [self] in
             let opening = detailed && !detailedFlag
+            let wasInterval = interval
             detailedFlag = detailed
+            if interval != wasInterval { schedule() }
             historyRange = range
             if opening {
                 current.cpuTemperature = temperatureProbe.sample()
@@ -250,18 +296,27 @@ public final class Sampler: @unchecked Sendable {
 
     // MARK: - Tick
 
-    /// True on the first tick and then once every `seconds` (or every tick, if the interval is longer).
+    /// True on the first tick and then on the tick that crosses each multiple of `seconds` (every tick, if the
+    /// interval is longer).
     private func every(_ seconds: Int) -> Bool {
-        (tick &- 1) % UInt64(max(1, seconds / step)) == 0
+        let period = UInt64(seconds * 1000 / TieredSeries.slotMilliseconds)
+        return tick == 1 || slotsBeforeTick / period != slots / period
     }
 
     private func tickOnce() {
         tick &+= 1
+        slotsBeforeTick = slots
+        let covered = interval.slots
+        slots &+= UInt64(covered)
+        lastTickDate = Date()
         let now = DispatchTime.now().uptimeNanoseconds
 
         // Ping: record the replies to the last round. The next round goes out at the end of the tick.
         ping.collect()
-        for (i, value) in pendingPing { pingSeries[i].append(value) }
+        for (i, value) in pendingPing where pingSeries.indices.contains(i) {
+            pingSeries[i].append(value, slots: Int(min(slots &- pingSlots[i], 300)))
+            pingSlots[i] = slots
+        }
         pendingPing.removeAll(keepingCapacity: true)
 
         if let cpu = cpuProbe.sample() {
@@ -312,12 +367,12 @@ public final class Sampler: @unchecked Sendable {
             current.topApps = processProbe.sample(now: now, gpuTimes: gpuTimes())
         }
 
-        if detailedFlag && traceroute.isRunning {
+        if detailedFlag && traceroute.isRunning && every(1) {
             current.path = traceroute.snapshot()
             traceroute.probeRound()
         }
 
-        evaluate()
+        evaluate(covered: covered)
         publish()
 
         // Sent last, so TCP handshakes complete while the queue is idle instead of waiting behind this tick.
@@ -372,10 +427,11 @@ public final class Sampler: @unchecked Sendable {
     }
 
     private func append(_ key: String, _ value: Float) {
-        series[key, default: TieredSeries()].append(value)
+        series[key, default: TieredSeries()].append(value, slots: interval.slots)
     }
 
-    private func evaluate() {
+    /// `covered`: the half-second slots the latest reading stands for, so alert holds are counted in time.
+    private func evaluate(covered: Int = 1) {
         let thresholds = configuration.thresholds
         var raw: [MetricKind: HealthLevel] = [:]
         current.ping = ping.targets.indices.map { i in
@@ -396,17 +452,33 @@ public final class Sampler: @unchecked Sendable {
         raw[.thermal] = thresholds.thermal(current.thermal)
 
         for (kind, level) in raw where configuration.alerts.contains(kind) {
-            current.levels[kind] = debouncers[kind]?.feed(level) ?? level
+            current.levels[kind] = debouncers[kind]?.feed(level, weight: covered) ?? level
         }
     }
 
-    /// Ping stats cover the last 10 s, but at least 5 samples so one lost reply isn't 100 % loss.
-    private var pingWindow: Int { max(5, 10 / step) }
+    /// Ping stats cover the last 10 s, but at least 5 readings so one lost reply isn't 100 % loss.
+    private var pingWindow: Int { min(300, max(20, 5 * interval.slots)) }
 
     /// The latest values, without history. Call from the main queue when the popover opens, so its first
     /// frame is current even though closed-popover snapshots are not sent there every tick.
     public func latest() -> Snapshot {
         queue.sync { current }
+    }
+
+    /// Slots per chart point for the range on screen, as `TieredSeries` buckets them. Every series starts on
+    /// the first tick, so they all share the phase of `tick`.
+    private func chartMotion() -> ChartMotion? {
+        guard let lastTickDate else { return nil }
+        let slotsPerPoint: UInt64
+        switch historyRange {
+        case .seconds30: slotsPerPoint = UInt64(interval.slots)
+        case .minutes5: slotsPerPoint = UInt64(TieredSeries.midSlots)
+        case .hour1: slotsPerPoint = UInt64(TieredSeries.longSlots)
+        }
+        let slotSeconds = Double(TieredSeries.slotMilliseconds) / 1000
+        return ChartMotion(
+            takenAt: lastTickDate, phase: Double(slots % slotsPerPoint) / Double(slotsPerPoint),
+            period: Double(slotsPerPoint) * slotSeconds)
     }
 
     private func publish(always: Bool = false) {
@@ -415,11 +487,13 @@ public final class Sampler: @unchecked Sendable {
         var snap = current
         if detailedFlag {
             var h: [String: [Float]] = [:]
-            for (k, s) in series { h[k] = s.values(for: historyRange, interval: step) }
+            let stepSlots = interval.slots
+            for (k, s) in series { h[k] = s.values(for: historyRange, stepSlots: stepSlots) }
             for i in pingSeries.indices {
-                h[SeriesKey.ping(i)] = pingSeries[i].values(for: historyRange, interval: step)
+                h[SeriesKey.ping(i)] = pingSeries[i].values(for: historyRange, stepSlots: stepSlots)
             }
             snap.history = h
+            snap.chartMotion = chartMotion()
         }
         guard let onSnapshot else { return }
         DispatchQueue.main.async { onSnapshot(snap) }

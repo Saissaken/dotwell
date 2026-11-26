@@ -11,39 +11,61 @@ public enum HistoryRange: Int, CaseIterable, Sendable {
     }
 }
 
-/// One metric's history at three resolutions, fed one sample per tick.
-/// Memory is fixed at allocation: 60 + 60 + 120 floats.
+/// One metric's history at three resolutions, on a clock of half-second slots, so the charts keep the same
+/// time scale whether readings come every 0.5 s (popover open) or every 5 s (closed).
+///
+/// A reading fills every slot since the previous one: CPU, network and disk readings are averages over that
+/// time already, and a held ping reply weighs as much as the time it stands for, so latency and loss over a
+/// window stay right when the interval changes.
+/// Memory is fixed at allocation: 300 + 60 + 120 floats.
 /// Negative samples mean "missing" (e.g. lost ping) and are excluded from averages;
 /// a bucket with no valid sample is stored as missing.
 public struct TieredSeries: Sendable {
-    private var raw = RingBuffer(capacity: 60)  // 1 per sample
-    private var mid = RingBuffer(capacity: 60)  // avg of 5 samples
-    private var long = RingBuffer(capacity: 120)  // avg of 30 samples
-    private var midAcc = Accumulator(size: 5)
-    private var longAcc = Accumulator(size: 30)
+    public static let slotMilliseconds = 500
+    /// Slots in one point of the 5 min and 1 h charts.
+    public static let midSlots = 10  // 5 s
+    public static let longSlots = 60  // 30 s
+
+    private var raw = RingBuffer(capacity: 300)  // 1 per slot: 150 s, enough for 5 readings 30 s apart
+    private var mid = RingBuffer(capacity: 60)  // avg of 10 slots
+    private var long = RingBuffer(capacity: 120)  // avg of 60 slots
+    private var midAcc = Accumulator(size: midSlots)
+    private var longAcc = Accumulator(size: longSlots)
 
     public init() {}
 
-    public mutating func append(_ value: Float) {
-        raw.append(value)
-        if let v = midAcc.add(value) { mid.append(v) }
-        if let v = longAcc.add(value) { long.append(v) }
+    /// Records a reading that covers `slots` half-second slots.
+    public mutating func append(_ value: Float, slots: Int = 1) {
+        for _ in 0..<max(1, slots) {
+            raw.append(value)
+            if let v = midAcc.add(value) { mid.append(v) }
+            if let v = longAcc.add(value) { long.append(v) }
+        }
     }
 
     public var last: Float? { raw.last }
 
-    /// Samples for a range, oldest → newest, when one sample is taken every `interval` seconds.
-    /// At 1 s, 30 s returns the last 30 raw samples; longer intervals return proportionally fewer.
-    public func values(for range: HistoryRange, interval: Int = 1) -> [Float] {
-        let step = max(1, interval)
+    /// Points for a chart range, oldest → newest. The 30 s chart has one point per reading, so `stepSlots` (the
+    /// slots one reading covers) thins the raw slots out; the 5 min and 1 h charts have one point per 5 s and
+    /// 30 s bucket.
+    public func values(for range: HistoryRange, stepSlots: Int = 1) -> [Float] {
         switch range {
-        case .seconds30: return Array(raw.values.suffix(max(2, 30 / step)))
-        case .minutes5: return Array(mid.values.suffix(max(2, 60 / step)))
-        case .hour1: return Array(long.values.suffix(max(2, 120 / step)))
+        case .seconds30:
+            let step = max(1, stepSlots)
+            let all = raw.values
+            var points: [Float] = []
+            var i = all.count - 1
+            while i >= 0, points.count < max(2, 60 / step) {
+                points.append(all[i])
+                i -= step
+            }
+            return points.reversed()
+        case .minutes5: return mid.values
+        case .hour1: return long.values
         }
     }
 
-    /// Last `n` raw samples.
+    /// The last `n` slots.
     public func recent(_ n: Int) -> [Float] { Array(raw.values.suffix(n)) }
 
     public mutating func removeAll() {

@@ -13,17 +13,29 @@ All notable changes to this project are documented here. The format is based on
   "% GPU" column of Activity Monitor), power from the same energy counters as `powermetrics`, and temperature
   from the GPU's own sensors; anything your Mac doesn't report is left out instead of guessed. Nothing is
   read while the popover is closed, so its chart starts when you open it. Hide it in Settings › Widgets.
+
+## [0.6.0] - 2026-11-26
+
+### Added
 - Ping: a DNS row for the server your Mac uses to look up names. Every 5 seconds it asks that server a real
   question (the address of www.apple.com, which any resolver has cached) and shows how long the answer takes;
   an error answer or no answer counts as lost. It says "DNS Cloudflare", "DNS Google" and so on for
   well-known resolvers, "DNS Router" when your router answers, or the server's address (hover a row to see the
   address it measures). It follows network changes within 30 seconds.
+- Top apps: click the app line in CPU, Memory, Power or Disk to see the five apps using the most of it, each
+  with its process ID. Click an app to copy its process ID (for example to `kill` it). An app's process ID is
+  its own main process, not one of its helpers; hover an app to see how many processes were added up.
+- Charts scroll smoothly: each new reading slides in from the right instead of the line jumping once a second
+  (or every 5 or 30 seconds on the longer ranges). This only runs while the popover is open, at up to 30 frames
+  per second, and not when Reduce Motion is on.
 
 ### Fixed
 - Ping: round trips no longer include the time Dotwell itself took to read the reply. With the popover open
   they could read 20–35 ms too high, so the Router row showed 37 ms while the route above it showed 1.3 ms.
   Replies are now timestamped by macOS as they arrive. As a bonus, ICMP replies are read once per tick
   instead of waking the app for each one.
+- Ping: AWS and Azure rows (timed with a TCP handshake) now use the round trip measured by macOS itself, so
+  they can't include any delay of Dotwell's either.
 - The route under Ping now also appears when every widget's top app is turned off.
 - CPU temperature on Apple silicon read about 10 °C high on M3 chips (55 °C while btop showed 45 °C). It
   averaged every SMC key starting with `Tp` or `Te`, but on M3 those keys aren't the CPU cores. It now
@@ -31,6 +43,11 @@ All notable changes to this project are documented here. The format is based on
   btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
+- Readings have two intervals in Settings → General: one while the popover is open (0.5, 1 or 2 seconds,
+  default 1) and one while it's closed (1, 2, 5, 10 or 30 seconds, default 5). Until now Dotwell measured every
+  second all day, even with nothing on screen; the closed popover now wakes the Mac five times less often,
+  and the menu bar light still reacts to a problem within about 5 seconds. Charts keep the same time scale
+  whatever the interval, and an older slower choice carries over to the closed setting.
 - Less work with the popover closed: the main thread is only woken when the menu bar dot changes color,
   instead of every second, and the CPU temperature is only read while the popover is open.
 
@@ -140,7 +157,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Saissaken/dotwell/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Saissaken/dotwell/compare/v0.3.0...v0.4.0
