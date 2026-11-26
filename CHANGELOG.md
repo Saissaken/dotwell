@@ -25,6 +25,9 @@ All notable changes to this project are documented here. The format is based on
   btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
+- CPU: the app using the most CPU now shows its share of the whole Mac, on the same scale as the CPU total
+  above it (like btop). Before, it used Activity Monitor's scale, where 100% is one core, so an app could
+  read 46% while the whole Mac was at 21%. Settings → General can switch back to the per-core scale.
 - Less work with the popover closed: the main thread is only woken when the menu bar dot changes color,
   instead of every second, and the CPU temperature is only read while the popover is open.
 

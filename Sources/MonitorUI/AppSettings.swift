@@ -10,6 +10,14 @@ public enum NetworkUnit: String, CaseIterable, Codable, Sendable {
     case bytes
 }
 
+/// How an app's CPU use is shown.
+public enum ProcessCPUScale: String, CaseIterable, Codable, Sendable {
+    /// Share of the whole Mac, on the same scale as the CPU card's total, like btop.
+    case wholeMac
+    /// Share of one core, like Activity Monitor: an app busy on several cores goes over 100 %.
+    case perCore
+}
+
 /// One card of the popover as the person arranged it.
 public struct WidgetSetting: Codable, Equatable, Identifiable, Sendable {
     public var module: Module
@@ -48,6 +56,9 @@ public final class AppSettings: ObservableObject {
     @Published public var networkUnit: NetworkUnit {
         didSet { store(networkUnit.rawValue, .networkUnit) }
     }
+    @Published public var processCPUScale: ProcessCPUScale {
+        didSet { store(processCPUScale.rawValue, .processCPUScale) }
+    }
     /// Show the local and public IP addresses in the Network card. Off also skips the public address lookup.
     @Published public var showsIPAddresses: Bool {
         didSet { store(showsIPAddresses, .showsIPAddresses) }
@@ -84,6 +95,7 @@ public final class AppSettings: ObservableObject {
     private enum Key: String {
         case interval = "samplingInterval"
         case networkUnit
+        case processCPUScale
         case showsIPAddresses
         case widgets
         case internetHost
@@ -103,6 +115,8 @@ public final class AppSettings: ObservableObject {
         let savedInterval = defaults?.object(forKey: Key.interval.rawValue) as? Int
         interval = savedInterval.flatMap(SamplingInterval.init) ?? .oneSecond
         networkUnit = defaults?.string(forKey: Key.networkUnit.rawValue).flatMap(NetworkUnit.init) ?? .bits
+        processCPUScale =
+            defaults?.string(forKey: Key.processCPUScale.rawValue).flatMap(ProcessCPUScale.init) ?? .wholeMac
         showsIPAddresses = defaults?.object(forKey: Key.showsIPAddresses.rawValue) as? Bool ?? true
         widgets = WidgetSetting.merged(load([WidgetSetting].self, .widgets) ?? [])
         internetHost = defaults?.string(forKey: Key.internetHost.rawValue).flatMap(InternetHost.init) ?? .cloudflare
