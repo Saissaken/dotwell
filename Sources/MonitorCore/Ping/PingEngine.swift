@@ -1,14 +1,17 @@
 import Darwin
 import Dispatch
 
-/// Sends one probe per target per `probe()` call and reports RTTs asynchronously.
-/// Everything runs on `queue` (serial). No threads are blocked waiting for replies.
+/// Sends one probe per target per `probe()` call and reports RTTs. Everything runs on `queue` (serial).
+///
+/// ICMP replies are not read as they arrive: `collect()` reads them all once per tick, and the kernel's
+/// receive timestamp gives each round trip, so they cost no extra wakeups and measure only the network.
+/// TCP handshakes are reported as they complete. No threads are blocked waiting for replies.
 public final class PingEngine {
     public let queue: DispatchQueue
     public var targets: [PingTarget] {
         didSet { addresses.removeAll() }
     }
-    /// Probes without a reply after this long are reported as lost.
+    /// Probes without a reply after this long, or still unanswered at the next `collect()`, are reported as lost.
     public var timeoutNanos: UInt64 = 1_000_000_000
     /// Called on `queue` with the target index and RTT in ms, or nil if lost.
     public var onResult: ((Int, Float?) -> Void)?
@@ -16,7 +19,7 @@ public final class PingEngine {
     private let identifier = UInt16(truncatingIfNeeded: getpid())
     private var sequence: UInt16 = 0
     private var icmpSocket: Int32 = -1
-    private var readSource: DispatchSourceRead?
+    private var receiveBuffer = [UInt8](repeating: 0, count: 256)
     private var pendingICMP: [UInt16: (target: Int, sentAt: UInt64)] = [:]
     private var pendingTCP: [Int32: (target: Int, sentAt: UInt64, source: DispatchSourceWrite)] = [:]
 
@@ -34,14 +37,13 @@ public final class PingEngine {
     private lazy var http = HTTPProber(queue: queue) { [weak self] target, ms in self?.onResult?(target, ms) }
 
     deinit {
-        readSource?.cancel()
+        if icmpSocket >= 0 { close(icmpSocket) }
         for (_, p) in pendingTCP { p.source.cancel() }
     }
 
-    /// Probe the given target indices. Must be called on `queue`.
+    /// Probe the given target indices. Must be called on `queue`, after `collect()`.
     public func probe(_ indices: [Int]) {
         dispatchPrecondition(condition: .onQueue(queue))
-        expire(now: Self.now())
         for i in indices where targets.indices.contains(i) {
             if case .https(let path) = targets[i].method {
                 http.probe(target: i, host: targets[i].host, path: path)
@@ -56,10 +58,25 @@ public final class PingEngine {
         }
     }
 
+    /// Reports the ICMP replies received since the last call, and every probe still unanswered as lost.
+    /// Call once per tick, before `probe()`, on `queue`.
+    public func collect() {
+        dispatchPrecondition(condition: .onQueue(queue))
+        drainICMP()
+        for (_, p) in pendingICMP { onResult?(p.target, nil) }
+        pendingICMP.removeAll(keepingCapacity: true)
+        for (_, p) in pendingTCP {
+            p.source.cancel()
+            onResult?(p.target, nil)
+        }
+        pendingTCP.removeAll()
+    }
+
     /// Drop sockets and cached addresses (e.g. on sleep or network change).
     public func reset() {
         dispatchPrecondition(condition: .onQueue(queue))
-        readSource?.cancel(); readSource = nil; icmpSocket = -1
+        if icmpSocket >= 0 { close(icmpSocket) }
+        icmpSocket = -1
         for (_, p) in pendingTCP { p.source.cancel() }
         pendingTCP.removeAll()
         pendingICMP.removeAll()
@@ -185,17 +202,8 @@ public final class PingEngine {
     // MARK: - ICMP
 
     private func ensureICMPSocket() -> Bool {
-        if icmpSocket >= 0 { return true }
-        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)
-        guard fd >= 0 else { return false }
-        _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
-        let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
-        source.setEventHandler { [weak self] in self?.drainICMP() }
-        source.setCancelHandler { close(fd) }
-        source.resume()
-        icmpSocket = fd
-        readSource = source
-        return true
+        if icmpSocket < 0 { icmpSocket = ICMPSocket.open() }
+        return icmpSocket >= 0
     }
 
     private func sendICMP(target: Int, to addr: in_addr) {
@@ -223,18 +231,16 @@ public final class PingEngine {
     }
 
     private func drainICMP() {
-        var buffer = [UInt8](repeating: 0, count: 256)
-        while true {
-            let n = buffer.withUnsafeMutableBytes { recv(icmpSocket, $0.baseAddress, $0.count, 0) }
-            guard n > 0 else { break }
-            let now = Self.now()
-            let parsed = buffer.withUnsafeBytes {
-                ICMPPacket.parseEchoReply(UnsafeRawBufferPointer(rebasing: $0[0..<n]))
+        guard icmpSocket >= 0 else { return }
+        while let packet = ICMPSocket.receive(icmpSocket, into: &receiveBuffer) {
+            let parsed = receiveBuffer.withUnsafeBytes {
+                ICMPPacket.parseEchoReply(UnsafeRawBufferPointer(rebasing: $0[0..<packet.length]))
             }
             guard let reply = parsed, reply.identifier == identifier,
                 let pending = pendingICMP.removeValue(forKey: reply.sequence)
             else { continue }
-            onResult?(pending.target, Float(Double(now - pending.sentAt) / 1_000_000))
+            let rtt = packet.receivedAt &- pending.sentAt
+            onResult?(pending.target, rtt < timeoutNanos ? Float(Double(rtt) / 1_000_000) : nil)
         }
     }
 
@@ -278,23 +284,9 @@ public final class PingEngine {
         getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len)
         pending.source.cancel()
         // A refused connection still completed a round trip.
-        let ok = err == 0 || err == ECONNREFUSED
+        let ok = (err == 0 || err == ECONNREFUSED) && now &- pending.sentAt < timeoutNanos
         onResult?(pending.target, ok ? Float(Double(now - pending.sentAt) / 1_000_000) : nil)
     }
 
-    // MARK: - Timeouts
-
-    private func expire(now: UInt64) {
-        for (seq, p) in pendingICMP where now - p.sentAt >= timeoutNanos {
-            pendingICMP[seq] = nil
-            onResult?(p.target, nil)
-        }
-        for (fd, p) in pendingTCP where now - p.sentAt >= timeoutNanos {
-            pendingTCP[fd] = nil
-            p.source.cancel()
-            onResult?(p.target, nil)
-        }
-    }
-
-    static func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds }
+    static func now() -> UInt64 { ICMPSocket.now() }
 }

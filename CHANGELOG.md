@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- Ping: round trips no longer include the time Dotwell itself took to read the reply. With the popover open
+  they could read 20–35 ms too high, so the Router row showed 37 ms while the route above it showed 1.3 ms.
+  Replies are now timestamped by macOS as they arrive. As a bonus, ICMP replies are read once per tick
+  instead of waking the app for each one.
+
 ## [0.5.0] - 2026-11-26
 
 ### Added

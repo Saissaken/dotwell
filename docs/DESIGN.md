@@ -96,7 +96,11 @@ With the popover closed no history is copied for the UI, nothing is drawn and pr
 budget, the closed-popover cadence drops to 2 s.
 
 - **One timer** with `leeway` so the system can coalesce wakeups.
-- All probes run on one serial `.utility` queue; replies arrive through dispatch sources, never blocking threads.
+- All probes run on one serial `.utility` queue and never block a thread waiting for a reply.
+- ICMP round trips use the kernel's receive timestamp (`SO_TIMESTAMP_MONOTONIC`), so they measure the network,
+  not how long the reply waited for the queue. Ping replies are read once at the start of each tick (no wakeup
+  per reply); a probe still unanswered then is lost. A round's probes go out at the end of the tick, so TCP
+  handshakes complete while the queue is idle.
 - DNS resolution runs off the sampling queue and is cached for 5 minutes.
 
 ## 5. History

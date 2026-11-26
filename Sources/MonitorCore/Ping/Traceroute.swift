@@ -160,9 +160,8 @@ final class Traceroute {
 
     private func ensureSocket() -> Bool {
         if socketFD >= 0 { return true }
-        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)
+        let fd = ICMPSocket.open()
         guard fd >= 0 else { return false }
-        _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
         source.setEventHandler { [weak self] in self?.drain() }
         source.setCancelHandler { close(fd) }
@@ -201,32 +200,21 @@ final class Traceroute {
 
     private func drain() {
         var buffer = [UInt8](repeating: 0, count: 512)
-        var from = sockaddr_in()
-        while true {
-            var fromLength = socklen_t(MemoryLayout<sockaddr_in>.size)
-            let n = buffer.withUnsafeMutableBytes { buf in
-                withUnsafeMutablePointer(to: &from) {
-                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                        recvfrom(socketFD, buf.baseAddress, buf.count, 0, $0, &fromLength)
-                    }
-                }
-            }
-            guard n > 0 else { break }
-            let now = Self.now()
+        while let packet = ICMPSocket.receive(socketFD, into: &buffer) {
             let parsed = buffer.withUnsafeBytes {
-                ICMPPacket.parseResponse(UnsafeRawBufferPointer(rebasing: $0[0..<n]))
+                ICMPPacket.parseResponse(UnsafeRawBufferPointer(rebasing: $0[0..<packet.length]))
             }
             guard let response = parsed, response.identifier == identifier,
                 let probe = pending.removeValue(forKey: response.sequence), probe.ttl <= hops.count
             else { continue }
-            record(probe: probe, kind: response.kind, from: from.sin_addr, now: now)
+            record(probe: probe, kind: response.kind, from: packet.from, now: packet.receivedAt)
         }
     }
 
     private func record(
         probe: (ttl: Int, sentAt: UInt64), kind: ICMPPacket.ResponseKind, from: in_addr, now: UInt64
     ) {
-        let ms = Float(Double(now - probe.sentAt) / 1_000_000)
+        let ms = Float(Double(now &- probe.sentAt) / 1_000_000)
         var ttl = probe.ttl
         if kind == .echoReply {
             // Probes sent with a larger TTL than needed reach the destination too; they count as its samples.
@@ -310,5 +298,5 @@ final class Traceroute {
         return String(cString: buffer)
     }
 
-    static func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds }
+    static func now() -> UInt64 { ICMPSocket.now() }
 }

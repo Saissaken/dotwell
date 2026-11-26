@@ -191,12 +191,18 @@ final class NetworkPathTests: XCTestCase {
         var replies: [Float?] = []
         engine.onResult = { _, ms in replies.append(ms) }
         for second in 0..<5 {
-            queue.asyncAfter(deadline: .now() + Double(second)) { engine.probe([0]) }
+            queue.asyncAfter(deadline: .now() + Double(second)) {
+                engine.collect()
+                engine.probe([0])
+            }
         }
         let done = expectation(description: "probes")
         queue.asyncAfter(deadline: .now() + 5.5) { done.fulfill() }
         wait(for: [done], timeout: 8)
-        let results = queue.sync { replies }
+        let results = queue.sync {
+            engine.collect()
+            return replies.compactMap { $0 }
+        }
         guard !results.isEmpty else { throw XCTSkip("No provider router found here") }
         print("isp", results)
     }
