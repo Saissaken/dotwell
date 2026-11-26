@@ -18,43 +18,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Swift version
-        run: swift --version
-      - name: Lint
-        id: lint
-        run: make lint
-      - name: Show formatting fixes
-        if: failure() && steps.lint.outcome == 'failure'
-        run: make format && git --no-pager diff
-      - name: Test
-        run: swift test
+      - name: Render design mockups (design branch only, not for merge)
+        run: swift test --filter "DesignMockupTests|PreviewRenderTests"
         env:
           PREVIEW_DIR: ${{ github.workspace }}/build/previews
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Previews
           path: build/previews
           retention-days: 14
-      - name: Bundle app
-        run: ./scripts/bundle.sh
-      - name: Zip
-        run: cd build && ditto -c -k --keepParent Dotwell.app Dotwell.zip
-      - uses: actions/upload-artifact@v7
-        with:
-          name: Dotwell
-          path: build/Dotwell.zip
-          retention-days: 14
-      - name: Release dry run
-        run: |
-          scripts/package.sh 0.0.0
-          # Sign with a throwaway key to exercise the same path as the Release workflow.
-          cat > "$RUNNER_TEMP/keygen.swift" <<'SWIFT'
-          import CryptoKit
-          let key = Curve25519.Signing.PrivateKey()
-          print(key.rawRepresentation.base64EncodedString(), key.publicKey.rawRepresentation.base64EncodedString())
-          SWIFT
-          read -r SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY < <(swift "$RUNNER_TEMP/keygen.swift")
-          export SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY
-          printf -- '- Dry run.\n' > build/notes.md
-          scripts/appcast.sh 0.0.0 1 build/Dotwell-0.0.0.zip https://example.com/app.zip build/notes.md
-          cat build/appcast.xml
