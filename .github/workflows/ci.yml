@@ -3,10 +3,10 @@ name: CI
 # The macOS runner is expensive: skip it for changes that can't affect the app.
 on:
   pull_request:
-    paths-ignore: ['**.md', 'docs/**', 'site/**', 'Casks/**', 'scripts/build-site.sh', '.github/ISSUE_TEMPLATE/**', '.github/workflows/pages.yml', 'LICENSE']
+    paths-ignore: ['**.md', 'docs/**', 'site/**', 'Casks/**', 'scripts/build-site.sh', '.github/ISSUE_TEMPLATE/**', '.github/workflows/pages.yml', 'LICENSE', '.claude/**', 'scripts/setup-linux-dev.sh']
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'docs/**', 'site/**', 'Casks/**', 'scripts/build-site.sh', '.github/ISSUE_TEMPLATE/**', '.github/workflows/pages.yml', 'LICENSE']
+    paths-ignore: ['**.md', 'docs/**', 'site/**', 'Casks/**', 'scripts/build-site.sh', '.github/ISSUE_TEMPLATE/**', '.github/workflows/pages.yml', 'LICENSE', '.claude/**', 'scripts/setup-linux-dev.sh']
 
 concurrency:
   group: ci-${{ github.ref }}
