@@ -12,6 +12,14 @@ All notable changes to this project are documented here. The format is based on
   every router on the way. It is traced like MTR, without root or helper tools, and only while the popover is
   open.
 
+## [0.3.0] - 2026-11-26
+
+### Changed
+- The app using the most of each resource now shows inside its module, in one line under the value: CPU,
+  Memory, Disk (reads and writes per second) and Battery or Power Adapter (energy in watts). This replaces
+  the separate top-processes list, so the popover is shorter. Network has none: macOS only exposes
+  per-app traffic through private APIs.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added
@@ -65,7 +73,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Saissaken/dotwell/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Saissaken/dotwell/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Saissaken/dotwell/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Saissaken/dotwell/compare/v0.1.0...v0.1.1

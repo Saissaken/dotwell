@@ -19,31 +19,37 @@ final class ProcessProbeTests: XCTestCase {
         XCTAssertEqual(group.path, "/usr/libexec/syspolicyd")
     }
 
-    func testTopSortsDescendingAndDropsIdleEntries() {
-        let entries = [
-            usage("A", cpu: 0.2), usage("B", cpu: 1.5), usage("C", cpu: 0), usage("D", cpu: 0.2), usage("E", cpu: 0.9),
-        ]
-        let top = ProcessProbe.top(entries, limit: 3, by: \.cpu, minimum: 0.001)
-        XCTAssertEqual(top.map(\.name), ["B", "E", "A"])
+    func testTopPicksTheLargestAndIgnoresIdleEntries() {
+        let entries = [usage("A", cpu: 0.2), usage("B", cpu: 1.5), usage("C", cpu: 0), usage("D", cpu: 1.5)]
+        XCTAssertEqual(ProcessProbe.top(entries, by: \.cpu, minimum: 0.001)?.name, "B", "ties break by name")
+        XCTAssertNil(ProcessProbe.top([usage("C", cpu: 0)], by: \.cpu, minimum: 0.001))
     }
 
     func testSamplingTheTestRunnerFindsItself() throws {
         let probe = ProcessProbe()
-        let first = probe.sample(limit: 1000)
-        XCTAssertTrue(first.byCPU.isEmpty, "CPU needs two samples")
         let me = ProcessProbe.group(pid: getpid()).id
-        XCTAssertNotNil(first.byMemory.first { $0.id == me }, "the test process is readable")
+        let first = probe.usage(now: DispatchTime.now().uptimeNanoseconds)
+        XCTAssertFalse(first.hasRates, "rates need two samples")
+        let mine = try XCTUnwrap(first.apps.first { $0.id == me }, "the test process is readable")
+        XCTAssertGreaterThan(mine.memoryBytes, 1_000_000)
 
-        // Burn a little CPU so the second sample has something to rank.
+        // Burn a little CPU so the second sample has something to measure.
         var x = 0.0
         let end = Date().addingTimeInterval(0.2)
         while Date() < end { x += sin(x) + 1 }
         XCTAssertGreaterThan(x, 0)
 
-        let second = probe.sample(limit: 1000)
-        let cpu = try XCTUnwrap(second.byCPU.first { $0.id == me }?.cpu)
-        XCTAssertGreaterThan(cpu, 0.1)
-        XCTAssertLessThan(cpu, Float(ProcessInfo.processInfo.activeProcessorCount) + 0.5)
+        let second = probe.usage(now: DispatchTime.now().uptimeNanoseconds)
+        XCTAssertTrue(second.hasRates)
+        let now = try XCTUnwrap(second.apps.first { $0.id == me })
+        XCTAssertGreaterThan(now.cpu, 0.1)
+        XCTAssertLessThan(now.cpu, Float(ProcessInfo.processInfo.activeProcessorCount) + 0.5)
+        XCTAssertGreaterThanOrEqual(now.watts, 0)
+        print("ProcessProbe: test runner used \(now.cpu * 100) % CPU and \(now.watts) W")
+
+        let top = probe.sample()
+        XCTAssertTrue(top.hasRates)
+        XCTAssertNotNil(top.memory)
 
         probe.reset()
         XCTAssertNil(probe.elapsed(now: 0))

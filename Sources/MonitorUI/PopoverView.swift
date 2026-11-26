@@ -26,7 +26,6 @@ public struct PopoverView: View {
                 if !healthy.isEmpty { GroupLabel("Everything Else") }
             }
             grid(healthy)
-            ProcessesModule(processes: snap.processes, icons: model.icons)
         }
         .padding(12)
         .frame(width: 360)
@@ -102,23 +101,27 @@ public struct PopoverView: View {
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
-                caption: cpuCaption,
+                caption: cpuCaption, topApp: topApp(\.cpu) { Format.processCPU($0.cpu) },
                 values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
             MetricModule(
                 symbol: "memorychip", title: "Memory", level: level,
                 reading: snap.memory.map { Format.gigabytes($0.usedBytes) } ?? .none,
-                caption: snap.memory.map(memoryCaption), values: history(SeriesKey.memory), maxValue: 1)
+                caption: snap.memory.map(memoryCaption),
+                topApp: topApp(\.memory) { Format.processMemory($0.memoryBytes) },
+                values: history(SeriesKey.memory), maxValue: 1)
         case .power:
             MetricModule(
                 symbol: powerSymbol, title: snap.power?.source == .adapter ? "Power Adapter" : "Battery",
                 level: level, reading: Format.watts(snap.power?.watts), caption: powerCaption,
+                topApp: topApp(\.power) { Format.watts($0.watts).text },
                 values: history(SeriesKey.power), maxValue: nil)
         case .disk:
             MetricModule(
                 symbol: "internaldrive", title: "Disk", level: level,
                 reading: snap.disk.map { Format.storage($0.availableBytes) } ?? .none,
-                caption: diskCaption, values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
+                caption: diskCaption, topApp: topApp(\.disk) { Format.bytesPerSec($0.diskBytesPerSec) },
+                values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
         case .network:
             NetworkModule(snapshot: snap, down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
         case .thermal:
@@ -130,6 +133,15 @@ public struct PopoverView: View {
     }
 
     private func history(_ key: String) -> [Float] { snap.history[key] ?? [] }
+
+    /// The top app line for a module, present only while per-app usage is sampled (popover open).
+    private func topApp(
+        _ key: KeyPath<TopApps, ProcessUsage?>, value: (ProcessUsage) -> String
+    ) -> TopAppRow? {
+        guard let apps = snap.topApps else { return nil }
+        let app = apps[keyPath: key]
+        return TopAppRow(app: app, value: app.map(value) ?? "", icon: app.map { model.icons.icon(for: $0.path) })
+    }
 
     private func memoryCaption(_ memory: MemorySample) -> String {
         let total = Format.gigabytes(memory.totalBytes)
@@ -306,6 +318,7 @@ struct MetricModule: View {
     var level: HealthLevel
     var reading: Reading
     var caption: String?
+    var topApp: TopAppRow?
     var values: [Float]
     var maxValue: Float?
     var unitSuffix: String?
@@ -325,6 +338,7 @@ struct MetricModule: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
+            if let topApp { topApp }
             if !values.isEmpty {
                 Spacer(minLength: 0)
                 Sparkline(values: values, maxValue: maxValue, color: levelColor(level))
