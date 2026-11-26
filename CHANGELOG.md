@@ -32,6 +32,10 @@ All notable changes to this project are documented here. The format is based on
   timed with a TCP connection; Google Cloud, whose connections end at the nearest edge, with a small HTTPS
   request answered by the region.
 - "Open at Login" moved from the popover's ⋯ menu to Settings → General.
+- Text in the modules keeps one fixed size instead of shrinking when a number gets longer. Every value now
+  shows at most three significant digits and switches unit instead of growing ("998 KB/s", then "1.0 MB/s";
+  "12.3 Mbps"; free disk space as "249 GB"), and digits have a fixed width so values don't jitter. The Disk
+  caption is shortened to "R 123 MB/s · W 773 KB/s" so it always fits.
 
 ## [0.3.0] - 2026-11-26
 
@@ -40,10 +44,6 @@ All notable changes to this project are documented here. The format is based on
   Memory, Disk (reads and writes per second) and Battery or Power Adapter (energy in watts). This replaces
   the separate top-processes list, so the popover is shorter. Network has none: macOS only exposes
   per-app traffic through private APIs.
-- Text in the modules keeps one fixed size instead of shrinking when a number gets longer. Every value now
-  shows at most three significant digits and switches unit instead of growing ("998 KB/s", then "1.0 MB/s";
-  "12.3 Mbps"; free disk space as "249 GB"), and digits have a fixed width so values don't jitter. The Disk
-  caption is shortened to "R 123 MB/s · W 773 KB/s" so it always fits.
 
 ## [0.2.0] - 2026-11-26
 
