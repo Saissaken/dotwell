@@ -15,12 +15,15 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private let sampler: Sampler
     private let settings: AppSettings
     private let updater: Updater
-    private let openSettings: () -> Void
+    private let openSettings: (SettingsTab?) -> Void
     private var model: PopoverModel?
     /// Lives as long as the app so the public address stays cached between openings.
     private let addressMonitor = NetworkAddressMonitor()
 
-    init(sampler: Sampler, settings: AppSettings, updater: Updater, openSettings: @escaping () -> Void) {
+    init(
+        sampler: Sampler, settings: AppSettings, updater: Updater,
+        openSettings: @escaping (SettingsTab?) -> Void
+    ) {
         self.sampler = sampler
         self.settings = settings
         self.updater = updater
@@ -82,8 +85,13 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             let model = PopoverModel(snapshot: sampler.latest())
             model.openSettings = { [weak self] in
                 self?.popover.performClose(nil)
-                self?.openSettings()
+                self?.openSettings(nil)
             }
+            model.openPingSettings = { [weak self] in
+                self?.popover.performClose(nil)
+                self?.openSettings(.ping)
+            }
+            model.traceRoute = { [weak self] index in self?.sampler.traceRoute(to: index) }
             model.quit = { NSApplication.shared.terminate(nil) }
             if updater.isAvailable {
                 model.checkForUpdates = { [weak self] in self?.updater.checkForUpdates(nil) }
@@ -126,7 +134,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     @objc private func showSettings(_ sender: Any?) {
-        openSettings()
+        openSettings(nil)
     }
 
     func popoverDidClose(_ notification: Notification) {

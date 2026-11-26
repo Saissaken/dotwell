@@ -45,6 +45,14 @@ final class PreviewRenderTests: XCTestCase {
             let data = try render(module, appearance: appearance)
             try data.write(to: url.appendingPathComponent("ping-path-\(mode).png"))
         }
+        // The detail that opens from a ping row.
+        for (mode, appearance) in appearances {
+            let snap = SampleData.healthy
+            let context = PingRowContext(thresholds: snap.thresholds, pathIndex: nil, actions: nil)
+            let detail = PingDetail(target: snap.ping[4], name: snap.ping[4].target.name, context: context)
+            let data = try render(detail, appearance: appearance)
+            try data.write(to: url.appendingPathComponent("ping-detail-\(mode).png"))
+        }
         // The list that opens from a top app line.
         for (mode, appearance) in appearances {
             let list = TopAppsList(
@@ -218,14 +226,18 @@ enum SampleData {
 
     private static func pingTargets(primaryMs: Float, primaryLoss: Float) -> [PingTargetState] {
         let samples: [Float] = [3.1, 9.4, 3.1, primaryMs, 34, 142]
-        let addresses: [String?] = ["192.168.1.1", "181.30.128.1", "192.168.1.1", nil, nil, nil]
+        let addresses: [String?] = ["192.168.1.1", "181.30.128.1", "192.168.1.1", "1.1.1.1", "198.51.100.18", nil]
         return PingTarget.defaults.enumerated().map { index, target in
             var values = wave(10, base: samples[index], amplitude: samples[index] * 0.08, seed: Float(index))
             values[9] = samples[index]
             if index == PingTarget.defaultPrimaryIndex && primaryLoss > 0 { values[3] = PingStats.lost }
+            let interval = target.method == .icmp ? 1 : 5
+            var minute = wave(60 / interval, base: samples[index], amplitude: samples[index] * 0.1, seed: Float(index))
+            if index == 4 { minute[7] = PingStats.lost }
             return PingTargetState(
                 index: index, target: target, stats: PingStats.compute(values),
-                isPrimary: index == PingTarget.defaultPrimaryIndex, address: addresses[index])
+                isPrimary: index == PingTarget.defaultPrimaryIndex, address: addresses[index],
+                lastMinute: minute, probeIntervalSeconds: interval)
         }
     }
 }

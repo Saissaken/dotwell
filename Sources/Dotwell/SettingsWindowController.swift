@@ -15,7 +15,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.makeModel = makeModel
     }
 
-    func show() {
+    /// Shows the window, on `tab` when given (otherwise on the tab last used).
+    func show(tab: SettingsTab? = nil) {
+        if let tab, let index = SettingsTab.allCases.firstIndex(of: tab) {
+            UserDefaults.standard.set(index, forKey: Self.selectedTabKey)
+            (window?.contentViewController as? NSTabViewController)?.selectedTabViewItemIndex = index
+        }
         let window = self.window ?? makeWindow()
         self.window = window
         NSApp.setActivationPolicy(.regular)

@@ -99,7 +99,7 @@ public struct PopoverView: View {
         let level = snap.level(module.kind)
         switch module {
         case .ping:
-            PingModule(snapshot: snap, level: level)
+            PingModule(snapshot: snap, level: level, actions: pingActions)
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
@@ -141,6 +141,18 @@ public struct PopoverView: View {
     }
 
     private func history(_ key: String) -> [Float] { snap.history[key] ?? [] }
+
+    /// Ping row indices match `settings.pingSlots`, which the sampler's targets are built from.
+    private var pingActions: PingActions {
+        PingActions(
+            traceRoute: { index in model.traceRoute?(index) },
+            changeHost: { _ in model.openPingSettings?() },
+            makePrimary: { index in
+                let slots = settings.pingSlots
+                guard slots.indices.contains(index) else { return }
+                settings.primarySlot = slots[index].slot
+            })
+    }
 
     /// The top app line for a module, present only while per-app usage is sampled (popover open).
     private func topApp(
@@ -381,11 +393,16 @@ struct PingModule: View {
     var level: HealthLevel
     /// Opens the route's router list right away (screenshots).
     var pathExpanded = false
+    /// What the rows' menus do; nil in previews.
+    var actions: PingActions?
+
+    @State private var showsPrimaryDetail = false
 
     var body: some View {
         let primary = snapshot.primaryPing
         let others = snapshot.ping.filter { !$0.isPrimary }
         let routerAddress = snapshot.ping.first { $0.target.isGateway }?.address
+        let context = PingRowContext(thresholds: snapshot.thresholds, pathIndex: snapshot.pathIndex, actions: actions)
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 7) {
                 SymbolBadge(symbol: "network", level: level)
@@ -396,20 +413,7 @@ struct PingModule: View {
                 Spacer(minLength: 0)
             }
             HStack(alignment: .bottom, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    if primary?.stats.lastLost == true {
-                        ValueText(reading: Reading(value: "No reply", unit: ""), level: .critical, size: 26)
-                    } else {
-                        ValueText(reading: Format.ms(primary?.stats.latestMs), level: level, size: 26)
-                    }
-                    if let stats = primary?.stats {
-                        Text(statsCaption(stats))
-                            .font(.caption)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .fixedSize()
+                primaryReading(primary, context: context)
                 Sparkline(
                     values: primary.map { snapshot.history[SeriesKey.ping($0.index)] ?? [] } ?? [],
                     maxValue: nil, color: levelColor(level)
@@ -417,10 +421,26 @@ struct PingModule: View {
                 .frame(height: 40)
             }
             if let trace = snapshot.path, let primary {
+                let traced = snapshot.ping.first { $0.index == snapshot.pathIndex } ?? primary
+                let tracedName = traced.displayName(routerAddress: routerAddress)
                 Divider().opacity(0.5)
+                if !traced.isPrimary {
+                    HStack(spacing: 4) {
+                        Text("Route to \(tracedName)")
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Button("Back to \(primary.target.name)") { actions?.traceRoute(nil) }
+                            .buttonStyle(.link)
+                            .lineLimit(1)
+                    }
+                    .font(.caption)
+                }
                 NetworkPathView(
-                    path: NetworkPath(trace: trace, thresholds: snapshot.thresholds),
-                    serverName: primary.target.name, expanded: pathExpanded)
+                    path: NetworkPath(
+                        trace: trace, thresholds: snapshot.thresholds,
+                        serverStats: traced.target.method == .icmp ? nil : traced.stats),
+                    serverName: tracedName, expanded: pathExpanded)
             }
             if !others.isEmpty {
                 Divider().opacity(0.5)
@@ -429,25 +449,49 @@ struct PingModule: View {
                     alignment: .leading, spacing: 4
                 ) {
                     ForEach(others) { target in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(targetColor(target))
-                                .frame(width: 6, height: 6)
-                            Text(target.displayName(routerAddress: routerAddress))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .help(target.address ?? "")
-                            Spacer(minLength: 4)
-                            Text(target.stats.lastLost ? "—" : Format.msText(target.stats.latestMs))
-                                .monospacedDigit()
-                        }
-                        .font(.caption)
+                        PingRow(
+                            target: target, name: target.displayName(routerAddress: routerAddress),
+                            color: targetColor(target), context: context)
                     }
                 }
             }
         }
         .modifier(ModuleBackground(level: level))
+    }
+
+    /// The main host's latest round trip. Clicking it opens the same detail as the other rows.
+    @ViewBuilder
+    private func primaryReading(_ primary: PingTargetState?, context: PingRowContext) -> some View {
+        let reading = VStack(alignment: .leading, spacing: 2) {
+            if primary?.stats.lastLost == true {
+                ValueText(reading: Reading(value: "No reply", unit: ""), level: .critical, size: 26)
+            } else {
+                ValueText(reading: Format.ms(primary?.stats.latestMs), level: level, size: 26)
+            }
+            if let stats = primary?.stats {
+                Text(statsCaption(stats))
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize()
+        if let primary {
+            Button {
+                showsPrimaryDetail = true
+            } label: {
+                reading.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showsPrimaryDetail, arrowEdge: .bottom) {
+                PingDetail(target: primary, name: primary.target.name, context: context)
+            }
+            .contextMenu { PingRowMenu(target: primary, context: context) }
+            .help("Click for details, right-click for more")
+            .accessibilityHint("Shows how this host is measured and its last minute")
+        } else {
+            reading
+        }
     }
 
     private func statsCaption(_ stats: PingStats) -> String {

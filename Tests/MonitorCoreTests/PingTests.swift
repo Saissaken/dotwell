@@ -33,6 +33,14 @@ final class PingTests: XCTestCase {
         XCTAssertFalse(s.lastLost)
     }
 
+    func testStatsMinimumSkipsLostReplies() {
+        let s = PingStats.compute([12, PingStats.lost, 7.5, 40])
+        XCTAssertEqual(s.minMs, 7.5)
+        XCTAssertEqual(s.maxMs, 40)
+        XCTAssertNil(PingStats.compute([PingStats.lost]).minMs)
+        XCTAssertNil(PingStats.compute([]).minMs)
+    }
+
     func testStatsAllLost() {
         let s = PingStats.compute([PingStats.lost, PingStats.lost])
         XCTAssertNil(s.latestMs)

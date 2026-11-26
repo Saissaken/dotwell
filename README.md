@@ -24,6 +24,9 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **Ping first**: latency, packet loss and jitter against your router, public DNS and cloud regions.
 - **Where it slows down**: the route to the ping server as five dots (Mac, router, ISP, internet, server)
   with the latency at each, so you can tell Wi-Fi trouble from an ISP problem. Click it for every router.
+- **Every ping row explained**: click a row (router, ISP, DNS, internet or a cloud region) to see its host and
+  address, how it is measured, and its last minute: average, minimum, maximum, loss, jitter and a chart.
+  Right-click it to copy its IP, trace the route to it, change its region or make it the main host.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
 - **Your IP addresses**: the Mac's local IP (Wi‑Fi or Ethernet) and its public IPv4 and IPv6. Click one to copy it.
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
