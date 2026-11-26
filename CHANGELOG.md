@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- The DNS row now explains your DNS setup. Click it to see who set the server that answers (Wi-Fi, a VPN like
+  Tailscale, or one you typed in System Settings), your network's own server when something else took over,
+  backup servers, domains that go to a server of their own (such as a VPN's company or tailnet domains), and one
+  sentence on what is going on. When the server changes by itself, for example when a VPN connects, the row shows
+  a small icon for 10 minutes and the detail says when it changed and what it was before. The setup is read only
+  when the detail opens, and changes are noticed by the check Dotwell already makes every 30 s, so it costs
+  nothing extra while the popover is closed.
+
+### Changed
+- The DNS row names more providers (Tailscale, NextDNS, Control D, Mullvad, CleanBrowsing, more Quad9, OpenDNS
+  and AdGuard servers, and a resolver running on this Mac). A server with no known name is shown as plain "DNS"
+  with its address in the detail, instead of a long "DNS 100.100.100.100" cut off with an ellipsis.
+
 ## [0.10.0] - 2026-11-26
 
 ### Changed

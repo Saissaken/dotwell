@@ -422,7 +422,9 @@ struct PingModule: View {
         let primary = snapshot.primaryPing
         let others = snapshot.ping.filter { !$0.isPrimary }
         let routerAddress = snapshot.ping.first { $0.target.isGateway }?.address
-        let context = PingRowContext(thresholds: snapshot.thresholds, pathIndex: snapshot.pathIndex, actions: actions)
+        let context = PingRowContext(
+            thresholds: snapshot.thresholds, pathIndex: snapshot.pathIndex, routerAddress: routerAddress,
+            actions: actions)
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 7) {
                 SymbolBadge(symbol: "network", level: level)
