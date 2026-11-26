@@ -67,6 +67,10 @@ Built for one thing above all: **using as few resources as possible** while it r
 | Wakeups | < 2 per second |
 | App size | < 5 MB |
 
+Every pull request that touches the app is measured against `main` on CI, and the numbers are posted
+on the pull request ([scripts/perf](scripts/perf)). The budget is a soft limit: anything over it is flagged
+for discussion, not blocked.
+
 ## Install
 
 **[Download Dotwell.dmg](https://github.com/Saissaken/dotwell/releases/latest/download/Dotwell.dmg)**

@@ -42,6 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LoginItem.registerOnFirstLaunch()
         observeSleep()
         sampler.start()
+        if UserDefaults.standard.bool(forKey: "PerfOpenPopoverOnLaunch") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.statusController?.showPopoverForProfiling()
+            }
+        }
     }
 
     @objc func openSettings(_ sender: Any?) {
