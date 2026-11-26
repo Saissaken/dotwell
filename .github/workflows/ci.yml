@@ -12,33 +12,49 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Render design mockups (design branch only, not for merge)
-        run: swift test --filter "DesignMockupTests|PreviewRenderTests"
+      - name: Swift version
+        run: swift --version
+      - name: Lint
+        id: lint
+        run: make lint
+      - name: Show formatting fixes
+        if: failure() && steps.lint.outcome == 'failure'
+        run: make format && git --no-pager diff
+      - name: Test
+        run: swift test
         env:
           PREVIEW_DIR: ${{ github.workspace }}/build/previews
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: Previews
           path: build/previews
           retention-days: 14
-      - name: Commit renders back to the design branch
-        if: always()
+      - name: Bundle app
+        run: ./scripts/bundle.sh
+      - name: Zip
+        run: cd build && ditto -c -k --keepParent Dotwell.app Dotwell.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Dotwell
+          path: build/Dotwell.zip
+          retention-days: 14
+      - name: Release dry run
         run: |
-          rm -rf design-renders && mkdir design-renders
-          cp build/previews/design/*.png build/previews/settings-*.png design-renders/ || true
-          git config user.name "github-actions[bot]"
-          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "$GITHUB_HEAD_REF"
-          git checkout -B "$GITHUB_HEAD_REF" "origin/$GITHUB_HEAD_REF"
-          git add design-renders
-          git commit -m "chore: design renders [skip ci]" && git push origin "$GITHUB_HEAD_REF" || true
+          scripts/package.sh 0.0.0
+          # Sign with a throwaway key to exercise the same path as the Release workflow.
+          cat > "$RUNNER_TEMP/keygen.swift" <<'SWIFT'
+          import CryptoKit
+          let key = Curve25519.Signing.PrivateKey()
+          print(key.rawRepresentation.base64EncodedString(), key.publicKey.rawRepresentation.base64EncodedString())
+          SWIFT
+          read -r SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY < <(swift "$RUNNER_TEMP/keygen.swift")
+          export SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY
+          printf -- '- Dry run.\n' > build/notes.md
+          scripts/appcast.sh 0.0.0 1 build/Dotwell-0.0.0.zip https://example.com/app.zip build/notes.md
+          cat build/appcast.xml
