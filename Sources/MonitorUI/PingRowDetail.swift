@@ -119,16 +119,17 @@ struct PingDetail: View {
             }
             Sparkline(
                 values: target.lastMinuteChart, maxValue: nil, color: levelColor(level),
-                capacity: 60_000 / TieredSeries.slotMilliseconds)
-                .frame(height: 34)
-                .environment(\.chartMotion, nil)
-                .overlay {
-                    if target.lastMinute.filter({ $0 >= 0 }).isEmpty {
-                        Text(target.lastMinute.isEmpty ? "Waiting for readings…" : "No replies")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                capacity: 60_000 / TieredSeries.slotMilliseconds
+            )
+            .frame(height: 34)
+            .environment(\.chartMotion, nil)
+            .overlay {
+                if target.lastMinute.filter({ $0 >= 0 }).isEmpty {
+                    Text(target.lastMinute.isEmpty ? "Waiting for readings…" : "No replies")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+            }
 
             Divider()
             Text("Right-click for more")
