@@ -36,11 +36,11 @@ jobs:
       - name: Bundle app
         run: ./scripts/bundle.sh
       - name: Zip
-        run: cd build && ditto -c -k --keepParent MacResourceMonitor.app MacResourceMonitor.zip
+        run: cd build && ditto -c -k --keepParent Dotwell.app Dotwell.zip
       - uses: actions/upload-artifact@v7
         with:
-          name: MacResourceMonitor
-          path: build/MacResourceMonitor.zip
+          name: Dotwell
+          path: build/Dotwell.zip
           retention-days: 14
       - name: Release dry run
         run: |
@@ -54,5 +54,5 @@ jobs:
           read -r SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY < <(swift "$RUNNER_TEMP/keygen.swift")
           export SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY
           printf -- '- Dry run.\n' > build/notes.md
-          scripts/appcast.sh 0.0.0 1 build/MacResourceMonitor-0.0.0.zip https://example.com/app.zip build/notes.md
+          scripts/appcast.sh 0.0.0 1 build/Dotwell-0.0.0.zip https://example.com/app.zip build/notes.md
           cat build/appcast.xml

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds a universal release binary and wraps it into build/MacResourceMonitor.app.
+# Builds a universal release binary and wraps it into build/Dotwell.app.
 #
 # Environment:
 #   VERSION        marketing version (CFBundleShortVersionString), defaults to Info.plist
@@ -14,11 +14,11 @@ ARCHS=(--arch arm64 --arch x86_64)
 swift build -c release "${ARCHS[@]}"
 BIN_DIR="$(swift build -c release "${ARCHS[@]}" --show-bin-path)"
 
-APP="build/MacResourceMonitor.app"
-BIN="$APP/Contents/MacOS/MonitorApp"
+APP="build/Dotwell.app"
+BIN="$APP/Contents/MacOS/Dotwell"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
-cp "$BIN_DIR/MonitorApp" "$BIN"
+cp "$BIN_DIR/Dotwell" "$BIN"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 [[ -n "${VERSION:-}" ]] && plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 [[ -n "${BUILD:-}" ]] && plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"

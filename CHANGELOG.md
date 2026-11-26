@@ -24,5 +24,5 @@ All notable changes to this project are documented here. The format is based on
   **Check for Updates…** in the menu bar icon's right-click menu and the popover's ⋯ menu.
 - Release workflow: tagging `vX.Y.Z` publishes a GitHub Release with a `.dmg`, a `.zip` and a signed appcast.
 
-[Unreleased]: https://github.com/Saissaken/mac-resource-monitor/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/Saissaken/mac-resource-monitor/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Saissaken/dotwell/releases/tag/v0.1.0

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in Mac Resource Monitor! This guide explains how to propose changes.
+Thanks for your interest in Dotwell! This guide explains how to propose changes.
 
 ## Ground rules
 
@@ -14,7 +14,7 @@ Thanks for your interest in Mac Resource Monitor! This guide explains how to pro
 ## Development setup
 
 - macOS 13 or later, Xcode 15 or later.
-- `make test` runs unit tests, `make app` builds `build/MacResourceMonitor.app`.
+- `make test` runs unit tests, `make app` builds `build/Dotwell.app`.
 - `make format` formats the code with `swift format`; `make lint` checks formatting the same way CI does.
 
 ## Code style

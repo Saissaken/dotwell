@@ -56,7 +56,7 @@ public struct PopoverView: View {
                     Button("Check for Updates…") { checkForUpdates() }
                 }
                 Divider()
-                Button("Quit Mac Resource Monitor") { model.quit?() }
+                Button("Quit Dotwell") { model.quit?() }
                     .keyboardShortcut("q")
             } label: {
                 Image(systemName: "ellipsis.circle")

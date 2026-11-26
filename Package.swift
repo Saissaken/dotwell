@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacResourceMonitor",
+    name: "Dotwell",
     platforms: [.macOS(.v13)],
     dependencies: [
         // The only third-party dependency: Sparkle powers in-app updates (see docs/RELEASING.md).
@@ -12,7 +12,7 @@ let package = Package(
         .target(name: "MonitorCore"),
         .target(name: "MonitorUI", dependencies: ["MonitorCore"]),
         .executableTarget(
-            name: "MonitorApp",
+            name: "Dotwell",
             dependencies: [
                 "MonitorCore",
                 "MonitorUI",

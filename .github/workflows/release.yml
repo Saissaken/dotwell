@@ -65,7 +65,7 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ZIP="MacResourceMonitor-$VERSION.zip"
+          ZIP="Dotwell-$VERSION.zip"
           scripts/appcast.sh "$VERSION" "${{ steps.version.outputs.build }}" "build/$ZIP" \
             "https://github.com/$GITHUB_REPOSITORY/releases/download/${{ steps.version.outputs.tag }}/$ZIP" build/notes.md
 
@@ -78,4 +78,4 @@ jobs:
           # A pushed tag already exists; a manual run creates it on the commit that was built.
           [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]] && TARGET=(--target "$GITHUB_SHA") || TARGET=(--verify-tag)
           gh release create "$TAG" "${TARGET[@]}" --title "v$VERSION" --notes-file build/notes.md \
-            "build/MacResourceMonitor-$VERSION.dmg" "build/MacResourceMonitor-$VERSION.zip" build/appcast.xml
+            "build/Dotwell-$VERSION.dmg" "build/Dotwell-$VERSION.zip" build/appcast.xml
