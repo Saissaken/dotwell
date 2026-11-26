@@ -11,15 +11,43 @@ struct Reading: Equatable {
     var text: String { unit.isEmpty ? value : "\(value) \(unit)" }
 }
 
+/// Formats every value with at most three significant digits ("9.9", "99.9", "999"), switching
+/// to the next unit instead of growing ("998 KB/s", then "1.0 MB/s"). Each label then has a known
+/// maximum width, so the popover can keep one fixed font size instead of shrinking text to fit.
 enum Format {
+    /// At most three significant digits: one decimal below 100, none from 100 to 999.
+    /// Zero is shown as "0" rather than "0.0".
+    static func significant(_ value: Double) -> String {
+        let value = max(0, value)
+        let tenths = (value * 10).rounded()
+        if tenths == 0 { return "0" }
+        if tenths < 1000 { return String(format: "%.1f", tenths / 10) }
+        return String(format: "%.0f", value.rounded())
+    }
+
+    /// Scales `value` (given in `units[0]`) up by `step` until it shows at most three digits.
+    static func scaled(_ value: Double, units: [String], step: Double = 1000) -> Reading {
+        var value = max(0, value.isFinite ? value : 0)
+        var index = 0
+        while index < units.count - 1, value.rounded() >= 1000 {
+            value /= step
+            index += 1
+        }
+        return Reading(value: significant(value), unit: units[index])
+    }
+
     static func percent(_ fraction: Float?) -> Reading {
         guard let fraction else { return .none }
         return Reading(value: "\(Int((fraction * 100).rounded()))", unit: "%")
     }
 
+    /// Latency: "4.2 ms", "45 ms", "999 ms", then "1.2 s". Whole milliseconds above 10 ms,
+    /// since finer steps are only noise at that point.
     static func ms(_ value: Float?) -> Reading {
         guard let value else { return .none }
-        let text = value < 10 ? String(format: "%.1f", value) : "\(Int(value.rounded()))"
+        let ms = Double(max(0, value))
+        if ms.rounded() >= 1000 { return Reading(value: significant(ms / 1000), unit: "s") }
+        let text = ms < 9.95 ? String(format: "%.1f", ms) : String(format: "%.0f", ms.rounded())
         return Reading(value: text, unit: "ms")
     }
 
@@ -28,32 +56,33 @@ enum Format {
         ms(value).text
     }
 
-    /// Memory size in binary gigabytes (GiB, shown as "GB" like Activity Monitor does).
+    /// Memory size in binary units (shown as "GB" like Activity Monitor does): "11.4 GB", "128 GB".
     static func gigabytes(_ bytes: UInt64) -> Reading {
-        let gb = Double(bytes) / 1_073_741_824.0
-        return Reading(value: gb >= 100 ? String(format: "%.0f", gb) : String(format: "%.1f", gb), unit: "GB")
+        scaled(Double(bytes) / 1_073_741_824.0, units: ["GB", "TB"], step: 1024)
     }
 
-    /// Storage size in decimal units with one decimal place, matching Finder and System Settings,
-    /// so "248.6 GB" can be compared directly with the "248.62 GB" macOS shows.
+    /// Storage size in decimal units, like Finder and System Settings: "249 GB", "1.2 TB".
     static func storage(_ bytes: UInt64) -> Reading {
-        let gb = Double(bytes) / 1_000_000_000.0
-        if gb >= 1000 { return Reading(value: String(format: "%.2f", gb / 1000), unit: "TB") }
-        return Reading(value: String(format: "%.1f", gb), unit: "GB")
+        scaled(Double(bytes) / 1e9, units: ["GB", "TB", "PB"])
     }
 
-    /// Network speed in bits per second.
+    /// Network speed in bits per second: "850 kbps", "12.3 Mbps", "1.2 Gbps".
     static func bits(_ bps: Double) -> Reading {
-        if bps >= 1_000_000_000 { return Reading(value: String(format: "%.2f", bps / 1e9), unit: "Gbps") }
-        if bps >= 1_000_000 {
-            return Reading(value: String(format: bps >= 100e6 ? "%.0f" : "%.1f", bps / 1e6), unit: "Mbps")
-        }
-        return Reading(value: String(format: "%.0f", bps / 1e3), unit: "kbps")
+        scaled(bps / 1e3, units: ["kbps", "Mbps", "Gbps", "Tbps"])
+    }
+
+    /// Transfer rate in bytes per second: "773 KB/s", "1.2 MB/s", "123 MB/s".
+    static func bytes(_ bytesPerSec: Double) -> Reading {
+        scaled(bytesPerSec / 1e3, units: ["KB/s", "MB/s", "GB/s", "TB/s"])
     }
 
     static func bytesPerSec(_ value: Double) -> String {
-        if value >= 1_000_000 { return String(format: "%.0f MB/s", value / 1e6) }
-        return String(format: "%.0f KB/s", value / 1e3)
+        bytes(value).text
+    }
+
+    /// The disk module's caption, e.g. "Read 123 MB/s · Write 773 KB/s".
+    static func diskIO(read: Double, write: Double) -> String {
+        "Read \(bytesPerSec(read)) · Write \(bytesPerSec(write))"
     }
 
     /// Temperature in the unit the user prefers (System Settings → Language & Region), e.g. "52°C".
@@ -74,17 +103,16 @@ enum Format {
     /// Per-process CPU as Activity Monitor shows it, where 100 % is one full core.
     static func processCPU(_ fraction: Float) -> String {
         let percent = fraction * 100
-        return percent < 10 ? String(format: "%.1f%%", percent) : String(format: "%.0f%%", percent)
+        return percent < 9.95 ? String(format: "%.1f%%", percent) : String(format: "%.0f%%", percent)
     }
 
     /// Per-process memory in binary units like Activity Monitor: "640 MB", "2.4 GB".
     static func processMemory(_ bytes: UInt64) -> String {
-        let mb = Double(bytes) / 1_048_576.0
-        return mb < 1024 ? String(format: "%.0f MB", mb) : String(format: "%.1f GB", mb / 1024)
+        scaled(Double(bytes) / 1_048_576.0, units: ["MB", "GB", "TB"], step: 1024).text
     }
 
     static func watts(_ watts: Double?) -> Reading {
         guard let watts else { return .none }
-        return Reading(value: String(format: watts < 10 ? "%.1f" : "%.0f", watts), unit: "W")
+        return Reading(value: significant(watts), unit: "W")
     }
 }

@@ -21,6 +21,9 @@ Details:
 - `NSStatusItem` with a template glyph plus a small colored dot. The dot is redrawn **only when the level changes**.
 - `NSPopover` hosting SwiftUI. The view tree is **created on open and released on close**, so nothing UI-related
   is retained while the popover is hidden.
+- Text never shrinks to fit. `Format` shows every value with at most three significant digits and steps up a
+  unit instead of growing (`998 KB/s` → `1.0 MB/s`), digits are tabular, and a test checks that the widest
+  caption each module can show fits a half-width module at its fixed size.
 - Charts: custom SwiftUI `Canvas` sparklines. Swift Charts is heavier than needed for simple lines.
 - Launch at login: `SMAppService.mainApp` (macOS 13+).
 - Minimum target: **macOS 13 Ventura**. Universal binary (Apple Silicon + Intel).

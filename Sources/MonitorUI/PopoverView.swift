@@ -27,8 +27,8 @@ public struct PopoverView: View {
             }
             grid(healthy)
         }
-        .padding(12)
-        .frame(width: 360)
+        .padding(PopoverLayout.padding)
+        .frame(width: PopoverLayout.width)
     }
 
     // MARK: - Header
@@ -82,9 +82,9 @@ public struct PopoverView: View {
     @ViewBuilder
     private func grid(_ modules: [Module]) -> some View {
         let rows = Module.rows(modules)
-        VStack(spacing: 8) {
+        VStack(spacing: PopoverLayout.spacing) {
             ForEach(rows.indices, id: \.self) { i in
-                HStack(alignment: .top, spacing: 8) {
+                HStack(alignment: .top, spacing: PopoverLayout.spacing) {
                     ForEach(rows[i], id: \.self) { module($0) }
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -155,7 +155,7 @@ public struct PopoverView: View {
     }
 
     private var diskCaption: String {
-        "Read \(Format.bytesPerSec(snap.diskReadBytesPerSec)) · Write \(Format.bytesPerSec(snap.diskWriteBytesPerSec))"
+        Format.diskIO(read: snap.diskReadBytesPerSec, write: snap.diskWriteBytesPerSec)
     }
 
     private var powerSymbol: String {
@@ -248,6 +248,19 @@ func levelColor(_ level: HealthLevel) -> Color {
 
 // MARK: - Building blocks
 
+/// Popover metrics shared by the views and by the tests that check labels fit at a fixed size.
+enum PopoverLayout {
+    static let width: CGFloat = 360
+    static let padding: CGFloat = 12
+    static let spacing: CGFloat = 8
+    static let modulePadding: CGFloat = 10
+
+    /// Text width available inside a half-width module.
+    static var halfModuleContentWidth: CGFloat {
+        (width - 2 * padding - spacing) / 2 - 2 * modulePadding
+    }
+}
+
 struct GroupLabel: View {
     var text: String
     init(_ text: String) { self.text = text }
@@ -267,7 +280,7 @@ struct ModuleBackground: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .padding(10)
+            .padding(PopoverLayout.modulePadding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -308,7 +321,6 @@ struct ValueText: View {
                 .foregroundStyle(.secondary)
         }
         .lineLimit(1)
-        .minimumScaleFactor(0.7)
     }
 }
 
@@ -334,9 +346,9 @@ struct MetricModule: View {
             if let caption {
                 Text(caption)
                     .font(.caption)
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
             }
             if let topApp { topApp }
             if !values.isEmpty {
@@ -375,6 +387,7 @@ struct PingModule: View {
                     if let stats = primary?.stats {
                         Text(statsCaption(stats))
                             .font(.caption)
+                            .monospacedDigit()
                             .foregroundStyle(.secondary)
                     }
                 }
