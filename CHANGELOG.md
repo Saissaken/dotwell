@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-26
+
 ### Added
 - CPU temperature next to CPU usage, read from the SMC's CPU die sensors (Apple silicon and Intel). It follows
   the temperature unit set in System Settings and is hidden when the Mac doesn't expose the sensors.
@@ -57,7 +59,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Saissaken/dotwell/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Saissaken/dotwell/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Saissaken/dotwell/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Saissaken/dotwell/releases/tag/v0.1.0
