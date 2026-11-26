@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- GPU card on Macs with Apple silicon, next to CPU: how busy the GPU is, with its chart, the number of GPU
+  cores, its temperature, the power it draws and the app using the most of it (WindowServer included). Use
+  comes from the GPU driver's own statistics, per-app use from the GPU time macOS keeps for each app (like the
+  "% GPU" column of Activity Monitor), power from the same energy counters as `powermetrics`, and temperature
+  from the GPU's own sensors; anything your Mac doesn't report is left out instead of guessed. Nothing is
+  read while the popover is closed, so its chart starts when you open it. Hide it in Settings › Widgets.
+
 ## [0.7.0] - 2026-11-26
 
 ### Added
