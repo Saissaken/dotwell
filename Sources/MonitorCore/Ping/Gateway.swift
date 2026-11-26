@@ -2,17 +2,20 @@ import Darwin
 
 enum Gateway {
     /// Default IPv4 gateway from the routing table (no subprocess, one sysctl).
-    static func defaultIPv4() -> in_addr? {
+    static func defaultIPv4() -> in_addr? { defaultIPv4Route()?.gateway }
+
+    /// Default IPv4 route: its gateway and the index of the interface it goes out through.
+    static func defaultIPv4Route() -> (gateway: in_addr, interfaceIndex: UInt32)? {
         var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_GATEWAY]
         var length = 0
         guard sysctl(&mib, 6, nil, &length, nil, 0) == 0, length > 0 else { return nil }
         var buffer = [UInt8](repeating: 0, count: length)
         guard sysctl(&mib, 6, &buffer, &length, nil, 0) == 0 else { return nil }
 
-        return buffer.withUnsafeBytes { raw -> in_addr? in
+        return buffer.withUnsafeBytes { raw -> (gateway: in_addr, interfaceIndex: UInt32)? in
             var offset = 0
             let headerSize = MemoryLayout<rt_msghdr>.size
-            var scopedFallback: in_addr?
+            var scopedFallback: (gateway: in_addr, interfaceIndex: UInt32)?
             while offset + headerSize <= length {
                 let header = raw.loadUnaligned(fromByteOffset: offset, as: rt_msghdr.self)
                 let messageLength = Int(header.rtm_msglen)
@@ -31,8 +34,9 @@ enum Gateway {
                 guard dst.sin_family == sa_family_t(AF_INET), dst.sin_addr.s_addr == 0,
                     gw.sin_family == sa_family_t(AF_INET), gw.sin_addr.s_addr != 0
                 else { continue }
-                if header.rtm_flags & Int32(RTF_IFSCOPE) == 0 { return gw.sin_addr }
-                if scopedFallback == nil { scopedFallback = gw.sin_addr }
+                let route = (gateway: gw.sin_addr, interfaceIndex: UInt32(header.rtm_index))
+                if header.rtm_flags & Int32(RTF_IFSCOPE) == 0 { return route }
+                if scopedFallback == nil { scopedFallback = route }
             }
             return scopedFallback
         }

@@ -66,6 +66,8 @@ Modules (Swift Package):
 | Thermal state | `ProcessInfo.thermalState`: serious = yellow, critical = red (macOS is throttling) | 1 property read |
 | CPU temperature | `AppleSMC` user client: CPU die sensors (`Tp*`/`Te*` floats on Apple silicon, `TC*` sp78 on Intel), found once by listing the SMC keys, averaged, every 5 s. No root or entitlements; hidden when no sensor answers (VMs) | 1 IOKit call per sensor |
 | Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
+| Local IP | interface of the default route (`sysctl(NET_RT_FLAGS)` `rtm_index`), its IPv4 from `getifaddrs`, its kind (Wi‑Fi, Ethernet) from `SCNetworkInterfaceCopyAll`. **Only while the popover is open**, again on `NWPathMonitor` path changes | 1 syscall + 1 `getifaddrs` |
+| Public IP | `https://1.1.1.1/cdn-cgi/trace` and `https://[2606:4700:4700::1111]/cdn-cgi/trace` (literal addresses force each family, no DNS). Ephemeral `URLSession`, no cache or cookies. Cached until the local address or interface changes, or for 10 min | 2 small HTTPS requests |
 | Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
 | Top processes | `proc_listallpids` + `proc_pid_rusage(RUSAGE_INFO_V4)`: CPU time delta and physical footprint. Helpers are grouped under their outermost `.app` bundle (`proc_pidpath`, cached per pid and start time). Only the current user's processes are readable without root, so system daemons are left out. **Only while the popover is open**, every 2 s | 1 syscall per process |
 

@@ -120,7 +120,9 @@ public struct PopoverView: View {
                 reading: snap.disk.map { Format.storage($0.availableBytes) } ?? .none,
                 caption: diskCaption, values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
         case .network:
-            NetworkModule(snapshot: snap, down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
+            NetworkModule(
+                snapshot: snap, addresses: model.addresses, down: history(SeriesKey.netDown),
+                up: history(SeriesKey.netUp))
         case .thermal:
             MetricModule(
                 symbol: "thermometer.medium", title: "Thermal", level: level,
@@ -409,6 +411,7 @@ struct PingModule: View {
 
 struct NetworkModule: View {
     var snapshot: Snapshot
+    var addresses: NetworkAddresses?
     var down: [Float]
     var up: [Float]
 
@@ -439,6 +442,10 @@ struct NetworkModule: View {
                 Sparkline(values: down, maxValue: peak, color: .accentColor)
             }
             .frame(height: 26)
+            if let addresses {
+                Divider().opacity(0.5)
+                AddressesView(addresses: addresses)
+            }
         }
         .modifier(ModuleBackground(level: .ok))
     }

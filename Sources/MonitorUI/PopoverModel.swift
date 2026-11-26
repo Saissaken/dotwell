@@ -9,6 +9,8 @@ public final class PopoverModel: ObservableObject {
         didSet { onRangeChange?(range) }
     }
     @Published public var launchAtLogin: Bool
+    /// Local and public IP addresses; `nil` hides them.
+    @Published public var addresses: NetworkAddresses?
 
     public var onRangeChange: ((HistoryRange) -> Void)?
     /// Applies the launch-at-login setting and returns the resulting state.

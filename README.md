@@ -21,11 +21,15 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **Traffic-light status dot** in the menu bar: green, yellow or red, with hysteresis so it never flickers.
 - **Ping first**: latency, packet loss and jitter against your router, public DNS and cloud regions.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
+- **Your IP addresses**: the Mac's local IP (Wi‑Fi or Ethernet) and its public IPv4 and IPv6. Click one to copy it.
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
 - **What's using it**: the top 3 apps by CPU and memory, sampled only while the popover is open.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
 - **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
+- **Private by default.** Besides ping and update checks, the only request it makes is the public IP lookup
+  (to Cloudflare's `1.1.1.1/cdn-cgi/trace`), and only when the popover opens on a new network or every
+  10 minutes at most. No analytics.
 
 > Status: early development (v0.1). See the [requirements](docs/REQUIREMENTS.md) and
 > [technical design](docs/DESIGN.md).

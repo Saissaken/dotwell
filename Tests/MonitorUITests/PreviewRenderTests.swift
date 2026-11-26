@@ -31,6 +31,7 @@ final class PreviewRenderTests: XCTestCase {
 
     private func render(snapshot: Snapshot, appearance: NSAppearance.Name) throws -> Data {
         let model = PopoverModel(snapshot: snapshot, launchAtLogin: true)
+        model.addresses = SampleData.addresses
         let root = PopoverView(model: model)
             .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -100,6 +101,11 @@ enum SampleData {
             byMemory: [app("Safari", memory: 2.4), app("Photos", memory: 1.1), app("Messages", memory: 0.62)])
         return s
     }
+
+    /// Documentation-range addresses (RFC 5737, RFC 3849), never a real Mac's.
+    static let addresses = NetworkAddresses(
+        local: LocalAddress(interface: "en0", kind: .wifi, ipv4: "192.168.1.42"),
+        publicAddresses: PublicAddresses(ipv4: "203.0.113.24", ipv6: "2001:db8:85a3::8a2e:370:7334"))
 
     static var issues: Snapshot {
         var s = healthy
