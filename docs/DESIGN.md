@@ -108,7 +108,8 @@ attention; optionally the primary ping in ms next to the glyph.
 - Swift Package plus `scripts/bundle.sh`, which assembles and ad-hoc signs the `.app`. No `.xcodeproj` needed;
   `swift build` and `swift test` work from the command line. The package also opens directly in Xcode.
 - GitHub Actions on `macos-15`: format lint, tests, bundle, and the zipped `.app` as a build artifact.
-- Without a Developer ID, builds are ad-hoc signed and must be opened with right-click → Open the first time.
+- Without a Developer ID, builds are ad-hoc signed and must be allowed once in System Settings → Privacy & Security
+  (or by removing the quarantine attribute), as described in the README.
   With one, CI can sign and notarize releases.
 
 ## 9. Delivery plan

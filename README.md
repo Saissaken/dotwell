@@ -28,8 +28,20 @@ Built for one thing above all: **using as few resources as possible** while it r
 ## Install
 
 Pre-built releases are not published yet. Every CI run attaches a universal, ad-hoc signed
-`MacResourceMonitor.zip` artifact. Because it is not notarized, open it the first time with
-**right-click → Open**.
+`MacResourceMonitor.zip` artifact.
+
+1. Download and unzip the artifact, then move `MacResourceMonitor.app` to `/Applications`.
+2. The build is not notarized yet, so Gatekeeper blocks the first launch. Allow it once, using either option:
+   - **System Settings:** try to open the app and click **Done** on the warning. Then go to
+     **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to
+     "MacResourceMonitor", and confirm with your password.
+   - **Terminal:**
+     ```sh
+     xattr -dr com.apple.quarantine /Applications/MacResourceMonitor.app
+     open /Applications/MacResourceMonitor.app
+     ```
+
+> On macOS 15 Sequoia and later, the old right-click → Open shortcut no longer bypasses Gatekeeper.
 
 ## Build from source
 
