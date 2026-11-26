@@ -10,8 +10,12 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let dot = StatusDotView(frame: .zero)
     private var level: HealthLevel = .ok
+    private let sampler: Sampler
+    private var latest = Snapshot()
+    private var model: PopoverModel?
 
-    override init() {
+    init(sampler: Sampler) {
+        self.sampler = sampler
         super.init()
         popover.behavior = .transient
         popover.animates = true
@@ -33,6 +37,14 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             dot.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -3),
         ])
         apply(level: .ok)
+
+        sampler.onSnapshot = { [weak self] snap in self?.receive(snap) }
+    }
+
+    private func receive(_ snap: Snapshot) {
+        latest = snap
+        update(level: snap.overall)
+        model?.snapshot = snap
     }
 
     /// Redraws only when the level actually changes.
@@ -54,13 +66,19 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            popover.contentViewController = NSHostingController(rootView: PopoverView())
+            let model = PopoverModel(snapshot: latest)
+            model.onRangeChange = { [weak self] range in self?.sampler.setDetailed(true, range: range) }
+            self.model = model
+            sampler.setDetailed(true, range: model.range)
+            popover.contentViewController = NSHostingController(rootView: PopoverView(model: model))
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
     }
 
     func popoverDidClose(_ notification: Notification) {
+        sampler.setDetailed(false, range: .seconds30)
+        model = nil
         popover.contentViewController = nil
     }
 }

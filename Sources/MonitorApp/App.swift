@@ -1,4 +1,5 @@
 import AppKit
+import MonitorCore
 
 @main
 enum MonitorMain {
@@ -15,9 +16,23 @@ enum MonitorMain {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusController: StatusItemController?
+    private let sampler = Sampler()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusController = StatusItemController()
+        statusController = StatusItemController(sampler: sampler)
         LoginItem.registerOnFirstLaunch()
+        observeSleep()
+        sampler.start()
+    }
+
+    /// Pause all sampling while the Mac or its displays sleep.
+    private func observeSleep() {
+        let center = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification] {
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.sampler.stop() }
+        }
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.sampler.start() }
+        }
     }
 }
