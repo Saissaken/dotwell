@@ -58,11 +58,18 @@ struct GeneralSettingsView: View {
                     isOn: Binding(get: { model.launchAtLogin }, set: { model.toggleLaunchAtLogin($0) }))
             }
             Spacer().frame(height: 8)
-            Picker("Update readings every:", selection: $settings.interval) {
-                ForEach(SamplingInterval.allCases, id: \.self) { Text($0.label).tag($0) }
+            Picker("Panel open:", selection: $settings.openInterval) {
+                ForEach(SamplingInterval.whileOpen, id: \.self) { Text($0.label).tag($0) }
             }
             .fixedSize()
-            SettingNote("Longer intervals use less energy. Charts and alerts adjust to the interval.")
+            SettingNote("Only while you're looking at it, so faster is fine.")
+            Picker("Panel closed:", selection: $settings.closedInterval) {
+                ForEach(SamplingInterval.whileClosed, id: \.self) { interval in
+                    Text(interval == .fiveSeconds ? "\(interval.label) (recommended)" : interval.label).tag(interval)
+                }
+            }
+            .fixedSize()
+            SettingNote("Runs all day to keep the menu bar light current. Longer is easier on the battery.")
             Spacer().frame(height: 8)
             Picker("Show network speed in:", selection: $settings.networkUnit) {
                 Text("Bits per second (Mbps)").tag(NetworkUnit.bits)

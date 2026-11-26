@@ -50,8 +50,13 @@ public struct WidgetSetting: Codable, Equatable, Identifiable, Sendable {
 /// that affect sampling; display-only settings (order, units) reach the popover through `@Published`.
 @MainActor
 public final class AppSettings: ObservableObject {
-    @Published public var interval: SamplingInterval {
-        didSet { store(interval.rawValue, .interval) }
+    /// Reading interval while the popover is open.
+    @Published public var openInterval: SamplingInterval {
+        didSet { store(openInterval.rawValue, .openInterval) }
+    }
+    /// Reading interval while the popover is closed, which runs all day.
+    @Published public var closedInterval: SamplingInterval {
+        didSet { store(closedInterval.rawValue, .closedInterval) }
     }
     @Published public var networkUnit: NetworkUnit {
         didSet { store(networkUnit.rawValue, .networkUnit) }
@@ -93,7 +98,10 @@ public final class AppSettings: ObservableObject {
     private var lastConfiguration: SamplerConfiguration?
 
     private enum Key: String {
-        case interval = "samplingInterval"
+        /// Seconds, from before the open and closed intervals were split. Read once to carry the choice over.
+        case legacyInterval = "samplingInterval"
+        case openInterval = "openIntervalMs"
+        case closedInterval = "closedIntervalMs"
         case networkUnit
         case processCPUScale
         case showsIPAddresses
@@ -112,8 +120,15 @@ public final class AppSettings: ObservableObject {
             guard let data = defaults?.data(forKey: key.rawValue) else { return nil }
             return try? JSONDecoder().decode(type, from: data)
         }
-        let savedInterval = defaults?.object(forKey: Key.interval.rawValue) as? Int
-        interval = savedInterval.flatMap(SamplingInterval.init) ?? .oneSecond
+        func savedInterval(_ key: Key) -> SamplingInterval? {
+            (defaults?.object(forKey: key.rawValue) as? Int).flatMap(SamplingInterval.init)
+        }
+        // Someone who picked a slower single interval wanted to save energy: keep that while closed.
+        let legacy = (defaults?.object(forKey: Key.legacyInterval.rawValue) as? Int).flatMap { seconds in
+            seconds > 1 ? SamplingInterval(legacySeconds: seconds) : nil
+        }
+        openInterval = savedInterval(.openInterval) ?? legacy.map { min($0, .twoSeconds) } ?? .oneSecond
+        closedInterval = savedInterval(.closedInterval) ?? legacy ?? .fiveSeconds
         networkUnit = defaults?.string(forKey: Key.networkUnit.rawValue).flatMap(NetworkUnit.init) ?? .bits
         processCPUScale =
             defaults?.string(forKey: Key.processCPUScale.rawValue).flatMap(ProcessCPUScale.init) ?? .wholeMac
@@ -139,7 +154,8 @@ public final class AppSettings: ObservableObject {
 
     public var configuration: SamplerConfiguration {
         SamplerConfiguration(
-            interval: interval,
+            openInterval: openInterval,
+            closedInterval: closedInterval,
             targets: pingSlots.map(\.target),
             primaryIndex: pingSlots.firstIndex { $0.slot == effectivePrimarySlot } ?? 0,
             thresholds: thresholds,
