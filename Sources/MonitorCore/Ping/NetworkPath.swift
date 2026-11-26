@@ -66,11 +66,20 @@ public struct NetworkPath: Sendable, Equatable {
                 segment.latencyMs = value.latency
                 segment.lossFraction = value.loss
                 let limits = Self.latencyLimits(stage, thresholds)
-                let latencyLevel: HealthLevel =
-                    value.latency.map { $0 > limits.critical ? .critical : $0 > limits.warning ? .warning : .ok } ?? .ok
+                let latency = value.latency ?? 0
                 let loss = value.loss
-                let lossLevel: HealthLevel =
-                    loss > thresholds.pingLossCritical ? .critical : loss > thresholds.pingLossWarning ? .warning : .ok
+                var latencyLevel = HealthLevel.ok
+                if latency > limits.critical {
+                    latencyLevel = .critical
+                } else if latency > limits.warning {
+                    latencyLevel = .warning
+                }
+                var lossLevel = HealthLevel.ok
+                if loss > thresholds.pingLossCritical {
+                    lossLevel = .critical
+                } else if loss > thresholds.pingLossWarning {
+                    lossLevel = .warning
+                }
                 segment.level = max(latencyLevel, lossLevel)
                 segment.isLoss = lossLevel >= latencyLevel && lossLevel != .ok
             }

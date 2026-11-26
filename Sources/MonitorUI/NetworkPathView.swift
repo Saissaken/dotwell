@@ -117,7 +117,7 @@ struct NetworkPathView: View {
                     .foregroundStyle(levelColor(level))
             }
             Text(verdictText)
-                .foregroundStyle(problemLevel == nil ? .secondary : .primary)
+                .foregroundStyle(problemLevel == nil ? Color.secondary : Color.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
             Spacer(minLength: 4)
@@ -203,7 +203,7 @@ private struct HopList: View {
                 .fill(dotColor(segment.level))
                 .frame(width: 6, height: 6)
             Text(name(hop))
-                .foregroundStyle(hop.isSilent ? .secondary : .primary)
+                .foregroundStyle(hop.isSilent ? Color.secondary : Color.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 4)
