@@ -1,7 +1,7 @@
 /// Fixed-capacity circular buffer of Float32 samples. Allocates once, never grows.
 public struct RingBuffer: Sendable {
     private var storage: [Float]
-    private var head = 0          // index of the next write
+    private var head = 0  // index of the next write
     public private(set) var count = 0
 
     public var capacity: Int { storage.count }

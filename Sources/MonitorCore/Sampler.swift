@@ -97,7 +97,7 @@ public final class Sampler: @unchecked Sendable {
     public func start() {
         queue.async { [self] in
             guard timer == nil else { return }
-            _ = cpuProbe.sample() // prime deltas
+            _ = cpuProbe.sample()  // prime deltas
             let t = DispatchSource.makeTimerSource(queue: queue)
             t.schedule(deadline: .now() + interval, repeating: interval, leeway: .milliseconds(250))
             t.setEventHandler { [weak self] in self?.step() }
@@ -122,7 +122,7 @@ public final class Sampler: @unchecked Sendable {
         queue.async { [self] in
             detailedFlag = detailed
             historyRange = range
-            if detailed { publish() } // immediate data when the popover opens
+            if detailed { publish() }  // immediate data when the popover opens
         }
     }
 
@@ -191,9 +191,10 @@ public final class Sampler: @unchecked Sendable {
     private func evaluate() {
         var raw: [MetricKind: HealthLevel] = [:]
         current.ping = ping.targets.indices.map { i in
-            PingTargetState(index: i, target: ping.targets[i],
-                            stats: PingStats.compute(pingSeries[i].recent(10)),
-                            isPrimary: i == primaryIndex)
+            PingTargetState(
+                index: i, target: ping.targets[i],
+                stats: PingStats.compute(pingSeries[i].recent(10)),
+                isPrimary: i == primaryIndex)
         }
         if let primary = current.primaryPing, !pingSeries[primary.index].recent(1).isEmpty {
             raw[.ping] = thresholds.ping(primary.stats)

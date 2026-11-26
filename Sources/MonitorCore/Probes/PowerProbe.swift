@@ -31,14 +31,16 @@ public final class PowerProbe {
         if external {
             var watts: Double?
             if let telemetry = property("PowerTelemetryData") as? [String: Any],
-               let mw = (telemetry["SystemPowerIn"] as? NSNumber)?.doubleValue, mw > 0 {
+                let mw = (telemetry["SystemPowerIn"] as? NSNumber)?.doubleValue, mw > 0
+            {
                 watts = mw / 1000
             }
             return PowerSample(source: .adapter, watts: watts, isCharging: charging)
         }
 
         guard let millivolts = number("Voltage")?.doubleValue,
-              let milliamps = number("InstantAmperage")?.int64Value ?? number("Amperage")?.int64Value else {
+            let milliamps = number("InstantAmperage")?.int64Value ?? number("Amperage")?.int64Value
+        else {
             return PowerSample(source: .battery, watts: nil, isCharging: false)
         }
         let watts = Self.watts(millivolts: millivolts, milliamps: milliamps)

@@ -78,7 +78,7 @@ public final class PingEngine {
             return literal
         }
         resolveAsync(index: index, host: target.host)
-        return addresses[index]?.addr // stale value while re-resolving, if any
+        return addresses[index]?.addr  // stale value while re-resolving, if any
     }
 
     /// getaddrinfo blocks, so it runs off the sampling queue.
@@ -86,8 +86,9 @@ public final class PingEngine {
         guard !resolving.contains(index) else { return }
         resolving.insert(index)
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            var hints = addrinfo(ai_flags: 0, ai_family: AF_INET, ai_socktype: SOCK_STREAM, ai_protocol: 0,
-                                 ai_addrlen: 0, ai_canonname: nil, ai_addr: nil, ai_next: nil)
+            var hints = addrinfo(
+                ai_flags: 0, ai_family: AF_INET, ai_socktype: SOCK_STREAM, ai_protocol: 0,
+                ai_addrlen: 0, ai_canonname: nil, ai_addr: nil, ai_next: nil)
             var result: UnsafeMutablePointer<addrinfo>?
             var resolved: in_addr?
             if getaddrinfo(host, nil, &hints, &result) == 0, let info = result, let sa = info.pointee.ai_addr {
@@ -140,7 +141,7 @@ public final class PingEngine {
         if sent == packet.count {
             pendingICMP[seq] = (target, sentAt)
         } else {
-            onResult?(target, nil) // e.g. no route: count as lost
+            onResult?(target, nil)  // e.g. no route: count as lost
         }
     }
 
@@ -150,9 +151,12 @@ public final class PingEngine {
             let n = buffer.withUnsafeMutableBytes { recv(icmpSocket, $0.baseAddress, $0.count, 0) }
             guard n > 0 else { break }
             let now = Self.now()
-            let parsed = buffer.withUnsafeBytes { ICMPPacket.parseEchoReply(UnsafeRawBufferPointer(rebasing: $0[0..<n])) }
+            let parsed = buffer.withUnsafeBytes {
+                ICMPPacket.parseEchoReply(UnsafeRawBufferPointer(rebasing: $0[0..<n]))
+            }
             guard let reply = parsed, reply.identifier == identifier,
-                  let pending = pendingICMP.removeValue(forKey: reply.sequence) else { continue }
+                let pending = pendingICMP.removeValue(forKey: reply.sequence)
+            else { continue }
             onResult?(pending.target, Float(Double(now - pending.sentAt) / 1_000_000))
         }
     }

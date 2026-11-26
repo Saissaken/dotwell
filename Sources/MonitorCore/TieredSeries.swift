@@ -16,9 +16,9 @@ public enum HistoryRange: Int, CaseIterable, Sendable {
 /// Negative samples mean "missing" (e.g. lost ping) and are excluded from averages;
 /// a bucket with no valid sample is stored as missing.
 public struct TieredSeries: Sendable {
-    private var raw = RingBuffer(capacity: 60)       // 1 per sample
-    private var mid = RingBuffer(capacity: 60)       // avg of 5 samples
-    private var long = RingBuffer(capacity: 120)     // avg of 30 samples
+    private var raw = RingBuffer(capacity: 60)  // 1 per sample
+    private var mid = RingBuffer(capacity: 60)  // avg of 5 samples
+    private var long = RingBuffer(capacity: 120)  // avg of 30 samples
     private var midAcc = Accumulator(size: 5)
     private var longAcc = Accumulator(size: 30)
 

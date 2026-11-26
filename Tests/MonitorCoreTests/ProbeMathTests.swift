@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import MonitorCore
 
 final class ProbeMathTests: XCTestCase {
@@ -25,13 +26,14 @@ final class ProbeMathTests: XCTestCase {
         let a = NetworkCounters(received: 1_000, sent: 500)
         let b = NetworkCounters(received: 2_000, sent: 1_500)
         let r = NetworkCounters.rates(from: a, to: b, seconds: 2)
-        XCTAssertEqual(r.down, 4_000) // 1000 bytes * 8 / 2 s
+        XCTAssertEqual(r.down, 4_000)  // 1000 bytes * 8 / 2 s
         XCTAssertEqual(r.up, 4_000)
     }
 
     func testNetworkRatesCounterReset() {
-        let r = NetworkCounters.rates(from: NetworkCounters(received: 5_000, sent: 5_000),
-                                      to: NetworkCounters(received: 10, sent: 10), seconds: 1)
+        let r = NetworkCounters.rates(
+            from: NetworkCounters(received: 5_000, sent: 5_000),
+            to: NetworkCounters(received: 10, sent: 10), seconds: 1)
         XCTAssertEqual(r.down, 0)
         XCTAssertEqual(r.up, 0)
     }
@@ -56,6 +58,6 @@ final class ProbeMathTests: XCTestCase {
         XCTAssertNotNil(space)
         if let space { XCTAssertLessThanOrEqual(space.availableBytes, space.totalBytes) }
         _ = DiskProbe().ioCounters()
-        _ = PowerProbe().sample() // CI runners have no battery; must not crash
+        _ = PowerProbe().sample()  // CI runners have no battery; must not crash
     }
 }

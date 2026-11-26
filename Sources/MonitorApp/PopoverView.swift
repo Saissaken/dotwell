@@ -1,5 +1,5 @@
-import SwiftUI
 import MonitorCore
+import SwiftUI
 
 /// Rows shown in the popover. Problems (non-green) are listed first, in their own section.
 enum Row: Hashable {
@@ -106,32 +106,39 @@ struct PopoverView: View {
         switch row {
         case .ping: pingRow(level: level)
         case .cpu:
-            MetricRow(title: "CPU", value: Format.percent(snap.cpu), detail: nil, level: level,
-                      values: history(SeriesKey.cpu), maxValue: 1)
+            MetricRow(
+                title: "CPU", value: Format.percent(snap.cpu), detail: nil, level: level,
+                values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
-            MetricRow(title: "Memory",
-                      value: snap.memory.map { Format.bytes($0.usedBytes) } ?? "—",
-                      detail: snap.memory.map { "of \(Format.bytes($0.totalBytes)) · pressure \(pressureText($0.pressure))" },
-                      level: level, values: history(SeriesKey.memory), maxValue: 1)
+            MetricRow(
+                title: "Memory",
+                value: snap.memory.map { Format.bytes($0.usedBytes) } ?? "—",
+                detail: snap.memory.map(memoryDetail),
+                level: level, values: history(SeriesKey.memory), maxValue: 1)
         case .disk:
-            MetricRow(title: "Disk",
-                      value: snap.disk.map { "\(Format.diskBytes($0.availableBytes)) free" } ?? "—",
-                      detail: "↓ \(Format.bytesPerSec(snap.diskReadBytesPerSec))  ↑ \(Format.bytesPerSec(snap.diskWriteBytesPerSec))",
-                      level: level, values: history(SeriesKey.diskWrite), maxValue: nil)
+            MetricRow(
+                title: "Disk",
+                value: snap.disk.map { "\(Format.diskBytes($0.availableBytes)) free" } ?? "—",
+                detail: diskDetail,
+                level: level, values: history(SeriesKey.diskWrite), maxValue: nil)
         case .power:
-            MetricRow(title: snap.power?.source == .adapter ? "Power adapter" : "Battery",
-                      value: Format.watts(snap.power?.watts),
-                      detail: snap.power?.source == .adapter ? (snap.power?.isCharging == true ? "charging" : "plugged in") : "draw",
-                      level: level, values: history(SeriesKey.power), maxValue: nil)
+            MetricRow(
+                title: snap.power?.source == .adapter ? "Power adapter" : "Battery",
+                value: Format.watts(snap.power?.watts),
+                detail: snap.power?.source == .adapter
+                    ? (snap.power?.isCharging == true ? "charging" : "plugged in") : "draw",
+                level: level, values: history(SeriesKey.power), maxValue: nil)
         case .network:
-            MetricRow(title: "Red",
-                      value: "↓ \(Format.bits(snap.networkDownBitsPerSec))",
-                      detail: "↑ \(Format.bits(snap.networkUpBitsPerSec))",
-                      level: level, values: history(SeriesKey.netDown), maxValue: nil,
-                      secondary: history(SeriesKey.netUp))
+            MetricRow(
+                title: "Red",
+                value: "↓ \(Format.bits(snap.networkDownBitsPerSec))",
+                detail: "↑ \(Format.bits(snap.networkUpBitsPerSec))",
+                level: level, values: history(SeriesKey.netDown), maxValue: nil,
+                secondary: history(SeriesKey.netUp))
         case .thermal:
-            MetricRow(title: "Thermal", value: thermalText(snap.thermal),
-                      detail: "macOS is throttling performance", level: level, values: [], maxValue: nil)
+            MetricRow(
+                title: "Thermal", value: thermalText(snap.thermal),
+                detail: "macOS is throttling performance", level: level, values: [], maxValue: nil)
         }
     }
 
@@ -139,11 +146,14 @@ struct PopoverView: View {
     private func pingRow(level: HealthLevel) -> some View {
         let primary = snap.primaryPing
         VStack(alignment: .leading, spacing: 6) {
-            MetricRow(title: "Ping · \(primary?.target.name ?? "—")",
-                      value: primary?.stats.lastLost == true ? "no reply" : Format.ms(primary?.stats.latestMs),
-                      detail: primary.map { "loss \(Format.percent($0.stats.lossFraction)) · jitter \(Format.ms($0.stats.jitterMs))" },
-                      level: level,
-                      values: primary.map { history(SeriesKey.ping($0.index)) } ?? [], maxValue: nil)
+            MetricRow(
+                title: "Ping · \(primary?.target.name ?? "—")",
+                value: primary?.stats.lastLost == true ? "no reply" : Format.ms(primary?.stats.latestMs),
+                detail: primary.map {
+                    "loss \(Format.percent($0.stats.lossFraction)) · jitter \(Format.ms($0.stats.jitterMs))"
+                },
+                level: level,
+                values: primary.map { history(SeriesKey.ping($0.index)) } ?? [], maxValue: nil)
             let others = snap.ping.filter { !$0.isPrimary }
             if !others.isEmpty {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 2) {
@@ -162,6 +172,16 @@ struct PopoverView: View {
     }
 
     private func history(_ key: String) -> [Float] { snap.history[key] ?? [] }
+
+    private func memoryDetail(_ memory: MemorySample) -> String {
+        "of \(Format.bytes(memory.totalBytes)) · pressure \(pressureText(memory.pressure))"
+    }
+
+    private var diskDetail: String {
+        let read = Format.bytesPerSec(snap.diskReadBytesPerSec)
+        let write = Format.bytesPerSec(snap.diskWriteBytesPerSec)
+        return "↓ \(read)  ↑ \(write)"
+    }
 
     private func pressureText(_ p: MemoryPressure) -> String {
         switch p {
@@ -228,8 +248,9 @@ struct MetricRow: View {
                 if let secondary {
                     Sparkline(values: secondary, maxValue: sharedMax, color: .orange)
                 }
-                Sparkline(values: values, maxValue: secondary == nil ? maxValue : sharedMax,
-                          color: level == .ok ? .accentColor : color(for: level))
+                Sparkline(
+                    values: values, maxValue: secondary == nil ? maxValue : sharedMax,
+                    color: level == .ok ? .accentColor : color(for: level))
             }
             .frame(height: 30)
         }

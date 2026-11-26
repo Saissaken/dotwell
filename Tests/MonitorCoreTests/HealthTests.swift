@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import MonitorCore
 
 final class HealthTests: XCTestCase {
@@ -43,7 +44,7 @@ final class HealthTests: XCTestCase {
     func testTieredSeriesDownsamples() {
         var s = TieredSeries()
         for i in 0..<10 { s.append(Float(i)) }
-        XCTAssertEqual(s.values(for: .minutes5), [2, 7]) // avg(0..4), avg(5..9)
+        XCTAssertEqual(s.values(for: .minutes5), [2, 7])  // avg(0..4), avg(5..9)
         XCTAssertEqual(s.values(for: .seconds30).count, 10)
     }
 

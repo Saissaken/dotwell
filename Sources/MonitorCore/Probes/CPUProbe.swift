@@ -22,7 +22,7 @@ public struct CPUTicks: Equatable, Sendable {
 
 /// Total CPU usage via a single `host_statistics(HOST_CPU_LOAD_INFO)` call.
 public final class CPUProbe {
-    private let host = mach_host_self() // cached: each call to mach_host_self() takes a port right
+    private let host = mach_host_self()  // cached: each call to mach_host_self() takes a port right
     private var previous: CPUTicks?
 
     public init() {}
@@ -37,7 +37,8 @@ public final class CPUProbe {
 
     private func readTicks() -> CPUTicks? {
         var load = host_cpu_load_info()
-        var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info_data_t>.stride / MemoryLayout<integer_t>.stride)
+        var count = mach_msg_type_number_t(
+            MemoryLayout<host_cpu_load_info_data_t>.stride / MemoryLayout<integer_t>.stride)
         let kr = withUnsafeMutablePointer(to: &load) {
             $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
                 host_statistics(host, HOST_CPU_LOAD_INFO, $0, &count)

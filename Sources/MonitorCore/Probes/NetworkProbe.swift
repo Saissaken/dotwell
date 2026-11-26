@@ -11,7 +11,9 @@ public struct NetworkCounters: Equatable, Sendable {
     }
 
     /// Bits per second between two readings. A counter that went backwards (interface reset) yields 0.
-    public static func rates(from old: NetworkCounters, to new: NetworkCounters, seconds: Double) -> (down: Double, up: Double) {
+    public static func rates(from old: NetworkCounters, to new: NetworkCounters, seconds: Double) -> (
+        down: Double, up: Double
+    ) {
         guard seconds > 0 else { return (0, 0) }
         let rx = new.received >= old.received ? new.received - old.received : 0
         let tx = new.sent >= old.sent ? new.sent - old.sent : 0
@@ -43,10 +45,12 @@ public final class NetworkProbe {
                 let messageLength = Int(header.ifm_msglen)
                 guard messageLength > 0 else { break }
                 if Int32(header.ifm_type) == RTM_IFINFO2,
-                   offset + MemoryLayout<if_msghdr2>.size <= length {
+                    offset + MemoryLayout<if_msghdr2>.size <= length
+                {
                     let info = raw.loadUnaligned(fromByteOffset: offset, as: if_msghdr2.self)
                     let flags = Int32(info.ifm_flags)
-                    let excluded = (flags & IFF_LOOPBACK) != 0 || (flags & IFF_POINTOPOINT) != 0 || (flags & IFF_UP) == 0
+                    let excluded =
+                        (flags & IFF_LOOPBACK) != 0 || (flags & IFF_POINTOPOINT) != 0 || (flags & IFF_UP) == 0
                     if !excluded {
                         rx &+= info.ifm_data.ifi_ibytes
                         tx &+= info.ifm_data.ifi_obytes

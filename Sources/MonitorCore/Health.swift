@@ -46,7 +46,7 @@ public struct Thresholds: Sendable {
     public init() {}
 
     public func ping(_ s: PingStats) -> HealthLevel {
-        if s.averageMs == nil && s.lossFraction > 0 { return .critical } // nothing answers
+        if s.averageMs == nil && s.lossFraction > 0 { return .critical }  // nothing answers
         let avg = s.averageMs ?? 0
         if avg > pingCriticalMs || s.lossFraction > pingLossCritical { return .critical }
         if avg > pingWarningMs || s.lossFraction > pingLossWarning { return .warning }

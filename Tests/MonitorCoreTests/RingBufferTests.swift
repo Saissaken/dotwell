@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import MonitorCore
 
 final class RingBufferTests: XCTestCase {

@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import MonitorCore
+import SwiftUI
 
 /// Owns the menu bar item and the popover. The popover's SwiftUI tree is created
 /// on open and released on close, so nothing is retained while it is hidden.
@@ -23,7 +23,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
         guard let button = statusItem.button else { return }
         let glyph = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "Resource monitor")
-        glyph?.isTemplate = true // follows light/dark menu bar automatically
+        glyph?.isTemplate = true  // follows light/dark menu bar automatically
         button.image = glyph
         button.target = self
         button.action = #selector(togglePopover(_:))

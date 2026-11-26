@@ -37,7 +37,8 @@ public final class MemoryProbe {
         guard kr == KERN_SUCCESS else { return nil }
         let appPages = UInt64(stats.internal_page_count) &- UInt64(stats.purgeable_count)
         let usedPages = appPages + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
-        return MemorySample(usedBytes: min(usedPages * pageSize, total), totalBytes: total, pressure: Self.readPressure())
+        return MemorySample(
+            usedBytes: min(usedPages * pageSize, total), totalBytes: total, pressure: Self.readPressure())
     }
 
     static func readPressure() -> MemoryPressure {

@@ -52,10 +52,13 @@ struct Sparkline: View {
                 lastX = p.x
             }
             closeFill()
-            ctx.fill(fill, with: .linearGradient(
-                Gradient(colors: [color.opacity(0.28), color.opacity(0.02)]),
-                startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
-            ctx.stroke(line, with: .color(color), style: StrokeStyle(lineWidth: 1.25, lineCap: .round, lineJoin: .round))
+            ctx.fill(
+                fill,
+                with: .linearGradient(
+                    Gradient(colors: [color.opacity(0.28), color.opacity(0.02)]),
+                    startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+            ctx.stroke(
+                line, with: .color(color), style: StrokeStyle(lineWidth: 1.25, lineCap: .round, lineJoin: .round))
         }
         .accessibilityHidden(true)
     }

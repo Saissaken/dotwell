@@ -29,7 +29,8 @@ enum Gateway {
                 let gw = raw.loadUnaligned(fromByteOffset: cursor, as: sockaddr_in.self)
 
                 guard dst.sin_family == sa_family_t(AF_INET), dst.sin_addr.s_addr == 0,
-                      gw.sin_family == sa_family_t(AF_INET), gw.sin_addr.s_addr != 0 else { continue }
+                    gw.sin_family == sa_family_t(AF_INET), gw.sin_addr.s_addr != 0
+                else { continue }
                 if header.rtm_flags & Int32(RTF_IFSCOPE) == 0 { return gw.sin_addr }
                 if scopedFallback == nil { scopedFallback = gw.sin_addr }
             }
