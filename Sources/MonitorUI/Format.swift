@@ -80,9 +80,10 @@ enum Format {
         bytes(value).text
     }
 
-    /// The disk module's caption, e.g. "Read 123 MB/s · Write 773 KB/s".
+    /// The disk module's caption, e.g. "R 123 MB/s · W 773 KB/s". "Read" and "Write" spelled out
+    /// don't fit a half-width module at the caption size once both values have three digits.
     static func diskIO(read: Double, write: Double) -> String {
-        "Read \(bytesPerSec(read)) · Write \(bytesPerSec(write))"
+        "R \(bytesPerSec(read)) · W \(bytesPerSec(write))"
     }
 
     /// Temperature in the unit the user prefers (System Settings → Language & Region), e.g. "52°C".

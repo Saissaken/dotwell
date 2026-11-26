@@ -49,6 +49,10 @@ final class FormatTests: XCTestCase {
 
     // MARK: - Units
 
+    func testDiskCaption() {
+        XCTAssertEqual(Format.diskIO(read: 123_400_000, write: 773_400), "R 123 MB/s · W 773 KB/s")
+    }
+
     func testTransferRates() {
         XCTAssertEqual(Format.bytesPerSec(0), "0 KB/s")
         XCTAssertEqual(Format.bytesPerSec(773_400), "773 KB/s")
@@ -118,7 +122,8 @@ final class FormatTests: XCTestCase {
 
     func testProcessMemorySwitchesToGigabytes() {
         XCTAssertEqual(Format.processMemory(671_088_640), "640 MB")
-        XCTAssertEqual(Format.processMemory(1_048_000_000), "1.0 GB")
+        XCTAssertEqual(Format.processMemory(1_045_000_000), "997 MB")
+        XCTAssertEqual(Format.processMemory(1_073_000_000), "1.0 GB")
         XCTAssertEqual(Format.processMemory(2_576_980_378), "2.4 GB")
     }
 
