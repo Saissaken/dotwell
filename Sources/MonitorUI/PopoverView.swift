@@ -397,7 +397,8 @@ struct PingModule: View {
             if let trace = snapshot.path, let primary {
                 Divider().opacity(0.5)
                 NetworkPathView(
-                    path: NetworkPath(trace: trace), serverName: primary.target.name, expanded: pathExpanded)
+                    path: NetworkPath(trace: trace, thresholds: snapshot.thresholds),
+                    serverName: primary.target.name, expanded: pathExpanded)
             }
             if !others.isEmpty {
                 Divider().opacity(0.5)
