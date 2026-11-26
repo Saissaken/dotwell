@@ -20,8 +20,7 @@ public struct PingTarget: Hashable, Sendable, Codable {
 
     public var isGateway: Bool { host == Self.gatewayHost }
 
-    /// Defaults (see docs/REQUIREMENTS.md, open question Q1). The first entry with
-    /// `isPrimary` semantics is index 1 (Cloudflare) until the user picks one.
+    /// Default targets (see docs/REQUIREMENTS.md, open question Q1).
     public static let defaults: [PingTarget] = [
         PingTarget(name: "Router", host: gatewayHost, method: .icmp),
         PingTarget(name: "Cloudflare", host: "1.1.1.1", method: .icmp),
@@ -29,5 +28,6 @@ public struct PingTarget: Hashable, Sendable, Codable {
         PingTarget(name: "AWS São Paulo", host: "dynamodb.sa-east-1.amazonaws.com", method: .tcp(port: 443)),
         PingTarget(name: "AWS Virginia", host: "dynamodb.us-east-1.amazonaws.com", method: .tcp(port: 443)),
     ]
+    /// Index of the target that drives the traffic light by default (Cloudflare).
     public static let defaultPrimaryIndex = 1
 }

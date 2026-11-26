@@ -17,6 +17,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Swift version
         run: swift --version
+      - name: Lint
+        id: lint
+        run: make lint
+      - name: Show formatting fixes
+        if: failure() && steps.lint.outcome == 'failure'
+        run: make format && git --no-pager diff
       - name: Test
         run: swift test
       - name: Bundle app

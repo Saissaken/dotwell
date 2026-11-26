@@ -1,84 +1,94 @@
-# Requisitos — Mac Resource Monitor
+# Requirements
 
-Estado: **borrador v0.1** (2026-11-26). Las secciones marcadas **[SUPUESTO]** son decisiones mías por defecto, fáciles de cambiar. Las marcadas **[PENDIENTE]** esperan confirmación de Cabezon y no se construyen hasta tenerla.
+Status: **draft v0.1** (2026-11-26).
 
-## 1. Objetivo
+Items marked **[ASSUMPTION]** are defaults chosen by the maintainers that are cheap to change.
+Items marked **[OPEN]** are waiting on a product decision and are not built until decided.
 
-Una app nativa de macOS que vive en la barra de menú, siempre abierta, que muestra de un vistazo si la máquina está bien y, al hacer clic, gráficos simples de los recursos críticos. El uso principal es **mirar el ping**.
+## 1. Goal
 
-## 2. Prioridad absoluta: bajo consumo
+A native macOS menu bar app that is always running, tells you at a glance whether your Mac is healthy,
+and opens a compact popover with simple charts of the critical resources when clicked.
+The primary use case is **watching network latency (ping)**.
 
-Si una funcionalidad compite con el consumo, gana el consumo. Presupuesto objetivo (medido en un Apple Silicon, popover cerrado):
+## 2. Top priority: minimal resource usage
 
-| Métrica | Objetivo |
+When a feature competes with resource usage, resource usage wins. Target budget, measured on Apple Silicon
+with the popover closed:
+
+| Metric | Target |
 |---|---|
-| CPU promedio | < 0,2 % de un núcleo |
-| Memoria (RSS) | < 25 MB |
-| Wakeups por segundo | < 2 |
-| "Impacto energético" en Monitor de Actividad | Bajo / ~0 |
-| Tamaño del .app | < 5 MB |
+| Average CPU | < 0.2 % of one core |
+| Memory (RSS) | < 25 MB |
+| Wakeups per second | < 2 |
+| Activity Monitor "Energy Impact" | Low / ~0 |
+| App bundle size | < 5 MB |
 
-Con el popover abierto se permite más (redibujar gráficos), pero vuelve al presupuesto al cerrarlo. Cada release mide estos números y los anota en el PR.
+With the popover open, more is allowed (redrawing charts), but usage must return to budget once it closes.
+Every release measures these numbers and records them in its pull request.
 
-## 3. Funcionalidades
+## 3. Features
 
-### 3.1 Siempre corriendo
-- R1. Ícono en el sector derecho de la barra de menú. Sin ícono en el Dock ni ventana principal.
-- R2. Inicia con la sesión (login item), activado por defecto, con opción para desactivarlo.
-- R3. Si se cierra inesperadamente, no hace falta que se relance sola en v1 **[SUPUESTO]**.
+### 3.1 Always running
+- R1. Icon in the right-hand side of the menu bar. No Dock icon, no main window.
+- R2. Launches at login, enabled by default, with an option to turn it off.
+- R3. No self-relaunch after a crash in v1. **[ASSUMPTION]**
 
-### 3.2 Ícono tipo semáforo
-- R4. El ícono indica el estado general: verde (todo bien), amarillo (algo para mirar), rojo (problema).
-- R5. Estilo Apple: ícono monocromo que respeta modo claro/oscuro, con un **puntito de color** como indicador. **[PENDIENTE: variante, ver §6]**
-- R6. El estado es el peor de todas las métricas, con histéresis para que no parpadee (tiene que sostenerse unos segundos antes de cambiar).
+### 3.2 Traffic-light icon
+- R4. The icon reflects overall health: green (all good), yellow (worth a look), red (problem).
+- R5. Apple-like style: a monochrome glyph that follows light/dark mode, plus a **small colored dot** as the
+  indicator. **[OPEN: variant, see §6]**
+- R6. Overall health is the worst of all metrics, with hysteresis so it does not flicker
+  (a level must hold for a few seconds before it changes).
 
 ### 3.3 Popover
-- R7. Al hacer clic se abre un popover con estilo nativo de macOS (material translúcido, tipografía del sistema, gráficos minimalistas).
-- R8. **Problemas primero:** las métricas en amarillo/rojo aparecen arriba, en una sección separada.
-- R9. **Sin scroll:** todo entra en una sola vista de tamaño fijo.
-- R10. Intervalo por defecto: últimos 30 s. Selector de intervalo: 30 s · 5 min · 1 h **[SUPUESTO]**.
-- R11. Cada métrica muestra el número actual grande + gráfico chico (sparkline).
+- R7. Clicking the icon opens a native-looking popover (system materials and typography, minimal charts).
+- R8. **Problems first:** yellow/red metrics are listed at the top, in their own section.
+- R9. **No scrolling:** everything fits in one fixed-size view.
+- R10. Default window: last 30 seconds. Range selector: 30 s · 5 min · 1 h. **[ASSUMPTION]**
+- R11. Each metric shows its current value prominently plus a small sparkline.
 
-### 3.4 Métricas v1
+### 3.4 Metrics (v1)
 
-| # | Métrica | Qué se muestra |
+| # | Metric | What is shown |
 |---|---|---|
-| M1 | **Ping** (principal) | Latencia en ms, pérdida de paquetes %, jitter. Varios destinos. **[PENDIENTE: destinos]** |
-| M2 | CPU | % total usado |
-| M3 | Memoria | GB usados / total + **presión de memoria** del sistema (la que usa macOS; el % usado engaña porque macOS usa toda la RAM como caché) |
-| M4 | Disco | Espacio libre (GB y %) + lectura/escritura MB/s **[SUPUESTO]** |
-| M5 | Batería | Consumo en **watts** (descarga en batería, o entrada del cargador si está enchufada). El % no se repite porque ya lo muestra macOS. **[PENDIENTE: confirmar]** |
-| M6 | Red | Bajada y subida en Mbps |
+| M1 | **Ping** (primary) | Latency (ms), packet loss (%), jitter, against several targets. **[OPEN: targets]** |
+| M2 | CPU | Total usage (%) |
+| M3 | Memory | Used / total, plus the system **memory pressure** (used % is misleading because macOS uses spare RAM as cache) |
+| M4 | Disk | Free space (GB) plus read/write throughput. **[ASSUMPTION]** |
+| M5 | Battery | Power in **watts** (battery discharge, or charger input when plugged in). Charge % is not repeated since macOS already shows it. **[OPEN: confirm]** |
+| M6 | Network | Download and upload throughput (Mbps) |
+| M7 | Thermal state | Shown only when macOS is throttling. Essentially free to read. **[ASSUMPTION]** |
 
-### 3.5 Métricas extra recomendadas **[PENDIENTE: elegir]**
-- E1. Estado térmico (si macOS está bajando el rendimiento por temperatura). Casi gratis de medir.
-- E2. Top 3 procesos por CPU (solo calculado con el popover abierto, para no gastar).
-- E3. Ventiladores RPM (solo en Macs con ventilador; requiere leer SMC).
-- E4. Destino de ping/IP pública/nombre de la red Wi‑Fi y calidad de señal.
+### 3.5 Candidate extras **[OPEN]**
+- E1. Top 3 processes by CPU (computed only while the popover is open).
+- E2. Fan speed (Macs with fans only; requires reading the SMC).
+- E3. Wi‑Fi network name and signal quality.
 
-## 4. Umbrales por defecto del semáforo **[SUPUESTO, ajustables]**
+## 4. Default traffic-light thresholds **[ASSUMPTION, configurable]**
 
-| Métrica | Amarillo | Rojo |
+| Metric | Yellow | Red |
 |---|---|---|
-| Ping (destino principal) | > 80 ms o pérdida > 2 % (10 s) | > 200 ms, pérdida > 10 %, o sin respuesta |
-| CPU | > 80 % sostenido 30 s | > 95 % sostenido 60 s |
-| Memoria | presión "warning" | presión "critical" |
-| Disco | < 15 % libre | < 5 % libre |
-| Batería | consumo > 25 W en batería | — |
-| Térmico (si se incluye) | "serious" | "critical" |
+| Ping (primary target, last 10 samples) | avg > 80 ms or loss > 2 % | avg > 200 ms, loss > 10 %, or no replies |
+| CPU | > 80 % sustained 30 s | > 95 % sustained 60 s |
+| Memory | pressure "warning" | pressure "critical" |
+| Disk | < 15 % free | < 5 % free |
+| Battery | draw > 25 W on battery, sustained 30 s | — |
+| Thermal | "serious" | "critical" |
 
-## 5. Fuera de alcance v1
-- Notificaciones push, alertas sonoras.
-- Exportar datos, historial más largo que 1 h, persistir historial entre reinicios.
-- App Store (el sandbox complica ping ICMP y lectura de batería).
-- Ajustes complejos: v1 trae una pantalla mínima (destinos de ping, login item, umbrales).
+## 5. Out of scope for v1
+- Notifications and sounds.
+- Data export, history longer than 1 hour, persisting history across restarts.
+- Mac App Store distribution (the sandbox complicates unprivileged ICMP and battery reads).
+- Complex settings. v1 ships a minimal settings surface (ping targets, launch at login, thresholds).
 
-## 6. Preguntas abiertas
-Ver la tarjeta de decisión en el hilo del proyecto. Se registran acá las respuestas:
+## 6. Open questions
 
-- Q1. Destinos de ping: —
-- Q2. Batería: watts vs tiempo restante: —
-- Q3. Variante del ícono: —
-- Q4. Métricas extra: —
-- Q5. Distribución (¿tenés cuenta de Apple Developer paga para firmar/notarizar?): —
-- Q6. Mac y macOS (chip, versión): —
+| # | Question | Default until decided |
+|---|---|---|
+| Q1 | Which ping targets, and which one is primary? | Router, Cloudflare (primary), Google, AWS São Paulo, AWS N. Virginia |
+| Q2 | Battery: power draw (W) or time remaining? | Power draw (W) |
+| Q3 | Icon: always show the dot, or only when not green? Show ping ms next to the icon? | Always show the dot; no text |
+| Q4 | Which extras (§3.5)? | None beyond thermal state |
+| Q5 | Distribution: Apple Developer ID signing and notarization? | Ad-hoc signed builds |
+| Q6 | Reference hardware (chip, macOS version) for measuring the budget | — |

@@ -22,7 +22,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.delegate = self
 
         guard let button = statusItem.button else { return }
-        let glyph = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "Monitor de recursos")
+        let glyph = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "Resource monitor")
         glyph?.isTemplate = true // follows light/dark menu bar automatically
         button.image = glyph
         button.target = self

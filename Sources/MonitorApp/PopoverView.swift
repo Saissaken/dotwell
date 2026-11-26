@@ -44,13 +44,13 @@ struct PopoverView: View {
             header(problemCount: problemRows.count)
 
             if !problemRows.isEmpty {
-                SectionLabel(text: "Requiere atención")
+                SectionLabel(text: "Needs attention")
                 VStack(spacing: 6) {
                     ForEach(problemRows, id: \.self) { row($0) }
                 }
                 .padding(8)
                 .background(RoundedRectangle(cornerRadius: 8).fill(Color.red.opacity(0.06)))
-                SectionLabel(text: "Resto")
+                SectionLabel(text: "Everything else")
             }
 
             VStack(spacing: 6) {
@@ -69,7 +69,7 @@ struct PopoverView: View {
     private func header(problemCount: Int) -> some View {
         HStack(alignment: .center) {
             Circle().fill(color(for: snap.overall)).frame(width: 8, height: 8)
-            Text(problemCount == 0 ? "Todo en orden" : problemCount == 1 ? "1 problema" : "\(problemCount) problemas")
+            Text(problemCount == 0 ? "All good" : problemCount == 1 ? "1 issue" : "\(problemCount) issues")
                 .font(.headline)
             Spacer()
             Picker("", selection: $model.range) {
@@ -84,14 +84,14 @@ struct PopoverView: View {
 
     private var footer: some View {
         HStack {
-            Toggle("Abrir al iniciar sesión", isOn: $launchAtLogin)
+            Toggle("Open at login", isOn: $launchAtLogin)
                 .toggleStyle(.checkbox)
                 .controlSize(.small)
                 .onChange(of: launchAtLogin) { enabled in
                     if !LoginItem.setEnabled(enabled) { launchAtLogin = LoginItem.isEnabled }
                 }
             Spacer()
-            Button("Salir") { NSApplication.shared.terminate(nil) }
+            Button("Quit") { NSApplication.shared.terminate(nil) }
                 .keyboardShortcut("q")
                 .controlSize(.small)
         }
@@ -109,19 +109,19 @@ struct PopoverView: View {
             MetricRow(title: "CPU", value: Format.percent(snap.cpu), detail: nil, level: level,
                       values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
-            MetricRow(title: "Memoria",
+            MetricRow(title: "Memory",
                       value: snap.memory.map { Format.bytes($0.usedBytes) } ?? "—",
-                      detail: snap.memory.map { "de \(Format.bytes($0.totalBytes)) · presión \(pressureText($0.pressure))" },
+                      detail: snap.memory.map { "of \(Format.bytes($0.totalBytes)) · pressure \(pressureText($0.pressure))" },
                       level: level, values: history(SeriesKey.memory), maxValue: 1)
         case .disk:
-            MetricRow(title: "Disco",
-                      value: snap.disk.map { "\(Format.diskBytes($0.availableBytes)) libres" } ?? "—",
+            MetricRow(title: "Disk",
+                      value: snap.disk.map { "\(Format.diskBytes($0.availableBytes)) free" } ?? "—",
                       detail: "↓ \(Format.bytesPerSec(snap.diskReadBytesPerSec))  ↑ \(Format.bytesPerSec(snap.diskWriteBytesPerSec))",
                       level: level, values: history(SeriesKey.diskWrite), maxValue: nil)
         case .power:
-            MetricRow(title: snap.power?.source == .adapter ? "Cargador" : "Batería",
+            MetricRow(title: snap.power?.source == .adapter ? "Power adapter" : "Battery",
                       value: Format.watts(snap.power?.watts),
-                      detail: snap.power?.source == .adapter ? (snap.power?.isCharging == true ? "cargando" : "enchufada") : "consumo",
+                      detail: snap.power?.source == .adapter ? (snap.power?.isCharging == true ? "charging" : "plugged in") : "draw",
                       level: level, values: history(SeriesKey.power), maxValue: nil)
         case .network:
             MetricRow(title: "Red",
@@ -130,8 +130,8 @@ struct PopoverView: View {
                       level: level, values: history(SeriesKey.netDown), maxValue: nil,
                       secondary: history(SeriesKey.netUp))
         case .thermal:
-            MetricRow(title: "Temperatura", value: thermalText(snap.thermal),
-                      detail: "macOS está limitando el rendimiento", level: level, values: [], maxValue: nil)
+            MetricRow(title: "Thermal", value: thermalText(snap.thermal),
+                      detail: "macOS is throttling performance", level: level, values: [], maxValue: nil)
         }
     }
 
@@ -140,8 +140,8 @@ struct PopoverView: View {
         let primary = snap.primaryPing
         VStack(alignment: .leading, spacing: 6) {
             MetricRow(title: "Ping · \(primary?.target.name ?? "—")",
-                      value: primary?.stats.lastLost == true ? "sin respuesta" : Format.ms(primary?.stats.latestMs),
-                      detail: primary.map { "pérdida \(Format.percent($0.stats.lossFraction)) · jitter \(Format.ms($0.stats.jitterMs))" },
+                      value: primary?.stats.lastLost == true ? "no reply" : Format.ms(primary?.stats.latestMs),
+                      detail: primary.map { "loss \(Format.percent($0.stats.lossFraction)) · jitter \(Format.ms($0.stats.jitterMs))" },
                       level: level,
                       values: primary.map { history(SeriesKey.ping($0.index)) } ?? [], maxValue: nil)
             let others = snap.ping.filter { !$0.isPrimary }
@@ -166,17 +166,17 @@ struct PopoverView: View {
     private func pressureText(_ p: MemoryPressure) -> String {
         switch p {
         case .normal: return "normal"
-        case .warning: return "alta"
-        case .critical: return "crítica"
+        case .warning: return "high"
+        case .critical: return "critical"
         }
     }
 
     private func thermalText(_ t: ProcessInfo.ThermalState) -> String {
         switch t {
         case .nominal: return "normal"
-        case .fair: return "templada"
-        case .serious: return "alta"
-        case .critical: return "crítica"
+        case .fair: return "fair"
+        case .serious: return "high"
+        case .critical: return "critical"
         @unknown default: return "—"
         }
     }

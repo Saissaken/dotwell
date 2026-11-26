@@ -1,128 +1,120 @@
-# Diseño técnico — Mac Resource Monitor
+# Technical design
 
-Estado: **borrador v0.1** (2026-11-26). Acompaña a [REQUIREMENTS.md](REQUIREMENTS.md).
+Status: **draft v0.1** (2026-11-26). Companion to [REQUIREMENTS.md](REQUIREMENTS.md).
 
-> **Decisión confirmada (2026-11-26, Cabezon):** Swift nativo, solo macOS. Los detalles finos de abajo (AppKit + SwiftUI, gráficos propios, Swift Package, macOS 13+) siguen siendo propuesta y se pueden revisar.
+> **Decided (2026-11-26):** native Swift, macOS only. The finer choices below (AppKit + SwiftUI, custom charts,
+> Swift Package layout, macOS 13+) are proposals open to review.
 
-## 1. Stack recomendado
+## 1. Stack
 
-**Swift 5.10+ nativo, AppKit para la barra de menú + SwiftUI para el contenido del popover.** Sin Electron, sin Python, sin dependencias externas.
+**Swift 5.9+, AppKit for the menu bar item, SwiftUI for the popover content.** No third-party dependencies.
 
-| Opción | RAM típica | Por qué sí / no |
+| Option | Typical RAM | Notes |
 |---|---|---|
-| **Swift + AppKit/SwiftUI** ✅ | 15–25 MB | Llamadas directas al kernel (Mach, IOKit, sysctl), sin runtime extra, look nativo gratis. |
-| SwiftUI `MenuBarExtra` puro | 20–30 MB | Más simple pero menos control sobre el ícono dinámico y el ciclo de vida del popover. |
-| Tauri / Rust | 40–80 MB | WebView = más memoria y look no nativo. |
-| Electron | 150+ MB | Descartado. |
+| **Swift + AppKit/SwiftUI** ✅ | 15–25 MB | Direct kernel APIs (Mach, IOKit, sysctl), no extra runtime, native look for free. |
+| Pure SwiftUI `MenuBarExtra` | 20–30 MB | Simpler, but less control over the dynamic icon and popover lifecycle. |
+| Tauri / Rust | 40–80 MB | WebView means more memory and a non-native look. |
+| Electron | 150+ MB | Rejected. |
 
-Detalles:
-- `NSStatusItem` con un ícono dibujado a mano (template image + puntito de color). Se redibuja **solo cuando cambia el estado**, no en cada muestra.
-- `NSPopover` con un `NSHostingView` de SwiftUI. La vista **se crea al abrir y se destruye al cerrar**, así con el popover cerrado no hay árbol de vistas en memoria.
-- Gráficos: `Canvas`/`Path` de SwiftUI propios (sparklines). Swift Charts es más pesado y no hace falta para líneas simples.
-- Login item: `SMAppService.mainApp.register()` (macOS 13+).
-- Target mínimo: **macOS 13 Ventura** **[SUPUESTO]**. Universal (Apple Silicon + Intel).
-- `LSUIElement = YES` (sin ícono en el Dock).
+Details:
+- `NSStatusItem` with a template glyph plus a small colored dot. The dot is redrawn **only when the level changes**.
+- `NSPopover` hosting SwiftUI. The view tree is **created on open and released on close**, so nothing UI-related
+  is retained while the popover is hidden.
+- Charts: custom SwiftUI `Canvas` sparklines. Swift Charts is heavier than needed for simple lines.
+- Launch at login: `SMAppService.mainApp` (macOS 13+).
+- Minimum target: **macOS 13 Ventura**. Universal binary (Apple Silicon + Intel).
+- `LSUIElement = YES` (no Dock icon).
 
-## 2. Arquitectura
+## 2. Architecture
 
 ```
-┌────────────── App (proceso único) ──────────────┐
-│ Sampler (1 DispatchSourceTimer, con leeway)     │
-│   ├─ CPUProbe      host_processor_info          │
-│   ├─ MemoryProbe   host_statistics64 + pressure │
-│   ├─ DiskProbe     statfs + IOKit block stats   │
-│   ├─ PowerProbe    IOKit AppleSmartBattery      │
-│   ├─ NetProbe      sysctl NET_RT_IFLIST2        │
-│   └─ PingProbe     socket ICMP no privilegiado  │
-│          │                                      │
-│          ▼                                      │
-│ MetricStore (ring buffers de Float32)           │
-│          │                                      │
-│   ┌──────┴────────┐                             │
-│   ▼               ▼                             │
-│ HealthEvaluator  PopoverView (solo si abierto)  │
-│   │ (umbrales + histéresis)                     │
-│   ▼                                             │
-│ StatusItemController (redibuja si cambia)       │
-└─────────────────────────────────────────────────┘
+┌──────────────────── App (single process) ────────────────────┐
+│ Sampler (one DispatchSourceTimer with leeway, utility queue)  │
+│   ├─ CPUProbe      host_statistics(HOST_CPU_LOAD_INFO)        │
+│   ├─ MemoryProbe   host_statistics64 + memorystatus sysctl    │
+│   ├─ DiskProbe     URL resource values + IOKit block stats    │
+│   ├─ PowerProbe    IOKit AppleSmartBattery                    │
+│   ├─ NetworkProbe  sysctl NET_RT_IFLIST2                      │
+│   └─ PingEngine    unprivileged ICMP socket / TCP handshake   │
+│          │                                                    │
+│          ▼                                                    │
+│ TieredSeries (fixed-size Float ring buffers)                  │
+│ Thresholds + LevelDebouncer (hysteresis)                      │
+│          │  Snapshot (value type, once per tick)              │
+│          ▼                                                    │
+│ StatusItemController ── PopoverModel/PopoverView (only open)  │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-Módulos (Swift Package):
-- `MonitorCore` — probes, store, evaluador de salud. Sin UI, testeable.
-- `MonitorApp` — status item, popover, ajustes.
+Modules (Swift Package):
+- `MonitorCore`: probes, history, health evaluation. No UI, unit tested.
+- `MonitorApp`: status item, popover, login item.
 
-## 3. Cómo se mide cada cosa (sin privilegios de root)
+## 3. How each metric is read (no root required)
 
-| Métrica | API | Costo |
+| Metric | API | Cost |
 |---|---|---|
-| CPU % | `host_processor_info` → delta de ticks user+system+nice / total | 1 syscall |
-| Memoria | `host_statistics64(HOST_VM_INFO64)`: app + wired + compressed. Presión: `sysctl kern.memorystatus_vm_pressure_level` | 2 syscalls |
-| Disco espacio | `URLResourceKey.volumeAvailableCapacityForImportantUsageKey` del volumen raíz, cada 30 s (cambia lento) | despreciable |
-| Disco I/O | IOKit `IOBlockStorageDriver` → `Statistics` bytes leídos/escritos, delta | 1 consulta IOKit |
-| Batería W | IOKit `AppleSmartBattery`: `Voltage × InstantAmperage`. Enchufada: `PowerTelemetryData.SystemPowerIn` | 1 consulta IOKit |
-| Red | `sysctl(NET_RT_IFLIST2)` con contadores de 64 bits (`getifaddrs` usa 32 bits y desborda a ~4 GB) | 1 syscall |
-| Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)` — macOS lo permite sin root. Para destinos que bloquean ICMP (ej. endpoints AWS) se usa **latencia de conexión TCP :443** | 1 paquete/destino |
-| Gateway | tabla de rutas vía `sysctl(NET_RT_FLAGS)` → ruta default | al cambiar de red |
+| CPU % | `host_statistics(HOST_CPU_LOAD_INFO)`: delta of user+system+nice over total ticks | 1 syscall |
+| Memory | `host_statistics64(HOST_VM_INFO64)`: app (internal − purgeable) + wired + compressed. Pressure: `kern.memorystatus_vm_pressure_level` | 2 syscalls |
+| Disk space | `volumeAvailableCapacityForImportantUsage` of the boot volume, every 30 s | negligible |
+| Disk I/O | IOKit `IOBlockStorageDriver` `Statistics`, delta | 1 IOKit query |
+| Battery W | IOKit `AppleSmartBattery`: `Voltage × InstantAmperage`. On AC: `PowerTelemetryData.SystemPowerIn` | 1 IOKit query |
+| Network | `sysctl(NET_RT_IFLIST2)` 64-bit counters (`getifaddrs` uses 32-bit counters that wrap at 4 GB). Loopback and point-to-point (VPN) interfaces are excluded to avoid double counting | 1 syscall |
+| Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
+| Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
 
-Nunca se lanzan procesos (`ping`, `top`, `ioreg`): crear procesos es lo más caro.
+The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by far the most expensive option.
 
-## 4. Cadencia de muestreo y ahorro
+## 4. Sampling cadence
 
-| Estado | CPU/Mem/Red/Disco I/O | Ping ICMP | Ping TCP | Batería | Disco espacio |
+| | CPU/Mem/Net/Disk I/O | ICMP ping | TCP ping | Battery | Disk space |
 |---|---|---|---|---|---|
-| Siempre (popover abierto o cerrado) | cada 1 s | cada 1 s, todos los destinos | cada 5 s | cada 2 s | cada 30 s |
-| Mac dormida / pantalla apagada | pausado | pausado | pausado | pausado | pausado |
+| Running (popover open or closed) | 1 s | 1 s, all targets | 5 s | 2 s | 30 s |
+| Mac or displays asleep | paused | paused | paused | paused | paused |
 
-Se muestrea a 1 s siempre para que el historial sea continuo: cada tick son ~6 syscalls (microsegundos). Con el popover cerrado no se arma historial para la UI ni se dibuja nada. Si las mediciones reales superan el presupuesto, se pasa a 2 s con el popover cerrado.
+Sampling at a fixed 1 s keeps history continuous; each tick is a handful of syscalls (microseconds).
+With the popover closed no history is copied for the UI and nothing is drawn. If real measurements exceed the
+budget, the closed-popover cadence drops to 2 s.
 
-- **Un solo timer** con `leeway` para que el sistema agrupe wakeups.
-- Todas las probes corren en una cola serial de baja prioridad (`.utility`).
-- Sin `Timer` de SwiftUI ni animaciones continuas.
-- Con el popover cerrado no se dibuja nada salvo un cambio de color del ícono.
+- **One timer** with `leeway` so the system can coalesce wakeups.
+- All probes run on one serial `.utility` queue; replies arrive through dispatch sources, never blocking threads.
+- DNS resolution runs off the sampling queue and is cached for 5 minutes.
 
-## 5. Historial
+## 5. History
 
-Ring buffers de `Float32` por métrica:
-- 30 s a 1 s/muestra (o 2 s con popover cerrado)
-- 5 min a 5 s/muestra (promedio)
-- 1 h a 30 s/muestra (promedio; para ping se guarda también el máximo)
+Each metric keeps a `TieredSeries`:
+- 30 s window: last 30 raw samples (buffer of 60).
+- 5 min window: 60 averages of 5 samples.
+- 1 h window: 120 averages of 30 samples.
 
-Total ≈ 10 series × ~250 puntos × 4 bytes ≈ **10 KB**. En memoria, no se persiste en v1.
+That is 240 `Float`s (~1 KB) per series. Lost pings are stored as a negative sentinel, excluded from averages,
+and drawn as red ticks. History is in memory only in v1.
 
-## 6. Salud y semáforo
+## 6. Health
 
-`HealthEvaluator` aplica los umbrales de REQUIREMENTS §4 con histéresis (subir de nivel requiere N muestras seguidas, bajar requiere M). El estado global es el peor de todos. El popover ordena: primero las métricas no‑verdes, luego el resto.
+`Thresholds` maps raw values to levels (REQUIREMENTS §4) and `LevelDebouncer` applies hysteresis: raising a level
+requires N consecutive samples, lowering requires M. Overall health is the worst level. The popover lists
+non-green metrics first.
 
-## 7. Ícono
+## 7. Icon
 
-Template image monocromo (se adapta a claro/oscuro y al resaltado de la barra) de ~16 pt, más un puntito de 5 pt abajo a la derecha:
-- Verde: punto verde sistema (`systemGreen`), discreto.
-- Amarillo: `systemYellow`.
-- Rojo: `systemRed`.
-Alternativa a confirmar: en verde no mostrar punto (estilo Apple puro: solo aparece color cuando hay algo para mirar), y opcionalmente mostrar el ping en ms al lado del ícono.
+A ~16 pt monochrome template glyph (adapts to light/dark and menu bar highlighting) with a 6 pt dot at the
+bottom-right corner using `systemGreen`, `systemYellow` or `systemRed`.
+Alternative under discussion (Q3): no dot while green, Apple-style, so color only appears when something needs
+attention; optionally the primary ping in ms next to the glyph.
 
-## 8. Build, CI y distribución
+## 8. Build, CI and distribution
 
-- Proyecto como **Swift Package** + script `scripts/bundle.sh` que arma el `.app` (Info.plist, firma ad‑hoc). No depende de un `.xcodeproj` y se puede compilar con `swift build`.
-- CI en GitHub Actions con runner `macos-15`: compila, corre tests de `MonitorCore` y publica el `.app` zipeado como artefacto de cada PR.
-  - Nota: el repo es privado, y los minutos de macOS en GitHub cuentan x10 sobre la cuota gratis (2.000 min/mes → ~200 min macOS). Cada build debería tardar 2–4 min.
-- Distribución: sin cuenta Apple Developer, la app va firmada ad‑hoc; la primera vez hay que abrirla con clic derecho → Abrir (o `xattr -dr com.apple.quarantine`). Con cuenta paga se puede notarizar en CI.
+- Swift Package plus `scripts/bundle.sh`, which assembles and ad-hoc signs the `.app`. No `.xcodeproj` needed;
+  `swift build` and `swift test` work from the command line. The package also opens directly in Xcode.
+- GitHub Actions on `macos-15`: format lint, tests, bundle, and the zipped `.app` as a build artifact.
+- Without a Developer ID, builds are ad-hoc signed and must be opened with right-click → Open the first time.
+  With one, CI can sign and notarize releases.
 
-## 9. Plan de entregas (PRs chicos)
+## 9. Delivery plan
 
-1. **Docs** (este PR).
-2. Esqueleto: Swift Package, app de barra de menú vacía, login item, script de bundle, CI.
-3. `MonitorCore`: CPU, memoria, red, disco, batería + tests.
-4. Ping (ICMP + TCP fallback, gateway) + tests.
-5. `HealthEvaluator` + ícono semáforo.
-6. Popover: problemas primero, sparklines, selector de intervalo.
-7. Ajustes mínimos (destinos de ping, umbrales, login item).
-8. Medición de consumo y optimización; release v1.0.
-
-Los PRs 2–4 no dependen de las preguntas abiertas y avanzan ya. El ping se construye con destinos configurables, así cambiar la lista es trivial.
-
-## 10. Cómo trabajo de forma autónoma
-
-- Cada PR es chico, con descripción de qué hace y cómo probarlo, y el `.app` compilado como artefacto de CI.
-- No puedo correr la app en una Mac desde la nube: la verificación es compilación + tests en CI. Las pruebas visuales y de consumo reales las hacés vos (o yo, si conectás tu Mac al hilo).
-- Lo que no está claro queda marcado **[PENDIENTE]** y no se construye; lo que es fácil de cambiar se decide con un **[SUPUESTO]** escrito.
+1. Docs, skeleton, probes, ping, sampler, popover (v0.1).
+2. Measure the resource budget on real hardware and tune.
+3. Settings: ping targets, primary target, thresholds.
+4. Decisions from REQUIREMENTS §6 as they land.
+5. v1.0 release with signed builds.
