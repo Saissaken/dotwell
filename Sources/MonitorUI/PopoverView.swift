@@ -37,7 +37,7 @@ public struct PopoverView: View {
         HStack(spacing: 8) {
             Image(systemName: problemCount == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.system(size: 15))
-                .foregroundStyle(problemCount == 0 ? Color.green : tint(for: snap.overall))
+                .foregroundStyle(problemCount == 0 ? Color.green : levelColor(snap.overall))
             Text(title(problemCount: problemCount))
                 .font(.headline)
             Spacer(minLength: 8)
@@ -209,7 +209,7 @@ enum Module: Hashable {
     }
 }
 
-func tint(for level: HealthLevel) -> Color {
+func levelColor(_ level: HealthLevel) -> Color {
     switch level {
     case .ok: return .accentColor
     case .warning: return .orange
@@ -242,7 +242,7 @@ struct ModuleBackground: ViewModifier {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(level == .ok ? Color.primary.opacity(0.06) : tint(for: level).opacity(0.14))
+                    .fill(level == .ok ? Color.primary.opacity(0.06) : levelColor(level).opacity(0.14))
             )
     }
 }
@@ -257,7 +257,7 @@ struct SymbolBadge: View {
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: 24, height: 24)
-            .background(Circle().fill(tint(for: level)))
+            .background(Circle().fill(levelColor(level)))
             .accessibilityHidden(true)
     }
 }
@@ -273,7 +273,7 @@ struct ValueText: View {
             Text(reading.value)
                 .font(.system(size: size, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(level == .ok ? Color.primary : tint(for: level))
+                .foregroundStyle(level == .ok ? Color.primary : levelColor(level))
             Text([reading.unit, suffix].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
                 .font(.system(size: size * 0.6, weight: .medium))
                 .foregroundStyle(.secondary)
@@ -309,7 +309,7 @@ struct MetricModule: View {
                     .minimumScaleFactor(0.85)
             }
             if !values.isEmpty {
-                Sparkline(values: values, maxValue: maxValue, color: tint(for: level))
+                Sparkline(values: values, maxValue: maxValue, color: levelColor(level))
                     .frame(height: 22)
             }
         }
@@ -349,7 +349,7 @@ struct PingModule: View {
                 .fixedSize()
                 Sparkline(
                     values: primary.map { snapshot.history[SeriesKey.ping($0.index)] ?? [] } ?? [],
-                    maxValue: nil, color: tint(for: level)
+                    maxValue: nil, color: levelColor(level)
                 )
                 .frame(height: 40)
             }
@@ -385,7 +385,7 @@ struct PingModule: View {
 
     private func targetColor(_ target: PingTargetState) -> Color {
         let level = Thresholds().ping(target.stats)
-        return level == .ok ? .green : tint(for: level)
+        return level == .ok ? .green : levelColor(level)
     }
 }
 
