@@ -13,6 +13,22 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(s.values(for: .minutes5).count, 12, "one point per 5 s")
     }
 
+    /// Charts lay out a full window from the first reading, so the capacity must be what a full series returns.
+    func testChartPointsMatchAFullSeries() {
+        var s = TieredSeries()
+        for i in 0..<(TieredSeries.longSlots * 130) { s.append(Float(i % 7)) }
+        for range in HistoryRange.allCases {
+            for step in [1, 2, 4, 10, 20, 60] {
+                XCTAssertEqual(
+                    s.values(for: range, stepSlots: step).count, TieredSeries.points(for: range, stepSlots: step),
+                    "\(range.label), \(step) slots per reading")
+            }
+        }
+        var short = TieredSeries()
+        for i in 0..<10 { short.append(Float(i)) }
+        XCTAssertLessThan(short.values(for: .seconds30).count, TieredSeries.points(for: .seconds30))
+    }
+
     func testIntervalChoices() {
         XCTAssertEqual(SamplingInterval.whileOpen.map(\.milliseconds), [500, 1000, 2000])
         XCTAssertEqual(SamplingInterval.whileClosed.map(\.milliseconds), [1000, 2000, 5000, 10000, 30000])
