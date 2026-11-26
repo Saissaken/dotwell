@@ -7,7 +7,7 @@ Thanks for your interest in Mac Resource Monitor! This guide explains how to pro
 1. **Resource usage comes first.** Any change that adds CPU work, memory, wakeups or binary size must justify
    it. If your change touches the sampling path, include before/after numbers from Activity Monitor
    (CPU %, Memory, Energy Impact) in the pull request.
-2. **No third-party dependencies** without prior discussion in an issue.
+2. **No new third-party dependencies** without prior discussion in an issue. Sparkle (updates) is the only one.
 3. **No subprocesses.** Read data from system APIs (Mach, IOKit, `sysctl`), never by launching `ping`, `top`, etc.
 4. **Everything in English**: code, comments, docs, commit messages and pull requests.
 
@@ -23,6 +23,13 @@ Thanks for your interest in Mac Resource Monitor! This guide explains how to pro
 - Keep `MonitorCore` free of UI code so it stays unit-testable.
 - Prefer value types and fixed-size buffers on the sampling path; avoid allocations per tick.
 - Public APIs in `MonitorCore` get a doc comment.
+
+## Screenshots
+
+`PreviewRenderTests` renders the popover with sample data when `PREVIEW_DIR` is set. CI uploads the images as the
+`Previews` artifact on every pull request. To refresh the README images in `docs/images`, run the **Screenshots**
+workflow on your branch from the Actions tab. If you change the popover UI, include the new previews in your
+pull request.
 
 ## Tests
 
@@ -70,7 +77,7 @@ perf(sampler): skip history copy while popover is closed
 ### Releases
 
 Releases follow [Semantic Versioning](https://semver.org/) and are tagged `vMAJOR.MINOR.PATCH` on `main`.
-The changelog's **Unreleased** section becomes the release notes.
+The changelog's **Unreleased** section becomes the release notes. See [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Reporting bugs and requesting features
 

@@ -17,9 +17,10 @@ enum MonitorMain {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusController: StatusItemController?
     private let sampler = Sampler()
+    private let updater = Updater()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusController = StatusItemController(sampler: sampler)
+        statusController = StatusItemController(sampler: sampler, updater: updater)
         LoginItem.registerOnFirstLaunch()
         observeSleep()
         sampler.start()

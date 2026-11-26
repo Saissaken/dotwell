@@ -52,6 +52,9 @@ public struct PopoverView: View {
                 Toggle(
                     "Open at Login",
                     isOn: Binding(get: { model.launchAtLogin }, set: { model.toggleLaunchAtLogin($0) }))
+                if let checkForUpdates = model.checkForUpdates {
+                    Button("Check for Updates…") { checkForUpdates() }
+                }
                 Divider()
                 Button("Quit Mac Resource Monitor") { model.quit?() }
                     .keyboardShortcut("q")

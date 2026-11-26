@@ -14,6 +14,8 @@ public final class PopoverModel: ObservableObject {
     /// Applies the launch-at-login setting and returns the resulting state.
     public var setLaunchAtLogin: ((Bool) -> Bool)?
     public var quit: (() -> Void)?
+    /// Set only when in-app updates are available.
+    public var checkForUpdates: (() -> Void)?
 
     public init(snapshot: Snapshot, launchAtLogin: Bool = false) {
         self.snapshot = snapshot

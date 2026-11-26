@@ -5,6 +5,7 @@ import SwiftUI
 
 /// Owns the menu bar item and the popover. The popover's SwiftUI tree is created
 /// on open and released on close, so nothing is retained while it is hidden.
+/// Right-click (or Control-click) opens a small menu with app commands instead.
 @MainActor
 final class StatusItemController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -12,11 +13,13 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private let dot = StatusDotView(frame: .zero)
     private var level: HealthLevel = .ok
     private let sampler: Sampler
+    private let updater: Updater
     private var latest = Snapshot()
     private var model: PopoverModel?
 
-    init(sampler: Sampler) {
+    init(sampler: Sampler, updater: Updater) {
         self.sampler = sampler
+        self.updater = updater
         super.init()
         popover.behavior = .transient
         popover.animates = true
@@ -28,6 +31,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         button.image = glyph
         button.target = self
         button.action = #selector(togglePopover(_:))
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
         dot.translatesAutoresizingMaskIntoConstraints = false
         button.addSubview(dot)
@@ -64,6 +68,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     @objc private func togglePopover(_ sender: NSStatusBarButton) {
+        if let event = NSApp.currentEvent, event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
+            showMenu(from: sender)
+            return
+        }
         if popover.isShown {
             popover.performClose(sender)
         } else {
@@ -73,6 +81,9 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
                 return LoginItem.isEnabled
             }
             model.quit = { NSApplication.shared.terminate(nil) }
+            if updater.isAvailable {
+                model.checkForUpdates = { [weak self] in self?.updater.checkForUpdates(nil) }
+            }
             model.onRangeChange = { [weak self] range in self?.sampler.setDetailed(true, range: range) }
             self.model = model
             sampler.setDetailed(true, range: model.range)
@@ -80,6 +91,26 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    /// Builds the menu on demand and releases it once it closes.
+    private func showMenu(from button: NSStatusBarButton) {
+        if popover.isShown { popover.performClose(button) }
+        let menu = NSMenu()
+        if updater.isAvailable {
+            let check = NSMenuItem(
+                title: "Check for Updates…", action: #selector(Updater.checkForUpdates(_:)), keyEquivalent: "")
+            check.target = updater
+            menu.addItem(check)
+            menu.addItem(.separator())
+        }
+        menu.addItem(
+            NSMenuItem(
+                title: "Quit Mac Resource Monitor", action: #selector(NSApplication.terminate(_:)),
+                keyEquivalent: "q"))
+        statusItem.menu = menu
+        button.performClick(nil)  // shows the menu and returns once it closes
+        statusItem.menu = nil  // left clicks go back to the popover
     }
 
     func popoverDidClose(_ notification: Notification) {

@@ -7,11 +7,23 @@
 A tiny, native macOS menu bar app that tells you at a glance whether your Mac is healthy.
 Built for one thing above all: **using as few resources as possible** while it runs all day.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/popover-healthy-dark.png">
+    <img src="docs/images/popover-healthy-light.png" alt="Popover with all metrics healthy" width="360">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/popover-issues-dark.png">
+    <img src="docs/images/popover-issues-light.png" alt="Popover with ping and CPU issues listed first" width="360">
+  </picture>
+</p>
+
 - **Traffic-light status dot** in the menu bar: green, yellow or red, with hysteresis so it never flickers.
 - **Ping first**: latency, packet loss and jitter against your router, public DNS and cloud regions.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
-- **No dependencies, no helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
+- **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
+- **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
 
 > Status: early development (v0.1). See the [requirements](docs/REQUIREMENTS.md) and
 > [technical design](docs/DESIGN.md).
@@ -27,10 +39,9 @@ Built for one thing above all: **using as few resources as possible** while it r
 
 ## Install
 
-Pre-built releases are not published yet. Every CI run attaches a universal, ad-hoc signed
-`MacResourceMonitor.zip` artifact.
-
-1. Download and unzip the artifact, then move `MacResourceMonitor.app` to `/Applications`.
+1. Download `MacResourceMonitor-X.Y.Z.dmg` from the
+   [latest release](https://github.com/Saissaken/mac-resource-monitor/releases/latest), open it and drag
+   **MacResourceMonitor** to **Applications**. The build is universal (Apple silicon and Intel).
 2. The build is not notarized yet, so Gatekeeper blocks the first launch. Allow it once, using either option:
    - **System Settings:** try to open the app and click **Done** on the warning. Then go to
      **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to
@@ -42,6 +53,12 @@ Pre-built releases are not published yet. Every CI run attaches a universal, ad-
      ```
 
 > On macOS 15 Sequoia and later, the old right-click → Open shortcut no longer bypasses Gatekeeper.
+
+### Updates
+
+The app checks for updates once a day, downloads them in the background and installs them the next time it
+quits. To check right away, right-click the menu bar icon and choose **Check for Updates…**. Updates are
+verified with an EdDSA signature before they are installed. See [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Build from source
 
@@ -63,8 +80,8 @@ You can also open `Package.swift` in Xcode.
 Sources/MonitorCore   Probes, ping engine, history and health evaluation (no UI, unit tested)
 Sources/MonitorApp    Menu bar item, popover and launch-at-login
 Tests/                Unit tests for MonitorCore
-scripts/bundle.sh     Assembles and signs the .app bundle
-docs/                 Requirements and design
+scripts/              Bundling, packaging and release helpers
+docs/                 Requirements, design and release process
 ```
 
 ## Contributing

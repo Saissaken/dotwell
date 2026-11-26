@@ -13,5 +13,10 @@ All notable changes to this project are documented here. The format is based on
 - Ping engine with unprivileged ICMP and TCP handshake timing, default gateway detection, loss and jitter.
 - Sampler with a single coalesced timer, tiered history (30 s / 5 min / 1 h) and health thresholds with
   hysteresis.
-- Popover with problems listed first, sparklines and a range selector.
+- Popover with problems listed first, sparklines and a range selector, styled like Control Center:
+  rounded modules, SF Symbols, a native segmented control and an overflow menu.
+- README screenshots rendered from the real SwiftUI view in CI (light and dark).
 - CI on macOS with tests, format lint and a universal app artifact.
+- Automatic updates with Sparkle 2: daily background checks, silent install on quit, and
+  **Check for Updates…** in the menu bar icon's right-click menu.
+- Release workflow: tagging `vX.Y.Z` publishes a GitHub Release with a `.dmg`, a `.zip` and a signed appcast.

@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Swift version
         run: swift --version
       - name: Lint
@@ -28,8 +28,6 @@ jobs:
         run: swift test
         env:
           PREVIEW_DIR: ${{ github.workspace }}/build/previews
-      - name: TEMP dump previews
-        run: for f in build/previews/*.png; do echo "BEGIN $f"; base64 -i "$f" | tr -d '\n'; echo; echo "END $f"; done
       - uses: actions/upload-artifact@v4
         with:
           name: Previews
@@ -39,8 +37,22 @@ jobs:
         run: ./scripts/bundle.sh
       - name: Zip
         run: cd build && ditto -c -k --keepParent MacResourceMonitor.app MacResourceMonitor.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: MacResourceMonitor
           path: build/MacResourceMonitor.zip
           retention-days: 14
+      - name: Release dry run
+        run: |
+          scripts/package.sh 0.0.0
+          # Sign with a throwaway key to exercise the same path as the Release workflow.
+          cat > "$RUNNER_TEMP/keygen.swift" <<'SWIFT'
+          import CryptoKit
+          let key = Curve25519.Signing.PrivateKey()
+          print(key.rawRepresentation.base64EncodedString(), key.publicKey.rawRepresentation.base64EncodedString())
+          SWIFT
+          read -r SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY < <(swift "$RUNNER_TEMP/keygen.swift")
+          export SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_KEY
+          printf -- '- Dry run.\n' > build/notes.md
+          scripts/appcast.sh 0.0.0 1 build/MacResourceMonitor-0.0.0.zip https://example.com/app.zip build/notes.md
+          cat build/appcast.xml
