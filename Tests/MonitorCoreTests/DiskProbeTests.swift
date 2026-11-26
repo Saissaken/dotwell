@@ -21,5 +21,4 @@ final class DiskProbeTests: XCTestCase {
         // Free space moves while tests run; allow 1 GB of drift between the two reads.
         XCTAssertLessThan(abs(Double(space.availableBytes) - Double(available)), 1e9)
     }
-
 }
