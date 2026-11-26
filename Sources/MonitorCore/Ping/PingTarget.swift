@@ -8,12 +8,17 @@ public struct PingTarget: Hashable, Sendable, Codable {
         /// Time from sending a small HTTPS GET to the first byte of the answer, on a kept-alive
         /// connection. For hosts behind an anycast edge, where the handshake would only reach the edge.
         case https(path: String)
+        /// Time to get the answer to a DNS query (UDP port 53) for a name the resolver almost surely has cached,
+        /// so it measures the resolver itself. A failed answer counts as lost.
+        case dns
     }
 
     /// Special host value meaning "the current default IPv4 gateway (your router)".
     public static let gatewayHost = "@gateway"
     /// Special host value meaning "the first router of your internet provider", past your own router.
     public static let ispHost = "@isp"
+    /// Special host value meaning "the DNS server macOS is set to use".
+    public static let dnsHost = "@dns"
 
     public var name: String
     public var host: String
@@ -25,17 +30,21 @@ public struct PingTarget: Hashable, Sendable, Codable {
 
     public var isGateway: Bool { host == Self.gatewayHost }
     public var isISP: Bool { host == Self.ispHost }
+    public var isDNS: Bool { host == Self.dnsHost }
+    /// Router, ISP and DNS: found on the Mac's current network rather than named by a host.
+    public var isDiscovered: Bool { isGateway || isISP || isDNS }
 
     public static let router = PingTarget(name: "Router", host: gatewayHost, method: .icmp)
     public static let isp = PingTarget(name: "ISP", host: ispHost, method: .icmp)
+    public static let dns = PingTarget(name: "DNS", host: dnsHost, method: .dns)
 
-    /// Default targets: your network (router, ISP), the internet (Cloudflare) and two cloud regions.
+    /// Default targets: your network (router, ISP, DNS server), the internet (Cloudflare) and two cloud regions.
     public static let defaults: [PingTarget] = [
-        router, isp, InternetHost.cloudflare.target,
+        router, isp, dns, InternetHost.cloudflare.target,
         CloudRegion.defaultFirst.target, CloudRegion.defaultSecond.target,
     ]
     /// Index of the target that drives the traffic light by default (Cloudflare).
-    public static let defaultPrimaryIndex = 2
+    public static let defaultPrimaryIndex = 3
 }
 
 /// Public anycast hosts that stand for "the internet": the nearest of their servers answers.
