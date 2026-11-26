@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-26
+
 ### Added
 - Network: the Mac's local IP address (with Wi‑Fi, Ethernet or VPN) and its public IPv4 and IPv6. Click an
   address to copy it. The public address is looked up from Cloudflare's 1.1.1.1 only when the popover opens
@@ -110,7 +112,9 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/Saissaken/dotwell/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Saissaken/dotwell/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Saissaken/dotwell/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Saissaken/dotwell/compare/v0.1.2...v0.2.0
