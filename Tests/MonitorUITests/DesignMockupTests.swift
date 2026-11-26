@@ -302,7 +302,10 @@ private struct PingPage: View {
             WidgetHeader(
                 symbol: "network", title: "Ping",
                 detail: "How long your router, your provider and the internet take to answer.")
-            Section2(title: "Hosts") {
+            Section2(
+                title: "Hosts",
+                footer: "Clouds ignore ping, so for regions Dotwell times how long a connection takes to open."
+            ) {
                 Row(
                     title: "Router and ISP",
                     detail: "Found on their own: your Wi-Fi or Ethernet router, then your provider's first router."
@@ -353,11 +356,11 @@ private struct RegionRow: View {
     var name: String
     var ms: String
     var body: some View {
-        Row(title: "Region \(index)", detail: "Clouds ignore ping, so Dotwell times a connection.") {
+        Row(title: "Region \(index)") {
             HStack(spacing: 8) {
                 Text(name).fixedSize()
                 Text(ms).monospacedDigit().foregroundStyle(.secondary)
-                Button("Choose…") {}
+                Button("Choose…") {}.fixedSize()
             }
         }
     }
