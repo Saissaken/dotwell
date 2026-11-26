@@ -1,6 +1,6 @@
 # Releasing
 
-Releases are cut from `main` by pushing a `vMAJOR.MINOR.PATCH` tag. The
+Releases are cut from `main` by pushing a `vMAJOR.MINOR.PATCH` tag or by running the workflow manually. The
 [Release workflow](../.github/workflows/release.yml) then builds, packages, signs the update and publishes a
 GitHub Release. Installed copies pick it up through [Sparkle](https://sparkle-project.org).
 
@@ -14,6 +14,8 @@ GitHub Release. Installed copies pick it up through [Sparkle](https://sparkle-pr
    git tag -a vX.Y.Z -m "vX.Y.Z"
    git push origin vX.Y.Z
    ```
+   Alternatively, run the **Release** workflow from the Actions tab (*Run workflow* on `main`, enter `X.Y.Z`);
+   it creates the `vX.Y.Z` tag on the commit it built.
 3. The workflow:
    - checks that the tag is on `main` and that `CHANGELOG.md` has a section for the version;
    - runs the tests and builds the universal app with `CFBundleShortVersionString = X.Y.Z` and
