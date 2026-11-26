@@ -8,6 +8,8 @@
     <string>Dotwell</string>
     <key>CFBundleIdentifier</key>
     <string>com.saissaken.Dotwell</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleExecutable</key>
     <string>Dotwell</string>
     <key>CFBundlePackageType</key>

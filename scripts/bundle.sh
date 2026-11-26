@@ -23,6 +23,16 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 [[ -n "${VERSION:-}" ]] && plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 [[ -n "${BUILD:-}" ]] && plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
 
+# App icon: render every size macOS uses from the 1024 px master (scripts/make-icon.py).
+ICONSET="build/AppIcon.iconset"
+rm -rf "$ICONSET" && mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" Resources/AppIcon.png --out "$ICONSET/icon_${size}x${size}.png" > /dev/null
+    sips -z $((size * 2)) $((size * 2)) Resources/AppIcon.png --out "$ICONSET/icon_${size}x${size}@2x.png" > /dev/null
+done
+iconutil -c icns "$ICONSET" -o build/AppIcon.icns
+cp build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+
 # Embed Sparkle (ditto keeps the framework's symlinks intact).
 SPARKLE_XCFRAMEWORK="$(find .build/artifacts -type d -name Sparkle.xcframework -print -quit)"
 [[ -n "$SPARKLE_XCFRAMEWORK" ]] || { echo "Sparkle.xcframework not found in .build/artifacts" >&2; exit 1; }
