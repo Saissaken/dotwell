@@ -1,5 +1,6 @@
 import AppKit
 import MonitorCore
+import MonitorUI
 
 @main
 enum MonitorMain {
@@ -16,16 +17,35 @@ enum MonitorMain {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusController: StatusItemController?
-    private let sampler = Sampler()
+    private let settings = AppSettings()
+    private lazy var sampler = Sampler(configuration: settings.configuration)
     private let updater = Updater()
+    private lazy var settingsWindow = SettingsWindowController { [settings, updater] in
+        let model = SettingsModel(
+            settings: settings, launchAtLogin: LoginItem.isEnabled, updates: updater.makeSettings())
+        model.setLaunchAtLogin = { enabled in
+            LoginItem.setEnabled(enabled)
+            return LoginItem.isEnabled
+        }
+        return model
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if AppMover.moveIfNeeded() { return }  // relaunching from the Applications folder
         AppMover.offerInstallerCleanup()
-        statusController = StatusItemController(sampler: sampler, updater: updater)
+        NSApp.mainMenu = MainMenu.make(openSettings: #selector(openSettings(_:)), target: self)
+        let sampler = self.sampler
+        settings.onConfigurationChange = { sampler.apply($0) }
+        statusController = StatusItemController(sampler: sampler, settings: settings, updater: updater) {
+            [weak self] in self?.openSettings(nil)
+        }
         LoginItem.registerOnFirstLaunch()
         observeSleep()
         sampler.start()
+    }
+
+    @objc func openSettings(_ sender: Any?) {
+        settingsWindow.show()
     }
 
     /// Pause all sampling while the Mac or its displays sleep.

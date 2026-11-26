@@ -31,6 +31,8 @@ public struct Snapshot: Sendable {
     public var cpuTemperature: Float?
     public var ping: [PingTargetState] = []
     public var levels: [MetricKind: HealthLevel] = [:]
+    /// The thresholds the levels were computed with, so the UI can color secondary values the same way.
+    public var thresholds = Thresholds()
     /// Only filled while the popover is open (`detailed == true`).
     public var history: [String: [Float]] = [:]
     /// The app using the most of each resource, only sampled while the popover is open.
@@ -63,8 +65,8 @@ public final class Sampler: @unchecked Sendable {
     /// Called on the main queue after each tick.
     public var onSnapshot: ((Snapshot) -> Void)?
 
-    public var thresholds = Thresholds()
-    private let interval: TimeInterval = 1
+    private var configuration: SamplerConfiguration
+    private var step: Int { configuration.interval.seconds }
 
     private let cpuProbe = CPUProbe()
     private let memoryProbe = MemoryProbe()
@@ -86,23 +88,41 @@ public final class Sampler: @unchecked Sendable {
     private var primaryIndex: Int
     private var pendingPing: [Int: Float] = [:]
 
-    private var debouncers: [MetricKind: LevelDebouncer] = [
-        .ping: LevelDebouncer(raiseWarning: 3, raiseCritical: 3, lowerAfter: 5),
-        .cpu: LevelDebouncer(raiseWarning: 30, raiseCritical: 60, lowerAfter: 10),
-        .memory: LevelDebouncer(raiseWarning: 5, raiseCritical: 5, lowerAfter: 10),
-        .disk: LevelDebouncer(raiseWarning: 1, raiseCritical: 1, lowerAfter: 1),
-        .power: LevelDebouncer(raiseWarning: 30, raiseCritical: 30, lowerAfter: 10),
-        .thermal: LevelDebouncer(raiseWarning: 1, raiseCritical: 1, lowerAfter: 5),
+    private var debouncers: [MetricKind: LevelDebouncer] = [:]
+
+    /// How long, in seconds, a level must hold before the icon follows it: (warning, critical, back down).
+    private static let holdSeconds: [MetricKind: (Int, Int, Int)] = [
+        .ping: (3, 3, 5),
+        .cpu: (30, 60, 10),
+        .memory: (5, 5, 10),
+        .disk: (1, 1, 1),
+        .power: (30, 30, 10),
+        .thermal: (1, 1, 5),
     ]
 
     private var detailedFlag = false
     private var historyRange: HistoryRange = .seconds30
 
-    public init(targets: [PingTarget] = PingTarget.defaults, primaryIndex: Int = PingTarget.defaultPrimaryIndex) {
+    public init(configuration: SamplerConfiguration = SamplerConfiguration()) {
+        self.configuration = configuration
+        let targets = configuration.activeTargets
         ping = PingEngine(targets: targets, queue: queue)
         pingSeries = Array(repeating: TieredSeries(), count: targets.count)
-        self.primaryIndex = min(max(0, primaryIndex), max(0, targets.count - 1))
+        primaryIndex = configuration.activePrimaryIndex
+        current.thresholds = configuration.thresholds
+        debouncers = Self.makeDebouncers(step: configuration.interval.seconds)
         ping.onResult = { [weak self] index, ms in self?.pendingPing[index] = ms ?? PingStats.lost }
+    }
+
+    public convenience init(targets: [PingTarget], primaryIndex: Int = 0) {
+        self.init(configuration: SamplerConfiguration(targets: targets, primaryIndex: primaryIndex))
+    }
+
+    private static func makeDebouncers(step: Int) -> [MetricKind: LevelDebouncer] {
+        func ticks(_ seconds: Int) -> Int { (seconds + step - 1) / step }
+        return holdSeconds.mapValues { hold in
+            LevelDebouncer(raiseWarning: ticks(hold.0), raiseCritical: ticks(hold.1), lowerAfter: ticks(hold.2))
+        }
     }
 
     // MARK: - Control (call from any thread)
@@ -112,11 +132,17 @@ public final class Sampler: @unchecked Sendable {
             guard timer == nil else { return }
             _ = cpuProbe.sample()  // prime deltas
             let t = DispatchSource.makeTimerSource(queue: queue)
-            t.schedule(deadline: .now() + interval, repeating: interval, leeway: .milliseconds(250))
-            t.setEventHandler { [weak self] in self?.step() }
-            t.resume()
+            t.setEventHandler { [weak self] in self?.tickOnce() }
             timer = t
+            schedule()
+            t.resume()
         }
+    }
+
+    /// A quarter of the interval as leeway lets macOS coalesce wakeups with other work.
+    private func schedule() {
+        let interval = DispatchTimeInterval.seconds(step)
+        timer?.schedule(deadline: .now() + interval, repeating: interval, leeway: .milliseconds(step * 250))
     }
 
     public func stop() {
@@ -130,13 +156,52 @@ public final class Sampler: @unchecked Sendable {
         }
     }
 
+    /// Applies new settings from the next tick on. History is kept; ping history follows its target
+    /// when targets are reordered, and starts empty for new ones.
+    public func apply(_ newConfiguration: SamplerConfiguration) {
+        queue.async { [self] in
+            let old = configuration
+            guard newConfiguration != old else { return }
+            configuration = newConfiguration
+            if newConfiguration.interval != old.interval {
+                debouncers = Self.makeDebouncers(step: step)
+                schedule()
+            }
+            let targets = newConfiguration.activeTargets
+            if targets != old.activeTargets {
+                var previous: [PingTarget: TieredSeries] = [:]
+                for (target, series) in zip(old.activeTargets, pingSeries) where previous[target] == nil {
+                    previous[target] = series
+                }
+                ping.reset()
+                ping.targets = targets
+                pendingPing.removeAll()
+                pingSeries = targets.map { previous[$0] ?? TieredSeries() }
+            }
+            primaryIndex = newConfiguration.activePrimaryIndex
+            current.thresholds = newConfiguration.thresholds
+            if !newConfiguration.sampleTopApps {
+                processProbe.reset()
+                current.topApps = nil
+            } else if !old.sampleTopApps, detailedFlag {
+                current.topApps = processProbe.sample()
+            }
+            for kind in MetricKind.allCases where !newConfiguration.alerts.contains(kind) {
+                current.levels[kind] = nil
+                debouncers[kind]?.reset()
+            }
+            evaluate()
+            publish()
+        }
+    }
+
     /// While detailed, snapshots carry history for `range`.
     public func setDetailed(_ detailed: Bool, range: HistoryRange) {
         queue.async { [self] in
             let opening = detailed && !detailedFlag
             detailedFlag = detailed
             historyRange = range
-            if opening {
+            if opening, configuration.sampleTopApps {
                 current.topApps = processProbe.sample()  // memory right away, rates from the next sample
             } else if !detailed {
                 processProbe.reset()
@@ -148,7 +213,12 @@ public final class Sampler: @unchecked Sendable {
 
     // MARK: - Tick
 
-    private func step() {
+    /// True on the first tick and then once every `seconds` (or every tick, if the interval is longer).
+    private func every(_ seconds: Int) -> Bool {
+        (tick &- 1) % UInt64(max(1, seconds / step)) == 0
+    }
+
+    private func tickOnce() {
         tick &+= 1
         let now = DispatchTime.now().uptimeNanoseconds
 
@@ -157,7 +227,7 @@ public final class Sampler: @unchecked Sendable {
         for (i, value) in pendingPing { pingSeries[i].append(value) }
         pendingPing.removeAll(keepingCapacity: true)
         let due = ping.targets.indices.filter { i in
-            if case .tcp = ping.targets[i].method { return tick % 5 == 1 }
+            if case .tcp = ping.targets[i].method { return every(5) }
             return true
         }
         ping.probe(due)
@@ -193,16 +263,16 @@ public final class Sampler: @unchecked Sendable {
             lastDiskIO = (io, now)
         }
         // Slow-changing values.
-        if tick % 30 == 1 || current.disk == nil { current.disk = diskProbe.space() }
-        if powerProbe.hasBattery, tick % 2 == 1 || current.power == nil {
+        if every(30) || current.disk == nil { current.disk = diskProbe.space() }
+        if powerProbe.hasBattery, every(2) || current.power == nil {
             current.power = powerProbe.sample()
         }
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
-        if tick % 5 == 1 { current.cpuTemperature = temperatureProbe.sample() }
+        if every(5) { current.cpuTemperature = temperatureProbe.sample() }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
         // first rates one second after opening, then every 2 s like Activity Monitor's fast setting.
-        if detailedFlag, let elapsed = processProbe.elapsed(now: now),
+        if detailedFlag, configuration.sampleTopApps, let elapsed = processProbe.elapsed(now: now),
             elapsed >= (current.topApps?.hasRates == true ? 1_900_000_000 : 900_000_000)
         {
             current.topApps = processProbe.sample(now: now)
@@ -217,15 +287,18 @@ public final class Sampler: @unchecked Sendable {
     }
 
     private func evaluate() {
+        let thresholds = configuration.thresholds
         var raw: [MetricKind: HealthLevel] = [:]
         current.ping = ping.targets.indices.map { i in
             PingTargetState(
                 index: i, target: ping.targets[i],
-                stats: PingStats.compute(pingSeries[i].recent(10)),
+                stats: PingStats.compute(pingSeries[i].recent(pingWindow)),
                 isPrimary: i == primaryIndex)
         }
         if let primary = current.primaryPing, !pingSeries[primary.index].recent(1).isEmpty {
             raw[.ping] = thresholds.ping(primary.stats)
+        } else if current.ping.isEmpty {
+            current.levels[.ping] = nil
         }
         if let cpu = current.cpu { raw[.cpu] = thresholds.cpu(cpu) }
         if let mem = current.memory { raw[.memory] = thresholds.memory(mem.pressure) }
@@ -233,17 +306,22 @@ public final class Sampler: @unchecked Sendable {
         if let power = current.power { raw[.power] = thresholds.power(power) }
         raw[.thermal] = thresholds.thermal(current.thermal)
 
-        for (kind, level) in raw {
+        for (kind, level) in raw where configuration.alerts.contains(kind) {
             current.levels[kind] = debouncers[kind]?.feed(level) ?? level
         }
     }
+
+    /// Ping stats cover the last 10 s, but at least 5 samples so one lost reply isn't 100 % loss.
+    private var pingWindow: Int { max(5, 10 / step) }
 
     private func publish() {
         var snap = current
         if detailedFlag {
             var h: [String: [Float]] = [:]
-            for (k, s) in series { h[k] = s.values(for: historyRange) }
-            for i in pingSeries.indices { h[SeriesKey.ping(i)] = pingSeries[i].values(for: historyRange) }
+            for (k, s) in series { h[k] = s.values(for: historyRange, interval: step) }
+            for i in pingSeries.indices {
+                h[SeriesKey.ping(i)] = pingSeries[i].values(for: historyRange, interval: step)
+            }
             snap.history = h
         }
         guard let onSnapshot else { return }

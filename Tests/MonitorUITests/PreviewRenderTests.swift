@@ -27,11 +27,39 @@ final class PreviewRenderTests: XCTestCase {
                 try data.write(to: url.appendingPathComponent("popover-\(name)-\(mode).png"))
             }
         }
+        for (mode, appearance) in appearances {
+            for tab in SettingsTab.allCases {
+                let data = try renderSettings(tab: tab, appearance: appearance)
+                try data.write(to: url.appendingPathComponent("settings-\(tab.rawValue)-\(mode).png"))
+            }
+        }
+    }
+
+    /// Renders the real Settings window, title bar and toolbar included, on one tab.
+    private func renderSettings(tab: SettingsTab, appearance: NSAppearance.Name) throws -> Data {
+        let updates = UpdateSettings(
+            UpdateSettings.Backend(
+                automaticallyChecks: { true }, setAutomaticallyChecks: { _ in },
+                automaticallyDownloads: { true }, setAutomaticallyDownloads: { _ in },
+                lastCheck: { Date().addingTimeInterval(-2 * 3600) }, checkNow: {}))
+        let model = SettingsModel(settings: AppSettings(defaults: nil), launchAtLogin: true, updates: updates)
+        model.version = "0.4.0 (14)"
+        let tabs = SettingsTabViewController(model: model)
+        tabs.selectedTabViewItemIndex = SettingsTab.allCases.firstIndex(of: tab) ?? 0
+        let window = tabs.makeWindow()
+        window.appearance = NSAppearance(named: appearance)
+        window.setFrameOrigin(NSPoint(x: 100, y: 100))
+        window.orderFront(nil)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        defer { window.orderOut(nil) }
+        // The theme frame is the window's root view: it draws the title bar and toolbar too.
+        guard let frame = window.contentView?.superview else { throw XCTSkip("No window frame view") }
+        return try snapshot(of: frame)
     }
 
     private func render(snapshot: Snapshot, appearance: NSAppearance.Name) throws -> Data {
-        let model = PopoverModel(snapshot: snapshot, launchAtLogin: true)
-        let root = PopoverView(model: model)
+        let model = PopoverModel(snapshot: snapshot)
+        let root = PopoverView(model: model, settings: AppSettings(defaults: nil))
             .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .padding(24)
@@ -47,7 +75,11 @@ final class PreviewRenderTests: XCTestCase {
         window.contentView = host
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        return try snapshot(of: host)
+    }
 
+    private func snapshot(of view: NSView) throws -> Data {
+        let size = view.bounds.size
         let scale = 2
         guard
             let rep = NSBitmapImageRep(
@@ -56,7 +88,7 @@ final class PreviewRenderTests: XCTestCase {
                 bytesPerRow: 0, bitsPerPixel: 0)
         else { throw XCTSkip("Could not allocate bitmap") }
         rep.size = size
-        host.cacheDisplay(in: host.bounds, to: rep)
+        view.cacheDisplay(in: view.bounds, to: rep)
         guard let png = rep.representation(using: .png, properties: [:]) else {
             throw XCTSkip("Could not encode PNG")
         }
