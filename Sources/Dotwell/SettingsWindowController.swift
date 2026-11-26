@@ -18,7 +18,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     /// Shows the window, on `page` when given (otherwise on the page last used).
-    func show(page: SettingsPage? = nil) {
+    /// Brings Settings forward, on `page` if given, with the region chooser open for `chooseRegion`.
+    func show(page: SettingsPage? = nil, chooseRegion: Int? = nil) {
         if let page {
             UserDefaults.standard.set(page.id, forKey: Self.selectedPageKey)
             (window?.contentViewController as? SettingsSplitViewController)?.navigation.show(page)
@@ -28,6 +29,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        if let chooseRegion {
+            (window.contentViewController as? SettingsSplitViewController)?.navigation.choosingRegion = chooseRegion
+        }
     }
 
     private func makeWindow() -> NSWindow {

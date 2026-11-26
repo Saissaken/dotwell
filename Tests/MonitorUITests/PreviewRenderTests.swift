@@ -45,6 +45,13 @@ final class PreviewRenderTests: XCTestCase {
                 try data.write(to: url.appendingPathComponent("settings-\(name)-\(mode).png"))
             }
         }
+        // The region chooser, with readings as a Mac in Buenos Aires would see them.
+        for (mode, appearance) in appearances {
+            let latency = RegionLatencyModel(readings: SampleData.regionReadings)
+            let chooser = RegionChooser(index: 0, settings: AppSettings(defaults: nil), latency: latency)
+            let data = try render(chooser, appearance: appearance)
+            try data.write(to: url.appendingPathComponent("region-chooser-\(mode).png"))
+        }
         // The Ping module with the route's router list open.
         for (mode, appearance) in appearances {
             let issues = SampleData.issues
@@ -182,6 +189,21 @@ enum SampleData {
     static let addresses = NetworkAddresses(
         local: LocalAddress(interface: "en0", kind: .wifi, ipv4: "192.168.1.42"),
         publicAddresses: PublicAddresses(ipv4: "203.0.113.24", ipv6: "2001:db8:85a3::8a2e:370:7334"))
+
+    static let regionReadings: [String: RegionLatency.Reading] = {
+        let ms: [String: Float] = [
+            "sa-east-1": 34, "us-east-1": 142, "us-east-2": 151, "us-west-1": 188, "us-west-2": 196,
+            "ca-central-1": 163, "mx-central-1": 121, "eu-west-1": 232, "eu-west-2": 228, "eu-west-3": 236,
+            "eu-central-1": 241, "eu-south-2": 219, "eu-north-1": 262, "ap-south-1": 338,
+            "ap-southeast-1": 352, "ap-southeast-2": 311,
+        ]
+        var readings: [String: RegionLatency.Reading] = [:]
+        for region in CloudRegion.regions(of: .aws) {
+            readings[region.id] = ms[region.code].map { .milliseconds($0) } ?? .measuring
+        }
+        readings["aws:ap-northeast-2"] = .noAnswer
+        return readings
+    }()
 
     static var issues: Snapshot {
         var s = healthy

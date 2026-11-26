@@ -5,6 +5,7 @@ import SwiftUI
 struct WidgetPage: View {
     var module: Module
     @ObservedObject var settings: AppSettings
+    @ObservedObject var navigation: SettingsNavigation
 
     var body: some View {
         Form {
@@ -17,7 +18,7 @@ struct WidgetPage: View {
                 }
             }
             switch module {
-            case .ping: PingSettings(settings: settings)
+            case .ping: PingSettings(settings: settings, navigation: navigation)
             case .cpu: CPUSettings(settings: settings, topApp: topApp)
             case .gpu: GPUSettings(topApp: topApp)
             case .memory: MemorySettings(settings: settings, topApp: topApp)

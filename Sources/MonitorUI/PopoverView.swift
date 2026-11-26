@@ -149,7 +149,11 @@ public struct PopoverView: View {
     private var pingActions: PingActions {
         PingActions(
             traceRoute: { index in model.traceRoute?(index) },
-            changeHost: { _ in model.openPingSettings?() },
+            changeHost: { index in
+                let slots = settings.pingSlots
+                let slot = slots.indices.contains(index) ? slots[index].slot : nil
+                model.openPingSettings?(slot.flatMap(PingSlot.regionIndex))
+            },
             makePrimary: { index in
                 let slots = settings.pingSlots
                 guard slots.indices.contains(index) else { return }
