@@ -30,7 +30,7 @@ jobs:
         run: ./scripts/bundle.sh
       - name: Zip
         run: cd build && ditto -c -k --keepParent MacResourceMonitor.app MacResourceMonitor.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: MacResourceMonitor
           path: build/MacResourceMonitor.zip
