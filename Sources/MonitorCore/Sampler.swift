@@ -251,6 +251,7 @@ public final class Sampler: @unchecked Sendable {
                 startTrace()
             }
             current.thresholds = newConfiguration.thresholds
+            if !newConfiguration.readsTemperature { current.cpuTemperature = nil }
             if !newConfiguration.sampleTopApps {
                 processProbe.reset()
                 current.topApps = nil
@@ -279,8 +280,10 @@ public final class Sampler: @unchecked Sendable {
             if interval != wasInterval { schedule() }
             historyRange = range
             if opening {
-                current.cpuTemperature = temperatureProbe.sample()
-                current.fanRPM = temperatureProbe.fanRPM()
+                if configuration.readsTemperature {
+                    current.cpuTemperature = temperatureProbe.sample()
+                    current.fanRPM = temperatureProbe.fanRPM()
+                }
                 startGPU()
                 if configuration.sampleTopApps {
                     // Memory right away, rates from the next sample.
@@ -361,7 +364,7 @@ public final class Sampler: @unchecked Sendable {
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
         // Temperature and fans are only shown in the popover.
-        if detailedFlag, every(5) {
+        if detailedFlag, configuration.readsTemperature, every(5) {
             current.cpuTemperature = temperatureProbe.sample()
             current.fanRPM = temperatureProbe.fanRPM()
         }

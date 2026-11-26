@@ -9,9 +9,8 @@ enum MainMenu {
         let main = NSMenu()
 
         let app = NSMenu(title: "Dotwell")
-        app.addItem(
-            withTitle: "About Dotwell", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
-            keyEquivalent: "")
+        let about = app.addItem(withTitle: "About Dotwell", action: #selector(AboutPanel.show(_:)), keyEquivalent: "")
+        about.target = AboutPanel.shared
         app.addItem(.separator())
         let settings = app.addItem(withTitle: "Settings…", action: openSettings, keyEquivalent: ",")
         settings.target = target

@@ -16,9 +16,9 @@ public struct PopoverView: View {
 
     public var body: some View {
         let modules = Module.visible(in: snap, widgets: settings.widgets)
-        let problems = modules.filter { snap.level($0.kind) != .ok }
-            .sorted { snap.level($0.kind) > snap.level($1.kind) }
-        let healthy = modules.filter { snap.level($0.kind) == .ok }
+        let problems = modules.filter { $0.level(in: snap) != .ok }
+            .sorted { $0.level(in: snap) > $1.level(in: snap) }
+        let healthy = modules.filter { $0.level(in: snap) == .ok }
 
         VStack(alignment: .leading, spacing: 10) {
             header(problemCount: problems.count)
@@ -96,7 +96,7 @@ public struct PopoverView: View {
 
     @ViewBuilder
     private func module(_ module: Module) -> some View {
-        let level = snap.level(module.kind)
+        let level = module.level(in: snap)
         switch module {
         case .ping:
             PingModule(snapshot: snap, level: level)
@@ -140,11 +140,6 @@ public struct PopoverView: View {
                 snapshot: snap, unit: settings.networkUnit,
                 addresses: settings.showsIPAddresses ? model.addresses : nil,
                 down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
-        case .thermal:
-            MetricModule(
-                symbol: "thermometer.medium", title: "Thermal", level: level,
-                reading: Reading(value: thermalText, unit: ""), caption: thermalCaption,
-                values: [], maxValue: nil)
         }
     }
 
@@ -192,10 +187,14 @@ public struct PopoverView: View {
         return "\(state) · \(temperature)"
     }
 
+    /// Cores and temperature, or a warning while macOS slows the Mac down to cool it (its alert must be on).
     private var cpuCaption: String {
+        let sensors = settings.showsCPUTemperature
+        let first =
+            snap.level(.thermal) != .ok
+            ? "Slowed down to cool" : "\(ProcessInfo.processInfo.activeProcessorCount) cores"
         let parts = [
-            "\(ProcessInfo.processInfo.activeProcessorCount) cores", Format.temperature(snap.cpuTemperature),
-            Format.fanRPM(snap.fanRPM),
+            first, sensors ? Format.temperature(snap.cpuTemperature) : nil, sensors ? Format.fanRPM(snap.fanRPM) : nil,
         ]
         return parts.compactMap { $0 }.joined(separator: " · ")
     }
@@ -209,27 +208,13 @@ public struct PopoverView: View {
         if gpu.watts != nil { parts.append(Format.watts(gpu.watts).text) }
         return parts.joined(separator: " · ")
     }
-
-    private var thermalCaption: String {
-        guard let temperature = Format.temperature(snap.cpuTemperature) else { return "macOS is limiting performance" }
-        return "Slowed down to cool · \(temperature)"
-    }
-
-    private var thermalText: String {
-        switch snap.thermal {
-        case .serious: return "High"
-        case .critical: return "Critical"
-        case .fair: return "Fair"
-        default: return "Normal"
-        }
-    }
 }
 
 // MARK: - Layout model
 
 /// A card of the popover. The raw value is saved in settings, so cases must keep their names.
 public enum Module: String, CaseIterable, Codable, Sendable {
-    case ping, cpu, gpu, memory, power, disk, thermal, network
+    case ping, cpu, gpu, memory, power, disk, network
 
     var kind: MetricKind {
         switch self {
@@ -240,22 +225,25 @@ public enum Module: String, CaseIterable, Codable, Sendable {
         case .power: return .power
         case .disk: return .disk
         case .network: return .network
-        case .thermal: return .thermal
         }
+    }
+
+    /// The card's color. The CPU card also turns yellow or red while macOS slows the Mac down to cool it,
+    /// which used to be a Thermal card of its own.
+    func level(in snap: Snapshot) -> HealthLevel {
+        self == .cpu ? max(snap.level(.cpu), snap.level(.thermal)) : snap.level(kind)
     }
 
     /// Full-width modules take a row of their own.
     var isWide: Bool { self == .ping || self == .network }
 
     /// The cards to show, in the person's order. Power appears only on Macs with a battery, GPU only on
-    /// Macs whose GPU Dotwell can read (Apple silicon), and Thermal only while macOS is slowing the Mac
-    /// down to cool it.
+    /// Macs whose GPU Dotwell can read (Apple silicon).
     static func visible(in snap: Snapshot, widgets: [WidgetSetting]) -> [Module] {
         widgets.filter(\.isVisible).map(\.module).filter { module in
             switch module {
             case .power: return snap.power != nil
             case .gpu: return snap.gpu != nil
-            case .thermal: return snap.level(.thermal) != .ok || snap.thermal == .serious || snap.thermal == .critical
             default: return true
             }
         }

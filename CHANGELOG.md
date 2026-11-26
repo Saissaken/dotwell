@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- Settings is redesigned like System Settings: a sidebar with a search field and colored icons, and one page per
+  card with everything about it in one place: whether it shows, its options and its alert. The Alerts tab is
+  gone; each alert now lives on its card's page. Drag cards in the sidebar to reorder the popover. Back and
+  Forward buttons sit next to the page title, every setting explains itself in a line underneath and in a
+  tooltip, and nothing is cut off any more.
+- The Thermal card is now part of CPU. It only ever appeared while macOS slowed the Mac down to cool it, which
+  was easy to mistake for a missing card. When that happens, the CPU card says "Slowed down to cool" and turns
+  yellow or red; CPU → "Warn when macOS slows the Mac down" turns this off. Saved card orders keep working.
+- CPU: a "Show temperature and fan speed" switch. Off, Dotwell doesn't read the sensors at all.
+- The app CPU scale (whole Mac or one core) moved from General to the CPU page, and the GPU card has a page
+  of its own.
+- "Top app" is now "Show the busiest app", and "Status light follows" is now "Main host", with what each does.
+- Network speed units and the IP addresses switch moved from General to the Network page.
+- The website is linked from Settings → General, the About page and the About Dotwell panel.
+
 ## [0.8.0] - 2026-11-26
 
 ### Added
