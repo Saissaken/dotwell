@@ -81,11 +81,9 @@ enum LocalAddressReader {
         guard let match = all.first(where: { SCNetworkInterfaceGetBSDName($0) as String? == interface }),
             let type = SCNetworkInterfaceGetInterfaceType(match) as String?
         else { return .other }
-        switch type {
-        case kSCNetworkInterfaceTypeIEEE80211 as String: return .wifi
-        case kSCNetworkInterfaceTypeEthernet as String: return .ethernet
-        case kSCNetworkInterfaceTypeWWAN as String: return .cellular
-        default: return .other
-        }
+        if type == kSCNetworkInterfaceTypeIEEE80211 as String { return .wifi }
+        if type == kSCNetworkInterfaceTypeEthernet as String { return .ethernet }
+        if type == kSCNetworkInterfaceTypeWWAN as String { return .cellular }
+        return .other
     }
 }
