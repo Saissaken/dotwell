@@ -43,6 +43,9 @@ tests and builds `main` and publishes it to a single rolling prerelease tagged `
   `<sparkle:channel>nightly</sparkle:channel>`, followed by the items of the latest release's appcast;
 - the release notes list the commits since the last release.
 
+Publishing a release also starts the Nightly workflow, so the nightly feed picks up the new release right away
+(release commits only change `CHANGELOG.md`, which would not trigger it).
+
 Installed copies only read the nightly feed after the person turns on **Settings → Updates → Get nightly
 builds**: the updater delegate then returns the nightly feed URL and allows the `nightly` channel. Turning it off
 goes back to `SUFeedURL`; Sparkle never downgrades, so the nightly stays until a newer release is out.
