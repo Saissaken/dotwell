@@ -63,8 +63,12 @@ final class ConfigurationTests: XCTestCase {
     func testDNSQueryEncoding() {
         let q = DNSQuery.query(id: 0xBEEF, name: "www.apple.com")
         XCTAssertEqual(Array(q.prefix(4)), [0xBE, 0xEF, 0x01, 0x00])
-        var question: [UInt8] = [3] + Array("www".utf8) + [5] + Array("apple".utf8) + [3] + Array("com".utf8)
-        question += [0, 0, 1, 0, 1]
+        let question: [UInt8] = [
+            3, 0x77, 0x77, 0x77,  // www
+            5, 0x61, 0x70, 0x70, 0x6c, 0x65,  // apple
+            3, 0x63, 0x6f, 0x6d,  // com
+            0, 0, 1, 0, 1,  // root, type A, class IN
+        ]
         XCTAssertEqual(Array(q[12...]), question)
         let answer: [UInt8] = [0xBE, 0xEF, 0x81, 0x80] + [UInt8](repeating: 0, count: 8)
         let parsed = answer.withUnsafeBytes { DNSQuery.parseResponse($0) }
