@@ -1,7 +1,8 @@
 import AppKit
+import Combine
 import MonitorUI
 
-/// The Settings window: toolbar tabs like Safari's or Xcode's settings, one SwiftUI view per tab.
+/// The Settings window: a sidebar with one page per card of the popover, like System Settings.
 ///
 /// Like the popover, the window and its views exist only while it is open. While it is open the app
 /// shows in the Dock and the app switcher, so the window can be found again like any other.
@@ -9,7 +10,8 @@ import MonitorUI
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private let makeModel: () -> SettingsModel
-    private static let selectedTabKey = "settingsSelectedTab"
+    private static let selectedPageKey = "settingsSelectedPage"
+    private var observer: AnyCancellable?
 
     init(makeModel: @escaping () -> SettingsModel) {
         self.makeModel = makeModel
@@ -29,21 +31,23 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let tabs = SettingsTabViewController(model: makeModel())
-        let saved = UserDefaults.standard.integer(forKey: Self.selectedTabKey)
-        tabs.selectedTabViewItemIndex = SettingsTab.allCases.indices.contains(saved) ? saved : 0
-        tabs.onSelect = { index in UserDefaults.standard.set(index, forKey: Self.selectedTabKey) }
-        let window = tabs.makeWindow()
+        let saved = UserDefaults.standard.string(forKey: Self.selectedPageKey).flatMap(SettingsPage.init(id:))
+        let controller = SettingsSplitViewController(model: makeModel(), page: saved ?? .general)
+        observer = controller.navigation.$page.dropFirst().sink { page in
+            UserDefaults.standard.set(page.id, forKey: Self.selectedPageKey)
+        }
+        let window = controller.makeWindow()
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()
-        window.setFrameAutosaveName("Settings")
+        window.setFrameAutosaveName("SettingsWindow")
         return window
     }
 
     func windowWillClose(_ notification: Notification) {
         window?.contentViewController = nil
         window = nil
+        observer = nil
         NSApp.setActivationPolicy(.accessory)
     }
 }
