@@ -15,6 +15,10 @@ final class PreviewRenderTests: XCTestCase {
         }
         let url = URL(fileURLWithPath: dir, isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        // Tests run outside the app bundle, so use the real icon for the About page.
+        let icon = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../Resources/AppIcon.png").standardized
+        if let image = NSImage(contentsOf: icon) { NSApplication.shared.applicationIconImage = image }
         let locale = Format.temperatureFormatter.locale
         Format.temperatureFormatter.locale = Locale(identifier: "en_GB")  // °C in the README screenshots
         defer { Format.temperatureFormatter.locale = locale }

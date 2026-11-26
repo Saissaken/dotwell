@@ -318,6 +318,8 @@ struct Footer: View {
         Text(text)
             .font(.callout)
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

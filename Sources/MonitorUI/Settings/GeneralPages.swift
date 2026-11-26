@@ -44,9 +44,7 @@ struct GeneralPage: View {
             } header: {
                 Text("Update Readings")
             } footer: {
-                Text("Charts keep the same time scale and alerts the same timing, whatever you choose.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                Footer("Charts keep the same time scale and alerts the same timing, whatever you choose.")
             }
             Section {
                 LabeledContent {
