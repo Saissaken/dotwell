@@ -24,6 +24,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.configuration, SamplerConfiguration())
         XCTAssertEqual(settings.widgets.map(\.module), Module.allCases)
         XCTAssertEqual(settings.networkUnit, .bits)
+        XCTAssertEqual(settings.processCPUScale, .wholeMac)
     }
 
     func testChangesPersistAcrossLaunches() {
@@ -31,6 +32,7 @@ final class AppSettingsTests: XCTestCase {
         settings.openInterval = .halfSecond
         settings.closedInterval = .tenSeconds
         settings.networkUnit = .bytes
+        settings.processCPUScale = .perCore
         settings.thresholds.pingWarningMs = 50
         settings.alerts.remove(.cpu)
         settings.internetHost = .quad9
@@ -43,6 +45,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(reloaded.openInterval, .halfSecond)
         XCTAssertEqual(reloaded.closedInterval, .tenSeconds)
         XCTAssertEqual(reloaded.networkUnit, .bytes)
+        XCTAssertEqual(reloaded.processCPUScale, .perCore)
         XCTAssertEqual(reloaded.thresholds.pingWarningMs, 50)
         XCTAssertFalse(reloaded.alerts.contains(.cpu))
         XCTAssertEqual(reloaded.internetHost, .quad9)

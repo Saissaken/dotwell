@@ -6,6 +6,37 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- Settings is redesigned like System Settings: a sidebar with a search field and colored icons, and one page per
+  card with everything about it in one place: whether it shows, its options and its alert. The Alerts tab is
+  gone; each alert now lives on its card's page. Drag cards in the sidebar to reorder the popover. Back and
+  Forward buttons sit next to the page title, every setting explains itself in a line underneath and in a
+  tooltip, and nothing is cut off any more.
+- The Thermal card is now part of CPU. It only ever appeared while macOS slowed the Mac down to cool it, which
+  was easy to mistake for a missing card. When that happens, the CPU card says "Slowed down to cool" and turns
+  yellow or red; CPU → "Warn when macOS slows the Mac down" turns this off. Saved card orders keep working.
+- CPU: a "Show temperature and fan speed" switch. Off, Dotwell doesn't read the sensors at all.
+- The app CPU scale (whole Mac or one core) moved from General to the CPU page.
+- "Top app" is now "Show the busiest app", and "Status light follows" is now "Main host", with what each does.
+- Network speed units and the IP addresses switch moved from General to the Network page.
+- The website is linked from Settings → General, the About page and the About Dotwell panel.
+
+## [0.7.0] - 2026-11-26
+
+### Added
+- Top apps: right-click an app, in the line or the list, to copy its process ID or path, show it in Finder,
+  quit it, or force quit it (after asking).
+- CPU: fan speed next to the temperature ("2,140 rpm", or "fans off" while they're stopped). Hidden on Macs
+  without fans, such as the MacBook Air.
+- Power: the battery temperature, as the battery itself reports it. Heat is what wears a battery the most.
+
+### Changed
+- CPU: the app using the most CPU now shows its share of the whole Mac, on the same scale as the CPU total
+  above it (like btop). Before, it used Activity Monitor's scale, where 100% is one core, so an app could
+  read 46% while the whole Mac was at 21%. Settings → General can switch back to the per-core scale.
+
+## [0.6.0] - 2026-11-26
+
 ### Added
 - Ping: a DNS row for the server your Mac uses to look up names. Every 5 seconds it asks that server a real
   question (the address of www.apple.com, which any resolver has cached) and shows how long the answer takes;
@@ -33,18 +64,6 @@ All notable changes to this project are documented here. The format is based on
   btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
-- Settings is redesigned like System Settings: a sidebar with a search field and colored icons, and one page per
-  card with everything about it in one place: whether it shows, its options and its alert. The Alerts tab is
-  gone; each alert now lives on its card's page. Drag cards in the sidebar to reorder the popover. Back and
-  Forward buttons sit next to the page title, every setting explains itself in a line underneath and in a
-  tooltip, and nothing is cut off any more.
-- The Thermal card is now part of CPU. It only ever appeared while macOS slowed the Mac down to cool it, which
-  was easy to mistake for a missing card. When that happens, the CPU card says "Slowed down to cool" and turns
-  yellow or red; CPU → "Warn when macOS slows the Mac down" turns this off. Saved card orders keep working.
-- CPU: a "Show temperature" switch. Off, Dotwell doesn't read the temperature sensors at all.
-- "Top app" is now "Show the busiest app", and "Status light follows" is now "Main host", with what each does.
-- Network speed units and the IP addresses switch moved from General to the Network page.
-- The website is linked from Settings → General, the About page and the About Dotwell panel.
 - Readings have two intervals in Settings → General: one while the popover is open (0.5, 1 or 2 seconds,
   default 1) and one while it's closed (1, 2, 5, 10 or 30 seconds, default 5). Until now Dotwell measured every
   second all day, even with nothing on screen; the closed popover now wakes the Mac five times less often,
@@ -159,7 +178,9 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Saissaken/dotwell/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Saissaken/dotwell/compare/v0.3.0...v0.4.0

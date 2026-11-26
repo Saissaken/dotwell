@@ -138,10 +138,20 @@ private struct CPUSettings<TopApp: View>: View {
         let alerts = AlertBindings(settings: settings)
         Section("Card") {
             topApp
+            Picker(selection: $settings.processCPUScale) {
+                Text("Share of the whole Mac").tag(ProcessCPUScale.wholeMac)
+                Text("Share of one core").tag(ProcessCPUScale.perCore)
+            } label: {
+                SettingLabel("Show app CPU use as", detail: "One core matches Activity Monitor and can go over 100%.")
+            }
+            .help(
+                "Share of the whole Mac uses the same scale as the card's total, so apps add up to it. Share of one "
+                    + "core is how Activity Monitor counts: an app busy on 4 cores shows 400%.")
+            .disabled(!settings.showsTopApp(.cpu))
             SwitchRow(
-                title: "Show temperature",
+                title: "Show temperature and fan speed",
                 detail: "From the Mac's own sensors. Not every Mac has them.",
-                help: "Shows the average temperature of the CPU cores next to the core count. "
+                help: "Shows the average temperature of the CPU cores and the fan speed next to the core count. "
                     + "Off, Dotwell doesn't read the sensors at all.",
                 isOn: $settings.showsCPUTemperature)
         }

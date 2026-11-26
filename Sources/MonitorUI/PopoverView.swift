@@ -103,7 +103,10 @@ public struct PopoverView: View {
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
-                caption: cpuCaption, topApp: topApp(.cpu, \.byCPU, column: "CPU") { Format.processCPU($0.cpu) },
+                caption: cpuCaption,
+                topApp: topApp(.cpu, \.byCPU, column: "CPU") {
+                    Format.processCPU($0.cpu, scale: settings.processCPUScale)
+                },
                 values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
             MetricModule(
@@ -170,20 +173,25 @@ public struct PopoverView: View {
 
     private var powerCaption: String {
         guard let power = snap.power else { return "" }
+        let state: String
         switch power.source {
-        case .battery: return "Drawing from battery"
-        case .adapter: return power.isCharging ? "Charging" : "Plugged in"
+        case .battery: state = "Drawing from battery"
+        case .adapter: state = power.isCharging ? "Charging" : "Plugged in"
         }
+        guard let temperature = Format.temperature(power.batteryCelsius.map(Float.init)) else { return state }
+        return "\(state) · \(temperature)"
     }
 
     /// Cores and temperature, or a warning while macOS slows the Mac down to cool it (its alert must be on).
     private var cpuCaption: String {
-        let temperature = settings.showsCPUTemperature ? Format.temperature(snap.cpuTemperature) : nil
+        let sensors = settings.showsCPUTemperature
         let first =
             snap.level(.thermal) != .ok
             ? "Slowed down to cool" : "\(ProcessInfo.processInfo.activeProcessorCount) cores"
-        guard let temperature else { return first }
-        return "\(first) · \(temperature)"
+        let parts = [
+            first, sensors ? Format.temperature(snap.cpuTemperature) : nil, sensors ? Format.fanRPM(snap.fanRPM) : nil,
+        ]
+        return parts.compactMap { $0 }.joined(separator: " · ")
     }
 }
 
