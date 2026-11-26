@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-26
+
 ### Changed
 - Cards no longer move when something needs attention: the "Needs Attention" group is gone, and a card that
   has a problem just turns yellow or red where it is.
@@ -220,7 +222,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/Saissaken/dotwell/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Saissaken/dotwell/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Saissaken/dotwell/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
