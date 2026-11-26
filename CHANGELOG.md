@@ -15,3 +15,6 @@ All notable changes to this project are documented here. The format is based on
   hysteresis.
 - Popover with problems listed first, sparklines and a range selector.
 - CI on macOS with tests, format lint and a universal app artifact.
+- Automatic updates with Sparkle 2: daily background checks, silent install on quit, and
+  **Check for Updates…** in the menu bar icon's right-click menu.
+- Release workflow: tagging `vX.Y.Z` publishes a GitHub Release with a `.dmg`, a `.zip` and a signed appcast.
