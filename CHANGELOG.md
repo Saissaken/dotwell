@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-26
+
 ### Added
 - Ping: the ISP row now measures your internet provider's first router. Dotwell finds it with a short
   traceroute (about 60 tiny packets every 5 minutes, and again when you join another network), so you can
@@ -98,7 +100,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Saissaken/dotwell/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Saissaken/dotwell/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Saissaken/dotwell/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Saissaken/dotwell/compare/v0.1.1...v0.1.2
