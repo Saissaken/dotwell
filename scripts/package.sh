@@ -32,8 +32,8 @@ if [[ ! -x "$VENV/bin/dmgbuild" ]]; then
 fi
 # hdiutil occasionally fails with "Resource busy" on CI runners; retry a few times.
 for attempt in 1 2 3; do
-    if "$VENV/bin/dmgbuild" -s scripts/dmg-settings.py -D app="$APP" -D background="$WORK/background.tiff" \
-        "Dotwell" "$DMG"; then
+    if "$VENV/bin/dmgbuild" -s scripts/dmg-settings.py -D app="$APP" -D icon=build/AppIcon.icns \
+        -D background="$WORK/background.tiff" "Dotwell" "$DMG"; then
         break
     fi
     [[ $attempt == 3 ]] && exit 1

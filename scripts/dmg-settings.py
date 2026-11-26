@@ -12,6 +12,7 @@ symlinks = {"Applications": "/Applications"}
 hide_extension = [appname]
 
 background = defines["background"]  # noqa: F821
+icon = defines["icon"]  # noqa: F821 (volume icon)
 window_rect = ((200, 200), (600, 400))
 default_view = "icon-view"
 show_status_bar = False

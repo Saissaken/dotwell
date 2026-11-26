@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- App icon: a green status dot glowing in a dark well, also used for the disk image volume.
+
 ## [0.1.0] - 2026-11-26
 
 ### Added
