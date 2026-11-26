@@ -7,6 +7,17 @@
 A tiny, native macOS menu bar app that tells you at a glance whether your Mac is healthy.
 Built for one thing above all: **using as few resources as possible** while it runs all day.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/popover-healthy-dark.png">
+    <img src="docs/images/popover-healthy-light.png" alt="Popover with all metrics healthy" width="360">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/popover-issues-dark.png">
+    <img src="docs/images/popover-issues-light.png" alt="Popover with ping and CPU issues listed first" width="360">
+  </picture>
+</p>
+
 - **Traffic-light status dot** in the menu bar: green, yellow or red, with hysteresis so it never flickers.
 - **Ping first**: latency, packet loss and jitter against your router, public DNS and cloud regions.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.

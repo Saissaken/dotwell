@@ -26,6 +26,13 @@ jobs:
         run: make format && git --no-pager diff
       - name: Test
         run: swift test
+        env:
+          PREVIEW_DIR: ${{ github.workspace }}/build/previews
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Previews
+          path: build/previews
+          retention-days: 14
       - name: Bundle app
         run: ./scripts/bundle.sh
       - name: Zip

@@ -7,6 +7,12 @@ public struct PowerSample: Equatable, Sendable {
     /// On battery: power drawn from the battery. On adapter: power entering the system (if the Mac reports it).
     public var watts: Double?
     public var isCharging: Bool
+
+    public init(source: Source, watts: Double?, isCharging: Bool) {
+        self.source = source
+        self.watts = watts
+        self.isCharging = isCharging
+    }
 }
 
 /// Reads the AppleSmartBattery IORegistry entry. Returns nil on Macs without a battery.

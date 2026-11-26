@@ -24,6 +24,13 @@ Thanks for your interest in Mac Resource Monitor! This guide explains how to pro
 - Prefer value types and fixed-size buffers on the sampling path; avoid allocations per tick.
 - Public APIs in `MonitorCore` get a doc comment.
 
+## Screenshots
+
+`PreviewRenderTests` renders the popover with sample data when `PREVIEW_DIR` is set. CI uploads the images as the
+`Previews` artifact on every pull request. To refresh the README images in `docs/images`, run the **Screenshots**
+workflow on your branch from the Actions tab. If you change the popover UI, include the new previews in your
+pull request.
+
 ## Tests
 
 - New logic in `MonitorCore` needs unit tests. Keep math (deltas, thresholds, parsing) in pure functions so it

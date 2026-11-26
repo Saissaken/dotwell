@@ -14,6 +14,12 @@ public struct MemorySample: Equatable, Sendable {
     public var totalBytes: UInt64
     public var pressure: MemoryPressure
 
+    public init(usedBytes: UInt64, totalBytes: UInt64, pressure: MemoryPressure) {
+        self.usedBytes = usedBytes
+        self.totalBytes = totalBytes
+        self.pressure = pressure
+    }
+
     public var usedFraction: Float {
         totalBytes == 0 ? 0 : Float(Double(usedBytes) / Double(totalBytes))
     }

@@ -7,6 +7,13 @@ public struct PingTargetState: Sendable, Identifiable {
     public var target: PingTarget
     public var stats: PingStats
     public var isPrimary: Bool
+
+    public init(index: Int, target: PingTarget, stats: PingStats, isPrimary: Bool) {
+        self.index = index
+        self.target = target
+        self.stats = stats
+        self.isPrimary = isPrimary
+    }
 }
 
 /// Immutable picture of the system handed to the UI once per tick.
