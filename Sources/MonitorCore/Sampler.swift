@@ -42,6 +42,9 @@ public struct Snapshot: Sendable {
     public var topApps: TopApps?
     /// Route to the primary ping target, traced only while the popover is open.
     public var path: PathTrace?
+    /// How far the charts have scrolled toward their next point, so they can slide instead of jumping.
+    /// Only filled while the popover is open.
+    public var chartMotion: ChartMotion?
 
     public init() {}
 
@@ -49,6 +52,31 @@ public struct Snapshot: Sendable {
     public func level(_ kind: MetricKind) -> HealthLevel { levels[kind] ?? .ok }
 
     public var primaryPing: PingTargetState? { ping.first(where: \.isPrimary) }
+}
+
+/// Lets the popover's charts scroll smoothly: each new point slides in from the right over the time it takes
+/// to get the next one, instead of the whole line jumping one step when it arrives.
+public struct ChartMotion: Sendable, Equatable {
+    /// When the tick that produced the history ran.
+    public var takenAt: Date
+    /// Fraction (0..<1) of the time between two chart points that had already passed at `takenAt`. It is not
+    /// zero on the 5 min and 1 h ranges, where one point averages 5 or 30 samples.
+    public var phase: Double
+    /// Seconds between two chart points.
+    public var period: Double
+
+    public init(takenAt: Date, phase: Double, period: Double) {
+        self.takenAt = takenAt
+        self.phase = phase
+        self.period = period
+    }
+
+    /// How far the newest point has slid in at `date`, from 0 (just arrived, one step past the right edge)
+    /// to 1 (at rest at the right edge).
+    public func progress(at date: Date) -> Double {
+        guard period > 0 else { return 1 }
+        return min(1, max(0, phase + date.timeIntervalSince(takenAt) / period))
+    }
 }
 
 /// History keys used in `Snapshot.history`.
@@ -85,6 +113,7 @@ public final class Sampler: @unchecked Sendable {
 
     private var timer: DispatchSourceTimer?
     private var tick: UInt64 = 0
+    private var lastTickDate: Date?
     private var lastNet: (NetworkCounters, UInt64)?
     private var lastDiskIO: (DiskIOCounters, UInt64)?
     private var current = Snapshot()
@@ -244,6 +273,7 @@ public final class Sampler: @unchecked Sendable {
 
     private func tickOnce() {
         tick &+= 1
+        lastTickDate = Date()
         let now = DispatchTime.now().uptimeNanoseconds
 
         // Ping: record the replies to the last round. The next round goes out at the end of the tick.
@@ -361,6 +391,21 @@ public final class Sampler: @unchecked Sendable {
         queue.sync { current }
     }
 
+    /// Samples per chart point for the range on screen, as `TieredSeries` buckets them. Every series starts on
+    /// the first tick, so they all share the phase of `tick`.
+    private func chartMotion() -> ChartMotion? {
+        guard let lastTickDate else { return nil }
+        let samplesPerPoint: UInt64
+        switch historyRange {
+        case .seconds30: samplesPerPoint = 1
+        case .minutes5: samplesPerPoint = 5
+        case .hour1: samplesPerPoint = 30
+        }
+        return ChartMotion(
+            takenAt: lastTickDate, phase: Double(tick % samplesPerPoint) / Double(samplesPerPoint),
+            period: Double(samplesPerPoint) * Double(step))
+    }
+
     private func publish(always: Bool = false) {
         if !detailedFlag, !always, current.overall == publishedLevel { return }
         publishedLevel = current.overall
@@ -372,6 +417,7 @@ public final class Sampler: @unchecked Sendable {
                 h[SeriesKey.ping(i)] = pingSeries[i].values(for: historyRange, interval: step)
             }
             snap.history = h
+            snap.chartMotion = chartMotion()
         }
         guard let onSnapshot else { return }
         DispatchQueue.main.async { onSnapshot(snap) }
