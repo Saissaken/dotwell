@@ -1,7 +1,11 @@
 import Foundation
 import IOKit
 
-/// Reads the CPU temperature from the System Management Controller (SMC).
+/// Reads the CPU temperature.
+///
+/// On Apple silicon it comes from the CPU cluster sensors macOS names itself (see `HIDThermalSensors`).
+/// Intel Macs, and Apple silicon Macs where those sensors can't be read, use the System Management
+/// Controller (SMC) instead.
 ///
 /// The SMC is reached through the `AppleSMC` IOKit user client, which needs neither root nor entitlements
 /// (it is unavailable inside the App Sandbox). Sensor keys differ between chips, so instead of a per-model
@@ -19,6 +23,9 @@ public final class TemperatureProbe {
 
     private var connection: io_connect_t = 0
     private var sensors: [Sensor]?  // nil until discovered
+    #if arch(arm64)
+        private let hid = HIDThermalSensors()
+    #endif
 
     public init() {
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
@@ -33,6 +40,13 @@ public final class TemperatureProbe {
 
     /// Average CPU temperature in degrees Celsius.
     public func sample() -> Float? {
+        #if arch(arm64)
+            if let celsius = hid.sample() { return Float(celsius) }
+        #endif
+        return sampleSMC()
+    }
+
+    private func sampleSMC() -> Float? {
         guard connection != 0 else { return nil }
         if sensors == nil { sensors = discover() }
         guard let sensors, !sensors.isEmpty else { return nil }
