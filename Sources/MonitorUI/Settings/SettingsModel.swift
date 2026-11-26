@@ -65,18 +65,24 @@ public final class UpdateSettings: ObservableObject {
         public var setAutomaticallyChecks: (Bool) -> Void
         public var automaticallyDownloads: () -> Bool
         public var setAutomaticallyDownloads: (Bool) -> Void
+        /// Whether the updater follows nightly builds of `main` instead of official releases only.
+        public var nightly: () -> Bool
+        public var setNightly: (Bool) -> Void
         public var lastCheck: () -> Date?
         public var checkNow: () -> Void
 
         public init(
             automaticallyChecks: @escaping () -> Bool, setAutomaticallyChecks: @escaping (Bool) -> Void,
             automaticallyDownloads: @escaping () -> Bool, setAutomaticallyDownloads: @escaping (Bool) -> Void,
+            nightly: @escaping () -> Bool = { false }, setNightly: @escaping (Bool) -> Void = { _ in },
             lastCheck: @escaping () -> Date?, checkNow: @escaping () -> Void
         ) {
             self.automaticallyChecks = automaticallyChecks
             self.setAutomaticallyChecks = setAutomaticallyChecks
             self.automaticallyDownloads = automaticallyDownloads
             self.setAutomaticallyDownloads = setAutomaticallyDownloads
+            self.nightly = nightly
+            self.setNightly = setNightly
             self.lastCheck = lastCheck
             self.checkNow = checkNow
         }
@@ -89,12 +95,16 @@ public final class UpdateSettings: ObservableObject {
     @Published public var automaticallyDownloads: Bool {
         didSet { backend.setAutomaticallyDownloads(automaticallyDownloads) }
     }
+    @Published public var nightly: Bool {
+        didSet { backend.setNightly(nightly) }
+    }
     @Published public private(set) var lastCheck: Date?
 
     public init(_ backend: Backend) {
         self.backend = backend
         automaticallyChecks = backend.automaticallyChecks()
         automaticallyDownloads = backend.automaticallyDownloads()
+        nightly = backend.nightly()
         lastCheck = backend.lastCheck()
     }
 
