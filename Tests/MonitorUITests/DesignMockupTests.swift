@@ -353,12 +353,9 @@ private struct RegionRow: View {
     var name: String
     var ms: String
     var body: some View {
-        Row(
-            title: "Region \(index)",
-            detail: index == 2 ? "Clouds ignore ping, so Dotwell times a connection instead." : nil
-        ) {
+        Row(title: "Region \(index)", detail: "Clouds ignore ping, so Dotwell times a connection.") {
             HStack(spacing: 8) {
-                Text(name)
+                Text(name).fixedSize()
                 Text(ms).monospacedDigit().foregroundStyle(.secondary)
                 Button("Choose…") {}
             }
@@ -599,7 +596,7 @@ private struct ColumnsCPUTab: View {
             GridRow {
                 label("Slowing down:")
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Warn when macOS slows the Mac down to cool it", isOn: .constant(true))
+                    Toggle("Warn when macOS slows the Mac down to cool it", isOn: .constant(true)).fixedSize()
                     note("Replaces the Thermal card. Rare: only when the Mac is very hot.")
                 }
             }
