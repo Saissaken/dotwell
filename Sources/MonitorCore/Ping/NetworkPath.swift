@@ -172,6 +172,24 @@ public struct NetworkPath: Sendable, Equatable {
         }
     }
 
+    /// Carrier-grade NAT (RFC 6598): addresses an ISP uses inside its own network.
+    static func isCarrierNAT(_ address: String?) -> Bool {
+        guard let parts = address?.split(separator: ".").compactMap({ Int($0) }), parts.count == 4 else {
+            return false
+        }
+        return parts[0] == 100 && (64...127).contains(parts[1])
+    }
+
+    /// The first router of the internet provider: past this Mac's own router (and any other home router
+    /// behind it, which has a private address), the first one with a public or carrier-grade NAT address.
+    static func ispHop(in hops: [TraceHop], gateway: String?) -> String? {
+        for hop in hops where hop.ttl >= 2 && !hop.isDestination {
+            guard let address = hop.address, address != gateway else { continue }
+            if !isPrivate(address) || isCarrierNAT(address) { return address }
+        }
+        return nil
+    }
+
     private static let secondLevel: Set<String> = [
         "com", "net", "org", "co", "gov", "gob", "edu", "ac", "ne", "or", "mil", "int",
     ]

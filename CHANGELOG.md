@@ -11,6 +11,13 @@ All notable changes to this project are documented here. The format is based on
   address to copy it. The public address is looked up from Cloudflare's 1.1.1.1 only when the popover opens
   on a new network, or after 10 minutes, and nothing runs while the popover is closed. Settings → General can
   hide them (for screen sharing), which also stops the lookup.
+- Ping: the ISP row now measures your internet provider's first router. Dotwell finds it with a short
+  traceroute (about 60 tiny packets every 5 minutes, and again when you join another network), so you can
+  tell whether a slow connection starts at your router or at your provider.
+
+## [0.4.0] - 2026-11-26
+
+### Added
 - Settings window (⋯ → Settings…, right-click the menu bar icon, or ⌘,), with changes applied right away:
   - General: open at login, how often to take readings (1, 2, 5 or 10 seconds) and network speed in bits
     or bytes per second.
@@ -99,7 +106,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Saissaken/dotwell/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Saissaken/dotwell/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Saissaken/dotwell/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Saissaken/dotwell/compare/v0.1.1...v0.1.2

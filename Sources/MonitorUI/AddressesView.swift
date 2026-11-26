@@ -76,7 +76,7 @@ private struct AddressRow: View {
                         .monospacedDigit()
                         .foregroundStyle(copied ? Color.secondary : Color.primary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .truncationMode(.middle)
                         .textSelection(.disabled)
                 }
                 .buttonStyle(.plain)
