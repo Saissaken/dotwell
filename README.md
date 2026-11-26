@@ -27,8 +27,21 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **What's using it**: CPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
   the popover is open.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
+- **Yours to arrange**: a native Settings window to pick and reorder cards, choose ping hosts (presets for
+  public DNS and every major AWS region), tune alert thresholds and the sampling interval.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
 - **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-widgets-dark.png">
+    <img src="docs/images/settings-widgets-light.png" alt="Settings window, Widgets tab: cards to show and reorder" width="420">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-ping-dark.png">
+    <img src="docs/images/settings-ping-light.png" alt="Settings window, Ping tab: hosts and the one that drives the status light" width="420">
+  </picture>
+</p>
 
 > Status: early development (v0.1). See the [requirements](docs/REQUIREMENTS.md) and
 > [technical design](docs/DESIGN.md).

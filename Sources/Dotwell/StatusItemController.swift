@@ -13,13 +13,17 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private let dot = StatusDotView(frame: .zero)
     private var level: HealthLevel = .ok
     private let sampler: Sampler
+    private let settings: AppSettings
     private let updater: Updater
+    private let openSettings: () -> Void
     private var latest = Snapshot()
     private var model: PopoverModel?
 
-    init(sampler: Sampler, updater: Updater) {
+    init(sampler: Sampler, settings: AppSettings, updater: Updater, openSettings: @escaping () -> Void) {
         self.sampler = sampler
+        self.settings = settings
         self.updater = updater
+        self.openSettings = openSettings
         super.init()
         popover.behavior = .transient
         popover.animates = true
@@ -75,10 +79,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            let model = PopoverModel(snapshot: latest, launchAtLogin: LoginItem.isEnabled)
-            model.setLaunchAtLogin = { enabled in
-                LoginItem.setEnabled(enabled)
-                return LoginItem.isEnabled
+            let model = PopoverModel(snapshot: latest)
+            model.openSettings = { [weak self] in
+                self?.popover.performClose(nil)
+                self?.openSettings()
             }
             model.quit = { NSApplication.shared.terminate(nil) }
             if updater.isAvailable {
@@ -87,7 +91,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             model.onRangeChange = { [weak self] range in self?.sampler.setDetailed(true, range: range) }
             self.model = model
             sampler.setDetailed(true, range: model.range)
-            popover.contentViewController = NSHostingController(rootView: PopoverView(model: model))
+            popover.contentViewController = NSHostingController(rootView: PopoverView(model: model, settings: settings))
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
@@ -97,13 +101,16 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private func showMenu(from button: NSStatusBarButton) {
         if popover.isShown { popover.performClose(button) }
         let menu = NSMenu()
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings(_:)), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
         if updater.isAvailable {
             let check = NSMenuItem(
                 title: "Check for Updates…", action: #selector(Updater.checkForUpdates(_:)), keyEquivalent: "")
             check.target = updater
             menu.addItem(check)
-            menu.addItem(.separator())
         }
+        menu.addItem(.separator())
         menu.addItem(
             NSMenuItem(
                 title: "Quit Dotwell", action: #selector(NSApplication.terminate(_:)),
@@ -111,6 +118,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         statusItem.menu = menu
         button.performClick(nil)  // shows the menu and returns once it closes
         statusItem.menu = nil  // left clicks go back to the popover
+    }
+
+    @objc private func showSettings(_ sender: Any?) {
+        openSettings()
     }
 
     func popoverDidClose(_ notification: Notification) {
