@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-26
+
 ### Added
 - Network: the Mac's local IP address (with Wi‑Fi, Ethernet or VPN) and its public IPv4 and IPv6. Click an
   address to copy it. The public address is looked up from Cloudflare's 1.1.1.1 only when the popover opens
