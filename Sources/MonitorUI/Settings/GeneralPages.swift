@@ -139,6 +139,17 @@ private struct UpdateControls: View {
             }
         }
         .onAppear { updates.refresh() }
+        Section {
+            SwitchRow(
+                title: "Get nightly builds",
+                detail: "Every change as soon as it's merged, before it's released.",
+                help: "Follows the newest build of main instead of official releases only.",
+                isOn: $updates.nightly)
+        } footer: {
+            Footer(
+                "Nightly builds can be rough. Turning this off keeps your build until a newer release is out, "
+                    + "since Dotwell never downgrades itself.")
+        }
     }
 
     private var lastCheckText: String {

@@ -85,7 +85,7 @@ public enum SettingsPage: Hashable, Sendable {
             case .disk: return ["storage", "free space", "ssd", "read", "write", "busiest app"]
             case .network: return ["speed", "mbps", "bandwidth", "ip address", "public", "local", "units"]
             }
-        case .updates: return ["version", "sparkle", "automatic", "download"]
+        case .updates: return ["version", "sparkle", "automatic", "download", "nightly", "beta", "channel"]
         case .about: return ["version", "website", "license", "github", "source"]
         }
     }
