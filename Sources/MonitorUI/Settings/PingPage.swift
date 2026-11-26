@@ -4,6 +4,7 @@ import SwiftUI
 /// A few well-chosen hosts: your network, the internet, and two cloud regions you pick.
 struct PingSettings: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var navigation: SettingsNavigation
 
     var body: some View {
         let alerts = AlertBindings(settings: settings)
@@ -34,7 +35,7 @@ struct PingSettings: View {
                 "These networks answer from a server near you, so this shows how fast the internet is from here, "
                     + "not how far away one website is.")
             ForEach(0..<PingSlot.regionCount, id: \.self) { index in
-                RegionRow(index: index, settings: settings)
+                RegionRow(index: index, settings: settings, navigation: navigation)
             }
         } header: {
             Text("Hosts")
@@ -97,7 +98,7 @@ struct PingSettings: View {
 private struct RegionRow: View {
     var index: Int
     @ObservedObject var settings: AppSettings
-    @State private var choosing = false
+    @ObservedObject var navigation: SettingsNavigation
 
     private var region: CloudRegion? { settings.regions.indices.contains(index) ? settings.regions[index] : nil }
 
@@ -106,7 +107,7 @@ private struct RegionRow: View {
             HStack(spacing: 8) {
                 Text(region.map { "\($0.provider.longTitle) · \($0.city)" } ?? "Off")
                     .foregroundStyle(.secondary)
-                Button("Choose…") { choosing = true }
+                Button("Choose…") { navigation.choosingRegion = index }
             }
             .fixedSize()
         } label: {
@@ -116,8 +117,14 @@ private struct RegionRow: View {
             "A cloud region you use, to compare how far it is. Choose shows every region of AWS, Google Cloud "
                 + "and Azure with how long it takes to reach from here right now."
         )
-        .sheet(isPresented: $choosing) {
+        .sheet(isPresented: choosing) {
             RegionChooser(index: index, settings: settings)
         }
+    }
+
+    private var choosing: Binding<Bool> {
+        Binding(
+            get: { navigation.choosingRegion == index },
+            set: { if !$0, navigation.choosingRegion == index { navigation.choosingRegion = nil } })
     }
 }

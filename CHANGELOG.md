@@ -9,7 +9,8 @@ All notable changes to this project are documented here. The format is based on
 ### Added
 - Ping → Region → Choose… lists every region of AWS, Google Cloud or Azure with how long it takes to reach
   from your Mac right now, fastest first, so you can pick the ones that matter to you. It measures each region
-  four times the same way as its row in the popover and shows the best, and only while the window is open.
+  four times the same way as its row in the popover and shows the best, and only while the window is open. "Change
+  Region…" in a region row's right-click menu opens it for that row.
 - Settings › Updates › Get nightly builds: follow every change as soon as it's merged, before it's released.
   Official releases stay the default.
 

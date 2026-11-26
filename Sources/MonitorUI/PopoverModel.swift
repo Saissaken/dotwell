@@ -13,8 +13,9 @@ public final class PopoverModel: ObservableObject {
 
     public var onRangeChange: ((HistoryRange) -> Void)?
     public var openSettings: (() -> Void)?
-    /// Opens Settings on the Ping page, where a row's host or region is chosen.
-    public var openPingSettings: (() -> Void)?
+    /// Opens Settings on the Ping page, where a row's host or region is chosen. With a region slot (0 or 1),
+    /// it also opens that slot's region chooser.
+    public var openPingSettings: ((Int?) -> Void)?
     /// Traces the route to a ping row instead of the main host; nil goes back to the main host.
     public var traceRoute: ((Int?) -> Void)?
     public var quit: (() -> Void)?

@@ -134,6 +134,8 @@ public final class SettingsNavigation: ObservableObject {
     @Published public var query = ""
     @Published public private(set) var canGoBack = false
     @Published public private(set) var canGoForward = false
+    /// A region slot whose chooser should open on the Ping page, as asked from a ping row's menu.
+    @Published public var choosingRegion: Int?
 
     private var back: [SettingsPage] = []
     private var forward: [SettingsPage] = []

@@ -26,4 +26,13 @@ final class RegionChooserTests: XCTestCase {
         model.measure(.aws)
         XCTAssertEqual(model.reading(region), .milliseconds(34))
     }
+
+    /// "Change Region…" on a ping row opens the chooser of that row's slot; other rows just open the page.
+    func testRowsMapToRegionSlots() {
+        let settings = AppSettings(defaults: nil)
+        let slots = settings.pingSlots.map(\.slot)
+        XCTAssertEqual(slots.map(PingSlot.regionIndex), [nil, nil, nil, nil, 0, 1])
+        settings.setRegion(nil, at: 0)
+        XCTAssertEqual(settings.pingSlots.map(\.slot).map(PingSlot.regionIndex), [nil, nil, nil, nil, 1])
+    }
 }

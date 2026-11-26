@@ -276,6 +276,15 @@ public enum PingSlot: String, CaseIterable, Codable, Sendable {
 
     static let regionCount = 2
 
+    /// 0 or 1 for the region slots, nil for the others.
+    public static func regionIndex(_ slot: PingSlot) -> Int? {
+        switch slot {
+        case .region1: return 0
+        case .region2: return 1
+        default: return nil
+        }
+    }
+
     static func region(_ index: Int) -> PingSlot? {
         switch index {
         case 0: return .region1

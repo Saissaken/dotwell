@@ -117,7 +117,7 @@ struct SettingsDetail: View {
         Group {
             switch navigation.page {
             case .general: GeneralPage(model: model, settings: model.settings)
-            case .widget(let module): WidgetPage(module: module, settings: model.settings)
+            case .widget(let module): WidgetPage(module: module, settings: model.settings, navigation: navigation)
             case .updates: UpdatesPage(updates: model.updates, version: model.version)
             case .about: AboutPage(version: model.version)
             }
