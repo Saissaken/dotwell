@@ -166,4 +166,24 @@ final class FormatTests: XCTestCase {
                 width, available, "“\(caption)” is \(width) pt wide, \(available) pt available")
         }
     }
+
+    /// The Network card is half width: the widest rate, with its arrow, must fit on one line.
+    func testWorstCaseNetworkRatesFitAHalfWidthModule() {
+        let size: CGFloat = 17  // NetworkModule's rate size
+        let valueFont = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .semibold)
+        let unitFont = NSFont.systemFont(ofSize: size * 0.6, weight: .medium)
+        let arrowAndSpacing: CGFloat = 12 + 4 + 3
+        let available = PopoverLayout.halfModuleContentWidth
+        let readings = [
+            Format.network(998_000_000_000, unit: .bits), Format.network(998_000_000_000, unit: .bytes),
+            Format.network(99_900_000, unit: .bits), Format.network(99_900_000 * 8, unit: .bytes),
+        ]
+        for reading in readings {
+            let width =
+                (reading.value as NSString).size(withAttributes: [.font: valueFont]).width
+                + (reading.unit as NSString).size(withAttributes: [.font: unitFont]).width + arrowAndSpacing
+            XCTAssertLessThanOrEqual(
+                width, available, "“\(reading.text)” is \(width) pt wide, \(available) pt available")
+        }
+    }
 }
