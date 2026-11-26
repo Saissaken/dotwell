@@ -20,15 +20,17 @@ MARKER = "<!-- dotwell-perf-report -->"
 METRICS = {
     "closed": [
         ("cpu_percent", "CPU (% of one core)", "%", 3, 0.2, (0.03, 0.15)),
-        ("rss_mb", "Memory, resident", " MB", 1, 25, (1.5, 0.08)),
-        ("footprint_mb", "Memory, footprint", " MB", 1, None, (1.5, 0.08)),
+        # Footprint is Activity Monitor's "Memory" column. Resident size also counts the shared system
+        # frameworks (AppKit, SwiftUI) mapped into every app, so it's shown for reference only.
+        ("footprint_mb", "Memory (footprint)", " MB", 1, 25, (1.5, 0.08)),
+        ("rss_mb", "Memory, resident", " MB", 1, None, (1.5, 0.08)),
         ("wakeups_per_s", "Wakeups", "/s", 2, 2, (0.3, 0.15)),
         ("idle_wakeups_per_s", "Idle wakeups", "/s", 2, None, (0.3, 0.15)),
         ("energy_mw", "Energy", " mW", 1, None, (1.0, 0.15)),
     ],
     "open": [
         ("cpu_percent", "CPU (% of one core)", "%", 2, None, (0.3, 0.15)),
-        ("footprint_mb", "Memory, footprint", " MB", 1, None, (2.0, 0.08)),
+        ("footprint_mb", "Memory (footprint)", " MB", 1, None, (2.0, 0.08)),
         ("wakeups_per_s", "Wakeups", "/s", 1, None, (2.0, 0.15)),
     ],
 }

@@ -19,7 +19,7 @@ with the popover closed:
 | Metric | Target |
 |---|---|
 | Average CPU | < 0.2 % of one core |
-| Memory (RSS) | < 25 MB |
+| Memory (footprint, Activity Monitor's "Memory" column) | < 25 MB |
 | Wakeups per second | < 2 |
 | Activity Monitor "Energy Impact" | Low / ~0 |
 | App bundle size | < 5 MB |
