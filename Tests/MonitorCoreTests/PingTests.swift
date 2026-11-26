@@ -78,15 +78,24 @@ final class PingTests: XCTestCase {
         }
     }
 
-    /// Probes still unanswered at the next tick count as lost.
-    func testCollectReportsUnansweredAsLost() {
+    /// Probes unanswered for the timeout count as lost; younger ones stay pending, so a 0.5 s tick doesn't
+    /// shorten the timeout.
+    func testCollectReportsUnansweredAsLostAfterTheTimeout() {
         let queue = DispatchQueue(label: "ping.lost")
         // TEST-NET-1 (RFC 5737) is never routed, so nothing answers.
         let engine = PingEngine(targets: [PingTarget(name: "void", host: "192.0.2.1", method: .icmp)], queue: queue)
+        engine.timeoutNanos = 200_000_000
         var results: [Float?] = []
         engine.onResult = { _, ms in results.append(ms) }
         queue.sync {
             engine.probe([0])
+            engine.collect()
+            XCTAssertEqual(results, [], "still within the timeout")
+        }
+        let waited = expectation(description: "timeout passes")
+        queue.asyncAfter(deadline: .now() + 0.3) { waited.fulfill() }
+        wait(for: [waited], timeout: 3)
+        queue.sync {
             engine.collect()
             XCTAssertEqual(results, [nil])
             engine.collect()

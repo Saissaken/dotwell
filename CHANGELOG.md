@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-26
+
+### Added
+- Top apps: right-click an app, in the line or the list, to copy its process ID or path, show it in Finder,
+  quit it, or force quit it (after asking).
+- CPU: fan speed next to the temperature ("2,140 rpm", or "fans off" while they're stopped). Hidden on Macs
+  without fans, such as the MacBook Air.
+- Power: the battery temperature, as the battery itself reports it. Heat is what wears a battery the most.
+
+### Changed
+- CPU: the app using the most CPU now shows its share of the whole Mac, on the same scale as the CPU total
+  above it (like btop). Before, it used Activity Monitor's scale, where 100% is one core, so an app could
+  read 46% while the whole Mac was at 21%. Settings → General can switch back to the per-core scale.
+
+## [0.6.0] - 2026-11-26
+
 ### Added
 - Ping rows: click any row (Router, ISP, DNS, the internet host or a cloud region, or the big number of the main
   host) to see what it measures: the host and the IP address it reaches, how it is timed (ping, opening a
@@ -42,6 +58,11 @@ All notable changes to this project are documented here. The format is based on
   btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
+- Readings have two intervals in Settings → General: one while the popover is open (0.5, 1 or 2 seconds,
+  default 1) and one while it's closed (1, 2, 5, 10 or 30 seconds, default 5). Until now Dotwell measured every
+  second all day, even with nothing on screen; the closed popover now wakes the Mac five times less often,
+  and the menu bar light still reacts to a problem within about 5 seconds. Charts keep the same time scale
+  whatever the interval, and an older slower choice carries over to the closed setting.
 - Less work with the popover closed: the main thread is only woken when the menu bar dot changes color,
   instead of every second, and the CPU temperature is only read while the popover is open.
 
@@ -151,7 +172,9 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Saissaken/dotwell/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Saissaken/dotwell/compare/v0.3.0...v0.4.0

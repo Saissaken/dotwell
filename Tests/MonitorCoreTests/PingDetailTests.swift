@@ -6,37 +6,53 @@ import XCTest
 /// when a row asks for its route.
 final class PingDetailTests: XCTestCase {
     func testProbeIntervalFollowsTheSamplingLoop() {
-        // ICMP goes out every tick; TCP, HTTPS and DNS every 5 s, or every tick when ticks are 5 s or longer.
-        XCTAssertEqual(Sampler.probeInterval(.icmp, step: 1), 1)
-        XCTAssertEqual(Sampler.probeInterval(.icmp, step: 10), 10)
-        XCTAssertEqual(Sampler.probeInterval(.tcp(port: 443), step: 1), 5)
-        XCTAssertEqual(Sampler.probeInterval(.https(path: "/"), step: 2), 4)
-        XCTAssertEqual(Sampler.probeInterval(.dns, step: 5), 5)
-        XCTAssertEqual(Sampler.probeInterval(.tcp(port: 443), step: 10), 10)
+        // ICMP goes out every tick; TCP, HTTPS and DNS every 5 s, or every tick when ticks are further apart.
+        XCTAssertEqual(Sampler.probeInterval(.icmp, interval: .halfSecond), 500)
+        XCTAssertEqual(Sampler.probeInterval(.icmp, interval: .tenSeconds), 10_000)
+        XCTAssertEqual(Sampler.probeInterval(.tcp(port: 443), interval: .halfSecond), 5000)
+        XCTAssertEqual(Sampler.probeInterval(.https(path: "/"), interval: .twoSeconds), 5000)
+        XCTAssertEqual(Sampler.probeInterval(.dns, interval: .fiveSeconds), 5000)
+        XCTAssertEqual(Sampler.probeInterval(.tcp(port: 443), interval: .thirtySeconds), 30_000)
     }
 
-    func testLastMinuteCoversSixtySeconds() {
-        XCTAssertEqual(Sampler.samplesPerMinute(.icmp, step: 1), 60)
-        XCTAssertEqual(Sampler.samplesPerMinute(.icmp, step: 2), 30)
-        XCTAssertEqual(Sampler.samplesPerMinute(.tcp(port: 443), step: 1), 12)
-        XCTAssertEqual(Sampler.samplesPerMinute(.https(path: "/"), step: 2), 15)
-        XCTAssertEqual(Sampler.samplesPerMinute(.dns, step: 10), 6)
+    /// Each reply is counted once, whatever interval it came at, and only the last minute is kept.
+    func testReadingLogKeepsTheLastMinute() {
+        var log = PingReadingLog()
+        // Closed popover: a reading every 5 s (10 slots) for two minutes, then open: one per slot.
+        var slot: UInt64 = 0
+        for i in 0..<24 {
+            slot += 10
+            log.append(Float(i), slot: slot)
+        }
+        for _ in 0..<20 {
+            slot += 1
+            log.append(PingStats.lost, slot: slot)
+        }
+        let minute = log.readings(after: slot - 120)
+        // 120 slots back is 100 slots of the closed readings (10 of them) plus the 20 open ones.
+        XCTAssertEqual(minute.values.count, 30)
+        XCTAssertEqual(minute.values.first, 14)
+        XCTAssertEqual(minute.values.filter { $0 < 0 }.count, 20)
+        XCTAssertEqual(minute.firstSlot, 150)
+        XCTAssertEqual(log.readings(after: slot).values, [])
     }
 
-    /// The raw history holds 60 readings, so a full minute always fits.
-    func testLastMinuteFitsTheHistory() {
-        var series = TieredSeries()
-        for i in 0..<90 { series.append(Float(i)) }
-        let minute = series.recent(Sampler.samplesPerMinute(.icmp, step: 1))
-        XCTAssertEqual(minute.count, 60)
-        XCTAssertEqual(minute.first, 30)
-        XCTAssertEqual(minute.last, 89)
+    /// The log holds a full minute at the fastest interval (0.5 s) and drops the oldest past that.
+    func testReadingLogCapacity() {
+        var log = PingReadingLog()
+        for i in 1...200 { log.append(Float(i), slot: UInt64(i)) }
+        XCTAssertGreaterThanOrEqual(PingReadingLog.capacity, 120)
+        XCTAssertEqual(log.count, PingReadingLog.capacity)
+        let all = log.readings(after: 0).values
+        XCTAssertEqual(all.count, PingReadingLog.capacity)
+        XCTAssertEqual(all.last, 200)
+        XCTAssertEqual(all.first, Float(200 - PingReadingLog.capacity + 1))
+        XCTAssertEqual(log.readings(after: 80).values.count, 120)
     }
 
     func testMinuteStatsAreComputedFromTheReadingsShown() {
-        let state = PingTargetState(
-            index: 0, target: .router, stats: PingStats.compute([5]), isPrimary: false,
-            lastMinute: [4, 6, PingStats.lost, 8, 2])
+        var state = PingTargetState(index: 0, target: .router, stats: PingStats.compute([5]), isPrimary: false)
+        state.lastMinute = [4, 6, PingStats.lost, 8, 2]
         let stats = state.minuteStats
         XCTAssertEqual(stats.averageMs, 5)
         XCTAssertEqual(stats.minMs, 2)
@@ -81,7 +97,9 @@ final class PingDetailTests: XCTestCase {
             guard let row = snap.ping.first else { return }
             let replies = row.lastMinute.filter { $0 >= 0 }
             if replies.count >= 3 {
-                XCTAssertEqual(row.probeIntervalSeconds, 1)
+                XCTAssertEqual(row.probeIntervalMilliseconds, 1000)  // the default open interval
+                XCTAssertLessThanOrEqual(row.lastMinuteChart.count, 120)
+                XCTAssertLessThanOrEqual(row.lastMinuteSeconds, 60)
                 XCTAssertEqual(row.minuteStats, PingStats.compute(row.lastMinute))
                 // Loopback answers in well under a millisecond or two, never in tens.
                 XCTAssertLessThan(row.minuteStats.maxMs ?? .infinity, 20)

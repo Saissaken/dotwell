@@ -100,6 +100,14 @@ enum Format {
         return temperatureFormatter.string(from: Measurement(value: Double(celsius), unit: UnitTemperature.celsius))
     }
 
+    /// Fan speed: "2,140 rpm", or "fans off" while they're stopped (below the slowest real spin).
+    static func fanRPM(_ rpm: Double?, locale: Locale = .autoupdatingCurrent) -> String? {
+        guard let rpm else { return nil }
+        if rpm < 100 { return "fans off" }
+        let rounded = Int((rpm / 10).rounded()) * 10
+        return "\(rounded.formatted(.number.locale(locale))) rpm"
+    }
+
     /// Internal so tests and screenshots can pin a locale.
     static let temperatureFormatter: MeasurementFormatter = {
         let formatter = MeasurementFormatter()
@@ -109,9 +117,13 @@ enum Format {
         return formatter
     }()
 
-    /// Per-process CPU as Activity Monitor shows it, where 100 % is one full core.
-    static func processCPU(_ fraction: Float) -> String {
-        let percent = fraction * 100
+    /// An app's CPU use. `fraction` is in cores (1.5 = one and a half cores busy); `.wholeMac` divides it by
+    /// `cores` so it reads on the same scale as the CPU card's total.
+    static func processCPU(
+        _ fraction: Float, scale: ProcessCPUScale = .perCore,
+        cores: Int = ProcessInfo.processInfo.activeProcessorCount
+    ) -> String {
+        let percent = (scale == .wholeMac ? fraction / Float(max(cores, 1)) : fraction) * 100
         return percent < 9.95 ? String(format: "%.1f%%", percent) : String(format: "%.0f%%", percent)
     }
 

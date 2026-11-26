@@ -11,7 +11,7 @@ public final class PingEngine {
     public var targets: [PingTarget] {
         didSet { addresses.removeAll() }
     }
-    /// Probes without a reply after this long, or still unanswered at the next `collect()`, are reported as lost.
+    /// Probes without a reply after this long are reported as lost by the next `collect()`.
     public var timeoutNanos: UInt64 = 1_000_000_000
     /// Called on `queue` with the target index and RTT in ms, or nil if lost.
     public var onResult: ((Int, Float?) -> Void)?
@@ -63,21 +63,28 @@ public final class PingEngine {
         }
     }
 
-    /// Reports the ICMP replies received since the last call, and every probe still unanswered as lost.
+    /// Reports the ICMP and DNS replies received since the last call, and every probe unanswered for
+    /// `timeoutNanos` as lost. Younger probes stay pending, so a 0.5 s tick doesn't cut the timeout short.
     /// Call once per tick, before `probe()`, on `queue`.
     public func collect() {
         dispatchPrecondition(condition: .onQueue(queue))
         drainICMP()
         drainDNS()
-        for (_, p) in pendingICMP { onResult?(p.target, nil) }
-        pendingICMP.removeAll(keepingCapacity: true)
-        for (_, p) in pendingDNS { onResult?(p.target, nil) }
-        pendingDNS.removeAll()
-        for (_, p) in pendingTCP {
+        let now = Self.now()
+        func expired(_ sentAt: UInt64) -> Bool { now &- sentAt >= timeoutNanos }
+        for (seq, p) in pendingICMP where expired(p.sentAt) {
+            pendingICMP[seq] = nil
+            onResult?(p.target, nil)
+        }
+        for (id, p) in pendingDNS where expired(p.sentAt) {
+            pendingDNS[id] = nil
+            onResult?(p.target, nil)
+        }
+        for (fd, p) in pendingTCP where expired(p.sentAt) {
+            pendingTCP[fd] = nil
             p.source.cancel()
             onResult?(p.target, nil)
         }
-        pendingTCP.removeAll()
     }
 
     /// Drop sockets and cached addresses (e.g. on sleep or network change).

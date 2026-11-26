@@ -118,8 +118,8 @@ struct PingDetail: View {
                 }
             }
             Sparkline(
-                values: target.lastMinute, maxValue: nil, color: levelColor(level),
-                capacity: max(2, 60 / max(1, target.probeIntervalSeconds)))
+                values: target.lastMinuteChart, maxValue: nil, color: levelColor(level),
+                capacity: 60_000 / TieredSeries.slotMilliseconds)
                 .frame(height: 34)
                 .environment(\.chartMotion, nil)
                 .overlay {
@@ -161,7 +161,8 @@ struct PingDetail: View {
             lines.append(Line(label: "Region", value: region.code))
         }
         lines.append(Line(label: "IP", value: target.address ?? (t.isISP ? "Looking for it…" : "Looking it up…")))
-        lines.append(Line(label: "Measured", value: "\(method(t.method)), \(every(target.probeIntervalSeconds))"))
+        let frequency = every(milliseconds: target.probeIntervalMilliseconds)
+        lines.append(Line(label: "Measured", value: "\(method(t.method)), \(frequency)"))
         return lines
     }
 
@@ -174,15 +175,19 @@ struct PingDetail: View {
         }
     }
 
-    static func every(_ seconds: Int) -> String {
-        seconds == 1 ? "every second" : "every \(seconds) seconds"
+    static func every(milliseconds: Int) -> String {
+        switch milliseconds {
+        case 1000: return "every second"
+        case let ms where ms % 1000 == 0: return "every \(ms / 1000) seconds"
+        default: return "every \(Format.significant(Double(milliseconds) / 1000)) seconds"
+        }
     }
 
-    /// "Last minute", or how long the readings cover so far.
+    /// "Last Minute", or how long the readings cover so far.
     static func windowTitle(_ target: PingTargetState) -> String {
-        let covered = target.lastMinute.count * target.probeIntervalSeconds
-        guard covered > 0, covered < 55 else { return "Last Minute" }
-        return "Last \(covered) Seconds"
+        let seconds = target.lastMinuteSeconds
+        if seconds >= 55 { return "Last Minute" }
+        return seconds == 1 ? "Last Second" : "Last \(seconds) Seconds"
     }
 
     static func figures(_ stats: PingStats) -> [Line] {

@@ -24,12 +24,15 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.configuration, SamplerConfiguration())
         XCTAssertEqual(settings.widgets.map(\.module), Module.allCases)
         XCTAssertEqual(settings.networkUnit, .bits)
+        XCTAssertEqual(settings.processCPUScale, .wholeMac)
     }
 
     func testChangesPersistAcrossLaunches() {
         let settings = AppSettings(defaults: defaults)
-        settings.interval = .fiveSeconds
+        settings.openInterval = .halfSecond
+        settings.closedInterval = .tenSeconds
         settings.networkUnit = .bytes
+        settings.processCPUScale = .perCore
         settings.thresholds.pingWarningMs = 50
         settings.alerts.remove(.cpu)
         settings.internetHost = .quad9
@@ -39,8 +42,10 @@ final class AppSettingsTests: XCTestCase {
         settings.widgets[1].showsTopApp = false
 
         let reloaded = AppSettings(defaults: defaults)
-        XCTAssertEqual(reloaded.interval, .fiveSeconds)
+        XCTAssertEqual(reloaded.openInterval, .halfSecond)
+        XCTAssertEqual(reloaded.closedInterval, .tenSeconds)
         XCTAssertEqual(reloaded.networkUnit, .bytes)
+        XCTAssertEqual(reloaded.processCPUScale, .perCore)
         XCTAssertEqual(reloaded.thresholds.pingWarningMs, 50)
         XCTAssertFalse(reloaded.alerts.contains(.cpu))
         XCTAssertEqual(reloaded.internetHost, .quad9)
@@ -55,9 +60,21 @@ final class AppSettingsTests: XCTestCase {
         var received: [SamplerConfiguration] = []
         settings.onConfigurationChange = { received.append($0) }
         settings.networkUnit = .bytes  // display only
-        settings.interval = .twoSeconds
-        settings.interval = .twoSeconds  // unchanged
-        XCTAssertEqual(received.map(\.interval), [.twoSeconds])
+        settings.closedInterval = .twoSeconds
+        settings.closedInterval = .twoSeconds  // unchanged
+        XCTAssertEqual(received.map(\.closedInterval), [.twoSeconds])
+    }
+
+    /// One interval used to drive both states; a slower pick carries over to the closed popover.
+    func testLegacyIntervalCarriesOver() {
+        defaults.set(5, forKey: "samplingInterval")
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.closedInterval, .fiveSeconds)
+        XCTAssertEqual(settings.openInterval, .twoSeconds)
+        defaults.set(1, forKey: "samplingInterval")
+        let fast = AppSettings(defaults: defaults)
+        XCTAssertEqual(fast.openInterval, .oneSecond)
+        XCTAssertEqual(fast.closedInterval, .fiveSeconds, "the old default moves to the new one")
     }
 
     func testPingRows() {

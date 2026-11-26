@@ -137,11 +137,12 @@ enum SampleData {
         var s = Snapshot()
         s.cpu = 0.18
         s.cpuTemperature = 46
+        s.fanRPM = 0
         s.memory = MemorySample(usedBytes: 11_400_000_000, totalBytes: 17_179_869_184, pressure: .normal)
         s.disk = DiskSpace(availableBytes: 212_000_000_000, totalBytes: 494_000_000_000)
         s.diskReadBytesPerSec = 2_400_000
         s.diskWriteBytesPerSec = 600_000
-        s.power = PowerSample(source: .battery, watts: 7.8, isCharging: false)
+        s.power = PowerSample(source: .battery, watts: 7.8, isCharging: false, batteryCelsius: 31)
         s.networkDownBitsPerSec = 312_000_000
         s.networkUpBitsPerSec = 24_000_000
         s.ping = pingTargets(primaryMs: 14, primaryLoss: 0)
@@ -234,10 +235,13 @@ enum SampleData {
             let interval = target.method == .icmp ? 1 : 5
             var minute = wave(60 / interval, base: samples[index], amplitude: samples[index] * 0.1, seed: Float(index))
             if index == 4 { minute[7] = PingStats.lost }
-            return PingTargetState(
+            var state = PingTargetState(
                 index: index, target: target, stats: PingStats.compute(values),
                 isPrimary: index == PingTarget.defaultPrimaryIndex, address: addresses[index],
-                lastMinute: minute, probeIntervalSeconds: interval)
+                probeIntervalMilliseconds: interval * 1000)
+            state.lastMinute = minute
+            state.lastMinuteChart = minute.flatMap { Array(repeating: $0, count: 2 * interval) }  // half-second slots
+            return state
         }
     }
 }

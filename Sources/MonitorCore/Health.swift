@@ -30,10 +30,13 @@ public struct LevelDebouncer: Sendable {
         streak = 0
     }
 
+    /// Feeds one reading that stands for `weight` units of time (the sampler uses half-second slots, so a
+    /// hold means the same time whatever the reading interval).
     @discardableResult
-    public mutating func feed(_ raw: HealthLevel) -> HealthLevel {
+    public mutating func feed(_ raw: HealthLevel, weight: Int = 1) -> HealthLevel {
+        let weight = max(1, weight)
         if raw == level { candidate = level; streak = 0; return level }
-        if raw == candidate { streak += 1 } else { candidate = raw; streak = 1 }
+        if raw == candidate { streak += weight } else { candidate = raw; streak = weight }
         let needed: Int
         if raw > level { needed = raw == .critical ? raiseCritical : raiseWarning } else { needed = lowerAfter }
         if streak >= needed { level = raw; streak = 0 }

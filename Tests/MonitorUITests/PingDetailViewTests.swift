@@ -8,9 +8,11 @@ final class PingDetailViewTests: XCTestCase {
     private func state(
         _ target: PingTarget, address: String?, minute: [Float] = [], interval: Int = 1
     ) -> PingTargetState {
-        PingTargetState(
+        var state = PingTargetState(
             index: 0, target: target, stats: PingStats.compute(minute), isPrimary: false, address: address,
-            lastMinute: minute, probeIntervalSeconds: interval)
+            probeIntervalMilliseconds: interval * 1000)
+        state.lastMinute = minute
+        return state
     }
 
     private func value(_ label: String, in lines: [PingDetail.Line]) -> String? {
@@ -55,10 +57,17 @@ final class PingDetailViewTests: XCTestCase {
     }
 
     func testWindowTitleSaysHowMuchIsCovered() {
-        let full = state(.router, address: nil, minute: Array(repeating: 3, count: 60))
-        XCTAssertEqual(PingDetail.windowTitle(full), "Last Minute")
-        let young = state(.router, address: nil, minute: Array(repeating: 3, count: 4), interval: 5)
-        XCTAssertEqual(PingDetail.windowTitle(young), "Last 20 Seconds")
-        XCTAssertEqual(PingDetail.windowTitle(state(.router, address: nil)), "Last Minute")
+        var target = state(.router, address: nil, minute: [3, 3])
+        XCTAssertEqual(PingDetail.windowTitle(target), "Last Minute")
+        target.lastMinuteSeconds = 20
+        XCTAssertEqual(PingDetail.windowTitle(target), "Last 20 Seconds")
+        target.lastMinuteSeconds = 1
+        XCTAssertEqual(PingDetail.windowTitle(target), "Last Second")
+    }
+
+    func testFrequencyWording() {
+        XCTAssertEqual(PingDetail.every(milliseconds: 500), "every 0.5 seconds")
+        XCTAssertEqual(PingDetail.every(milliseconds: 1000), "every second")
+        XCTAssertEqual(PingDetail.every(milliseconds: 5000), "every 5 seconds")
     }
 }
