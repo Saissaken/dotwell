@@ -23,15 +23,24 @@ final class PreviewRenderTests: XCTestCase {
         let appearances: [(String, NSAppearance.Name)] = [("light", .aqua), ("dark", .darkAqua)]
         for (name, snapshot) in cases {
             for (mode, appearance) in appearances {
-                let data = try render(snapshot: snapshot, appearance: appearance)
+                let model = PopoverModel(snapshot: snapshot, launchAtLogin: true)
+                let data = try render(PopoverView(model: model), appearance: appearance)
                 try data.write(to: url.appendingPathComponent("popover-\(name)-\(mode).png"))
             }
         }
+        // The Ping module with the route's router list open.
+        for (mode, appearance) in appearances {
+            let issues = SampleData.issues
+            let module = PingModule(snapshot: issues, level: issues.level(.ping), pathExpanded: true)
+                .padding(12)
+                .frame(width: 360)
+            let data = try render(module, appearance: appearance)
+            try data.write(to: url.appendingPathComponent("ping-path-\(mode).png"))
+        }
     }
 
-    private func render(snapshot: Snapshot, appearance: NSAppearance.Name) throws -> Data {
-        let model = PopoverModel(snapshot: snapshot, launchAtLogin: true)
-        let root = PopoverView(model: model)
+    private func render(_ content: some View, appearance: NSAppearance.Name) throws -> Data {
+        let root = content
             .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .padding(24)
@@ -98,6 +107,7 @@ enum SampleData {
         s.processes = TopProcesses(
             byCPU: [app("Safari", cpu: 0.214), app("Music", cpu: 0.063), app("Mail", cpu: 0.018)],
             byMemory: [app("Safari", memory: 2.4), app("Photos", memory: 1.1), app("Messages", memory: 0.62)])
+        s.path = path(ispMs: 9, internetMs: 12, serverMs: 14, serverLost: 0)
         return s
     }
 
@@ -116,7 +126,29 @@ enum SampleData {
         s.history[SeriesKey.ping(1)] = pingHistory
         s.history[SeriesKey.cpu] = wave(30, base: 0.85, amplitude: 0.08, seed: 3)
         s.processes?.byCPU = [app("Photos", cpu: 2.864), app("Safari", cpu: 0.412), app("Mail", cpu: 0.071)]
+        s.path = path(ispMs: 72, internetMs: 81, serverMs: 96, serverLost: 1)
         return s
+    }
+
+    /// A typical home connection: router, carrier-grade NAT and two ISP routers, a transit router, Cloudflare.
+    private static func path(ispMs: Float, internetMs: Float, serverMs: Float, serverLost: Int) -> PathTrace {
+        func hop(_ ttl: Int, _ address: String?, _ hostname: String?, _ ms: Float, lost: Int = 0) -> TraceHop {
+            var samples = address == nil ? [] : wave(10, base: ms, amplitude: ms * 0.06, seed: Float(ttl))
+            for i in 0..<lost { samples[2 + i * 4] = PingStats.lost }
+            return TraceHop(
+                ttl: ttl, address: address, hostname: hostname, stats: PingStats.compute(samples),
+                isDestination: ttl == 7)
+        }
+        return PathTrace(
+            hops: [
+                hop(1, "192.168.1.1", nil, 3.1),
+                hop(2, "100.64.0.1", nil, ispMs * 0.8),
+                hop(3, "200.51.240.17", "ae3.core1.andesnet.com.ar", ispMs * 0.95),
+                hop(4, nil, nil, 0),
+                hop(5, "181.30.1.5", "ae0.core2.andesnet.com.ar", ispMs),
+                hop(6, "195.22.220.57", "et-1-1.transit.example.net", internetMs),
+                hop(7, "1.1.1.1", "one.one.one.one", serverMs, lost: serverLost),
+            ], rounds: 12)
     }
 
     /// A system app that exists on every Mac, so the screenshot shows its real icon.

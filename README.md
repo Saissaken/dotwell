@@ -20,6 +20,8 @@ Built for one thing above all: **using as few resources as possible** while it r
 
 - **Traffic-light status dot** in the menu bar: green, yellow or red, with hysteresis so it never flickers.
 - **Ping first**: latency, packet loss and jitter against your router, public DNS and cloud regions.
+- **Where it slows down**: the route to the ping server as five dots (Mac, router, ISP, internet, server)
+  with the latency at each, so you can tell Wi-Fi trouble from an ISP problem. Click it for every router.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
 - **What's using it**: the top 3 apps by CPU and memory, sampled only while the popover is open.
