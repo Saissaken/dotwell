@@ -114,7 +114,8 @@ private struct RegionRow: View {
         }
         .help(
             "A cloud region you use, to compare how far it is. Choose shows every region of AWS, Google Cloud "
-                + "and Azure with how long it takes to reach from here right now.")
+                + "and Azure with how long it takes to reach from here right now."
+        )
         .sheet(isPresented: $choosing) {
             RegionChooser(index: index, settings: settings)
         }
