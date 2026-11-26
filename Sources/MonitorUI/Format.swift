@@ -69,6 +69,18 @@ enum Format {
         return formatter
     }()
 
+    /// Per-process CPU as Activity Monitor shows it, where 100 % is one full core.
+    static func processCPU(_ fraction: Float) -> String {
+        let percent = fraction * 100
+        return percent < 10 ? String(format: "%.1f%%", percent) : String(format: "%.0f%%", percent)
+    }
+
+    /// Per-process memory in binary units like Activity Monitor: "640 MB", "2.4 GB".
+    static func processMemory(_ bytes: UInt64) -> String {
+        let mb = Double(bytes) / 1_048_576.0
+        return mb < 1024 ? String(format: "%.0f MB", mb) : String(format: "%.1f GB", mb / 1024)
+    }
+
     static func watts(_ watts: Double?) -> Reading {
         guard let watts else { return .none }
         return Reading(value: String(format: watts < 10 ? "%.1f" : "%.0f", watts), unit: "W")

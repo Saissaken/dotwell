@@ -61,7 +61,7 @@ Every release measures these numbers and records them in its pull request.
 | M7 | Thermal state | Shown only when macOS is throttling. Essentially free to read. The CPU temperature is shown next to CPU usage when the SMC exposes it. |
 
 ### 3.5 Candidate extras **[OPEN]**
-- E1. Top 3 processes by CPU (computed only while the popover is open).
+- E1. ~~Top 3 processes by CPU~~ Shipped: top 3 apps by CPU and by memory, computed only while the popover is open.
 - E2. Fan speed (Macs with fans only; requires reading the SMC).
 - E3. Wi‑Fi network name and signal quality.
 
