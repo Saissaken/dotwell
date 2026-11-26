@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-26
+
 ### Added
 - Ping: the ISP row now measures your internet provider's first router. Dotwell finds it with a short
   traceroute (about 60 tiny packets every 5 minutes, and again when you join another network), so you can
