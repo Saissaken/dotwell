@@ -4,6 +4,7 @@ public struct PingStats: Equatable, Sendable {
 
     public var latestMs: Float?
     public var averageMs: Float?
+    public var minMs: Float?
     public var maxMs: Float?
     /// 0...1
     public var lossFraction: Float
@@ -14,10 +15,12 @@ public struct PingStats: Equatable, Sendable {
 
     public static func compute(_ samples: [Float]) -> PingStats {
         guard !samples.isEmpty else {
-            return PingStats(latestMs: nil, averageMs: nil, maxMs: nil, lossFraction: 0, jitterMs: nil, lastLost: false)
+            return PingStats(
+                latestMs: nil, averageMs: nil, minMs: nil, maxMs: nil, lossFraction: 0, jitterMs: nil, lastLost: false)
         }
         var sum: Float = 0
         var ok = 0
+        var minValue: Float?
         var maxValue: Float?
         var jitterSum: Float = 0
         var jitterCount = 0
@@ -27,6 +30,7 @@ public struct PingStats: Equatable, Sendable {
             guard s >= 0 else { continue }
             sum += s
             ok += 1
+            minValue = min(minValue ?? s, s)
             maxValue = max(maxValue ?? s, s)
             if let p = previous { jitterSum += abs(s - p); jitterCount += 1 }
             previous = s
@@ -36,6 +40,7 @@ public struct PingStats: Equatable, Sendable {
         return PingStats(
             latestMs: last >= 0 ? last : latest,
             averageMs: ok > 0 ? sum / Float(ok) : nil,
+            minMs: minValue,
             maxMs: maxValue,
             lossFraction: Float(samples.count - ok) / Float(samples.count),
             jitterMs: jitterCount > 0 ? jitterSum / Float(jitterCount) : nil,

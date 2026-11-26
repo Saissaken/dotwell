@@ -53,6 +53,15 @@ All notable changes to this project are documented here. The format is based on
 ## [0.6.0] - 2026-11-26
 
 ### Added
+- Ping rows: click any row (Router, ISP, DNS, the internet host or a cloud region, or the big number of the main
+  host) to see what it measures: the host and the IP address it reaches, how it is timed (ping, opening a
+  connection, a small HTTPS request or a DNS query) and how often, and its last minute of readings as average,
+  minimum, maximum, loss and jitter, with a small chart. Right-click a row to copy its IP address or host name,
+  trace the route to it (the five dots then lead there until you go back or close the popover), change its
+  region or host in Settings, or make it the main host the menu bar light follows. It all uses readings Dotwell
+  already takes, so it costs nothing while the popover is closed.
+- The route under Ping now also shows for an AWS, Azure or Google Cloud main host. These hosts ignore the
+  route's ICMP probes, so their dot shows the row's own measurement instead of "No reply".
 - Ping: a DNS row for the server your Mac uses to look up names. Every 5 seconds it asks that server a real
   question (the address of www.apple.com, which any resolver has cached) and shows how long the answer takes;
   an error answer or no answer counts as lost. It says "DNS Cloudflare", "DNS Google" and so on for

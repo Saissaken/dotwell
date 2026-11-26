@@ -17,7 +17,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.makeModel = makeModel
     }
 
-    func show() {
+    /// Shows the window, on `page` when given (otherwise on the page last used).
+    func show(page: SettingsPage? = nil) {
+        if let page {
+            UserDefaults.standard.set(page.id, forKey: Self.selectedPageKey)
+            (window?.contentViewController as? SettingsSplitViewController)?.navigation.show(page)
+        }
         let window = self.window ?? makeWindow()
         self.window = window
         NSApp.setActivationPolicy(.regular)
