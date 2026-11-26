@@ -17,6 +17,10 @@ All notable changes to this project are documented here. The format is based on
   - Updates: automatic checks and installs, Check Now, and the installed version.
 - Hiding the ping card with its alert off stops all pings, and turning off every top-app line stops
   per-app sampling.
+- Ping: the route to the ping server as five dots (Mac, router, ISP, internet, server), each with the latency up
+  to that point and colored by health, plus a one-line verdict such as "Slow from your ISP". Click it to see
+  every router on the way. It is traced like MTR, without root or helper tools, and only while the popover is
+  open.
 
 ### Changed
 - Ping now measures a few well-chosen hosts: your router, your internet provider's first router, Cloudflare,
