@@ -78,4 +78,4 @@ jobs:
           # A pushed tag already exists; a manual run creates it on the commit that was built.
           [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]] && TARGET=(--target "$GITHUB_SHA") || TARGET=(--verify-tag)
           gh release create "$TAG" "${TARGET[@]}" --title "v$VERSION" --notes-file build/notes.md \
-            "build/Dotwell-$VERSION.dmg" "build/Dotwell-$VERSION.zip" build/appcast.xml
+            build/Dotwell.dmg "build/Dotwell-$VERSION.zip" build/appcast.xml
