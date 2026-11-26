@@ -1,0 +1,121 @@
+# Technical design
+
+Status: **draft v0.1** (2026-11-26). Companion to [REQUIREMENTS.md](REQUIREMENTS.md).
+
+> **Decided (2026-11-26):** native Swift, macOS only. The finer choices below (AppKit + SwiftUI, custom charts,
+> Swift Package layout, macOS 13+) are proposals open to review.
+
+## 1. Stack
+
+**Swift 5.9+, AppKit for the menu bar item, SwiftUI for the popover content.** No third-party dependencies.
+
+| Option | Typical RAM | Notes |
+|---|---|---|
+| **Swift + AppKit/SwiftUI** ✅ | 15–25 MB | Direct kernel APIs (Mach, IOKit, sysctl), no extra runtime, native look for free. |
+| Pure SwiftUI `MenuBarExtra` | 20–30 MB | Simpler, but less control over the dynamic icon and popover lifecycle. |
+| Tauri / Rust | 40–80 MB | WebView means more memory and a non-native look. |
+| Electron | 150+ MB | Rejected. |
+
+Details:
+- `NSStatusItem` with a template glyph plus a small colored dot. The dot is redrawn **only when the level changes**.
+- `NSPopover` hosting SwiftUI. The view tree is **created on open and released on close**, so nothing UI-related
+  is retained while the popover is hidden.
+- Charts: custom SwiftUI `Canvas` sparklines. Swift Charts is heavier than needed for simple lines.
+- Launch at login: `SMAppService.mainApp` (macOS 13+).
+- Minimum target: **macOS 13 Ventura**. Universal binary (Apple Silicon + Intel).
+- `LSUIElement = YES` (no Dock icon).
+
+## 2. Architecture
+
+```
+┌──────────────────── App (single process) ────────────────────┐
+│ Sampler (one DispatchSourceTimer with leeway, utility queue)  │
+│   ├─ CPUProbe      host_statistics(HOST_CPU_LOAD_INFO)        │
+│   ├─ MemoryProbe   host_statistics64 + memorystatus sysctl    │
+│   ├─ DiskProbe     URL resource values + IOKit block stats    │
+│   ├─ PowerProbe    IOKit AppleSmartBattery                    │
+│   ├─ NetworkProbe  sysctl NET_RT_IFLIST2                      │
+│   └─ PingEngine    unprivileged ICMP socket / TCP handshake   │
+│          │                                                    │
+│          ▼                                                    │
+│ TieredSeries (fixed-size Float ring buffers)                  │
+│ Thresholds + LevelDebouncer (hysteresis)                      │
+│          │  Snapshot (value type, once per tick)              │
+│          ▼                                                    │
+│ StatusItemController ── PopoverModel/PopoverView (only open)  │
+└───────────────────────────────────────────────────────────────┘
+```
+
+Modules (Swift Package):
+- `MonitorCore`: probes, history, health evaluation. No UI, unit tested.
+- `MonitorApp`: status item, popover, login item.
+
+## 3. How each metric is read (no root required)
+
+| Metric | API | Cost |
+|---|---|---|
+| CPU % | `host_statistics(HOST_CPU_LOAD_INFO)`: delta of user+system+nice over total ticks | 1 syscall |
+| Memory | `host_statistics64(HOST_VM_INFO64)`: app (internal − purgeable) + wired + compressed. Pressure: `kern.memorystatus_vm_pressure_level` | 2 syscalls |
+| Disk space | `volumeAvailableCapacityForImportantUsage` of the boot volume, every 30 s | negligible |
+| Disk I/O | IOKit `IOBlockStorageDriver` `Statistics`, delta | 1 IOKit query |
+| Battery W | IOKit `AppleSmartBattery`: `Voltage × InstantAmperage`. On AC: `PowerTelemetryData.SystemPowerIn` | 1 IOKit query |
+| Network | `sysctl(NET_RT_IFLIST2)` 64-bit counters (`getifaddrs` uses 32-bit counters that wrap at 4 GB). Loopback and point-to-point (VPN) interfaces are excluded to avoid double counting | 1 syscall |
+| Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
+| Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
+
+The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by far the most expensive option.
+
+## 4. Sampling cadence
+
+| | CPU/Mem/Net/Disk I/O | ICMP ping | TCP ping | Battery | Disk space |
+|---|---|---|---|---|---|
+| Running (popover open or closed) | 1 s | 1 s, all targets | 5 s | 2 s | 30 s |
+| Mac or displays asleep | paused | paused | paused | paused | paused |
+
+Sampling at a fixed 1 s keeps history continuous; each tick is a handful of syscalls (microseconds).
+With the popover closed no history is copied for the UI and nothing is drawn. If real measurements exceed the
+budget, the closed-popover cadence drops to 2 s.
+
+- **One timer** with `leeway` so the system can coalesce wakeups.
+- All probes run on one serial `.utility` queue; replies arrive through dispatch sources, never blocking threads.
+- DNS resolution runs off the sampling queue and is cached for 5 minutes.
+
+## 5. History
+
+Each metric keeps a `TieredSeries`:
+- 30 s window: last 30 raw samples (buffer of 60).
+- 5 min window: 60 averages of 5 samples.
+- 1 h window: 120 averages of 30 samples.
+
+That is 240 `Float`s (~1 KB) per series. Lost pings are stored as a negative sentinel, excluded from averages,
+and drawn as red ticks. History is in memory only in v1.
+
+## 6. Health
+
+`Thresholds` maps raw values to levels (REQUIREMENTS §4) and `LevelDebouncer` applies hysteresis: raising a level
+requires N consecutive samples, lowering requires M. Overall health is the worst level. The popover lists
+non-green metrics first.
+
+## 7. Icon
+
+A ~16 pt monochrome template glyph (adapts to light/dark and menu bar highlighting) with a 6 pt dot at the
+bottom-right corner using `systemGreen`, `systemYellow` or `systemRed`.
+Alternative under discussion (Q3): no dot while green, Apple-style, so color only appears when something needs
+attention; optionally the primary ping in ms next to the glyph.
+
+## 8. Build, CI and distribution
+
+- Swift Package plus `scripts/bundle.sh`, which assembles and ad-hoc signs the `.app`. No `.xcodeproj` needed;
+  `swift build` and `swift test` work from the command line. The package also opens directly in Xcode.
+- GitHub Actions on `macos-15`: format lint, tests, bundle, and the zipped `.app` as a build artifact.
+- Without a Developer ID, builds are ad-hoc signed and must be allowed once in System Settings → Privacy & Security
+  (or by removing the quarantine attribute), as described in the README.
+  With one, CI can sign and notarize releases.
+
+## 9. Delivery plan
+
+1. Docs, skeleton, probes, ping, sampler, popover (v0.1).
+2. Measure the resource budget on real hardware and tune.
+3. Settings: ping targets, primary target, thresholds.
+4. Decisions from REQUIREMENTS §6 as they land.
+5. v1.0 release with signed builds.
