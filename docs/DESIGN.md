@@ -67,7 +67,7 @@ Modules (Swift Package):
 | Battery W | IOKit `AppleSmartBattery`: `Voltage × InstantAmperage`. On AC: `PowerTelemetryData.SystemPowerIn` | 1 IOKit query |
 | Network | `sysctl(NET_RT_IFLIST2)` 64-bit counters (`getifaddrs` uses 32-bit counters that wrap at 4 GB). Loopback and point-to-point (VPN) interfaces are excluded to avoid double counting | 1 syscall |
 | Thermal state | `ProcessInfo.thermalState`: serious = yellow, critical = red (macOS is throttling) | 1 property read |
-| CPU temperature | `AppleSMC` user client: CPU die sensors (`Tp*`/`Te*` floats on Apple silicon, `TC*` sp78 on Intel), found once by listing the SMC keys, averaged, every 5 s. No root or entitlements; hidden when no sensor answers (VMs) | 1 IOKit call per sensor |
+| CPU temperature | `AppleSMC` user client: CPU die sensors (`Tp*`/`Te*` floats on Apple silicon, `TC*` sp78 on Intel), found once by listing the SMC keys, averaged, every 5 s **while the popover is open**. No root or entitlements; hidden when no sensor answers (VMs) | 1 IOKit call per sensor |
 | Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
 | Local IP | interface of the default route (`sysctl(NET_RT_FLAGS)` `rtm_index`), its IPv4 from `getifaddrs`, its kind (Wi‑Fi, Ethernet) from `SCNetworkInterfaceCopyAll`. **Only while the popover is open**, again on `NWPathMonitor` path changes | 1 syscall + 1 `getifaddrs` |
 | Public IP | `https://1.1.1.1/cdn-cgi/trace` and `https://[2606:4700:4700::1111]/cdn-cgi/trace` (literal addresses force each family, no DNS). Ephemeral `URLSession`, no cache or cookies. Cached until the local address or interface changes, or for 10 min | 2 small HTTPS requests |
@@ -91,8 +91,9 @@ duration and keeps it (or runs every tick, if the interval is longer). History r
 Settings are applied live through `Sampler.apply(_:)` without restarting the timer's history.
 
 Sampling at a fixed interval keeps history continuous; each tick is a handful of syscalls (microseconds).
-With the popover closed no history is copied for the UI, nothing is drawn and processes are not sampled
-(the probe drops its caches on close). If real measurements exceed the
+With the popover closed no history is copied for the UI, nothing is drawn, processes and the CPU temperature
+are not sampled (the process probe drops its caches on close), and snapshots only reach the main thread when
+the overall level changes (the menu bar dot is all that shows them). If real measurements exceed the
 budget, the closed-popover cadence drops to 2 s.
 
 - **One timer** with `leeway` so the system can coalesce wakeups.

@@ -104,6 +104,9 @@ public final class Sampler: @unchecked Sendable {
     ]
 
     private var detailedFlag = false
+    /// The overall level last handed to the main queue. While the popover is closed, snapshots only go there
+    /// when it changes, since the menu bar dot is all that shows them.
+    private var publishedLevel: HealthLevel?
     private var historyRange: HistoryRange = .seconds30
 
     public init(configuration: SamplerConfiguration = SamplerConfiguration()) {
@@ -134,6 +137,7 @@ public final class Sampler: @unchecked Sendable {
         queue.async { [self] in
             guard timer == nil else { return }
             _ = cpuProbe.sample()  // prime deltas
+            current.cpuTemperature = temperatureProbe.sample()  // finds the sensors once, off the popover's path
             let t = DispatchSource.makeTimerSource(queue: queue)
             t.setEventHandler { [weak self] in self?.tickOnce() }
             timer = t
@@ -202,7 +206,7 @@ public final class Sampler: @unchecked Sendable {
                 debouncers[kind]?.reset()
             }
             evaluate()
-            publish()
+            publish(always: true)
         }
     }
 
@@ -212,8 +216,11 @@ public final class Sampler: @unchecked Sendable {
             let opening = detailed && !detailedFlag
             detailedFlag = detailed
             historyRange = range
-            if opening, configuration.sampleTopApps {
-                current.topApps = processProbe.sample()  // memory right away, rates from the next sample
+            if opening {
+                current.cpuTemperature = temperatureProbe.sample()
+                if configuration.sampleTopApps {
+                    current.topApps = processProbe.sample()  // memory right away, rates from the next sample
+                }
                 startTrace()
             } else if !detailed {
                 processProbe.reset()
@@ -278,7 +285,8 @@ public final class Sampler: @unchecked Sendable {
         }
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
-        if every(5) { current.cpuTemperature = temperatureProbe.sample() }
+        // The temperature is only shown in the popover.
+        if detailedFlag, every(5) { current.cpuTemperature = temperatureProbe.sample() }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
         // first rates one second after opening, then every 2 s like Activity Monitor's fast setting.
         if detailedFlag, configuration.sampleTopApps, let elapsed = processProbe.elapsed(now: now),
@@ -343,7 +351,15 @@ public final class Sampler: @unchecked Sendable {
     /// Ping stats cover the last 10 s, but at least 5 samples so one lost reply isn't 100 % loss.
     private var pingWindow: Int { max(5, 10 / step) }
 
-    private func publish() {
+    /// The latest values, without history. Call from the main queue when the popover opens, so its first
+    /// frame is current even though closed-popover snapshots are not sent there every tick.
+    public func latest() -> Snapshot {
+        queue.sync { current }
+    }
+
+    private func publish(always: Bool = false) {
+        if !detailedFlag, !always, current.overall == publishedLevel { return }
+        publishedLevel = current.overall
         var snap = current
         if detailedFlag {
             var h: [String: [Float]] = [:]

@@ -16,7 +16,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private let settings: AppSettings
     private let updater: Updater
     private let openSettings: () -> Void
-    private var latest = Snapshot()
     private var model: PopoverModel?
     /// Lives as long as the app so the public address stays cached between openings.
     private let addressMonitor = NetworkAddressMonitor()
@@ -53,7 +52,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     private func receive(_ snap: Snapshot) {
-        latest = snap
         update(level: snap.overall)
         model?.snapshot = snap
     }
@@ -81,7 +79,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            let model = PopoverModel(snapshot: latest)
+            let model = PopoverModel(snapshot: sampler.latest())
             model.openSettings = { [weak self] in
                 self?.popover.performClose(nil)
                 self?.openSettings()
