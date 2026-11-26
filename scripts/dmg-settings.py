@@ -24,4 +24,4 @@ show_icon_preview = False
 
 icon_size = 128
 text_size = 13
-icon_locations = {appname: (150, 190), "Applications": (450, 190)}
+icon_locations = {appname: (150, 140), "Applications": (450, 140)}

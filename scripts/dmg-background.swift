@@ -1,12 +1,13 @@
 // Renders the disk image window background: an arrow from the app to the Applications folder.
 // Usage: swift scripts/dmg-background.swift <output-directory>
-// Writes background.png (600x400) and background@2x.png; combine them with tiffutil.
+// Writes background.png (600x340) and background@2x.png; combine them with tiffutil.
 import AppKit
 
-let size = NSSize(width: 600, height: 400)
+// The window is 600x400 (scripts/dmg-settings.py); Finder's title and status bars take about 60 pt of it.
+let size = NSSize(width: 600, height: 340)
 // Icon centers as placed by scripts/dmg-settings.py, in Finder's top-left coordinates.
-let appCenter = NSPoint(x: 150, y: 190)
-let folderCenter = NSPoint(x: 450, y: 190)
+let appCenter = NSPoint(x: 150, y: 140)
+let folderCenter = NSPoint(x: 450, y: 140)
 
 func render(scale: CGFloat) -> Data? {
     guard
@@ -40,16 +41,19 @@ func render(scale: CGFloat) -> Data? {
     NSColor(calibratedWhite: 0.55, alpha: 1).setStroke()
     arrow.stroke()
 
-    let caption = "Drag to Applications to install" as NSString
     let style = NSMutableParagraphStyle()
     style.alignment = .center
-    caption.draw(
-        in: NSRect(x: 0, y: 52, width: size.width, height: 22),
-        withAttributes: [
-            .font: NSFont.systemFont(ofSize: 15, weight: .medium),
-            .foregroundColor: NSColor(calibratedWhite: 0.4, alpha: 1),
-            .paragraphStyle: style,
-        ])
+    func line(_ text: String, top: CGFloat, font: NSFont, white: CGFloat) {
+        (text as NSString).draw(
+            in: NSRect(x: 0, y: size.height - top - 20, width: size.width, height: 20),
+            withAttributes: [
+                .font: font, .foregroundColor: NSColor(calibratedWhite: white, alpha: 1), .paragraphStyle: style,
+            ])
+    }
+    line("Drag Dotwell to Applications", top: 248, font: .systemFont(ofSize: 15, weight: .medium), white: 0.35)
+    line(
+        "If macOS blocks the first launch: System Settings › Privacy & Security › Open Anyway",
+        top: 276, font: .systemFont(ofSize: 11), white: 0.5)
 
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])

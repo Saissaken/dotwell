@@ -8,7 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 - App icon: a green status dot glowing in a dark well, also used for the disk image volume.
+- Once installed, offer to eject the installer disk image and move the downloaded `.dmg` to the Trash.
 
+### Fixed
+- Disk image window: the instructions were cut off at the bottom. It now also explains how to allow the
+  first launch while the app is not notarized.
 ## [0.1.0] - 2026-11-26
 
 ### Added
