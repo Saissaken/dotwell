@@ -1,4 +1,4 @@
-# Mac Resource Monitor
+# Dotwell
 
 [![CI](https://github.com/Saissaken/mac-resource-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/Saissaken/mac-resource-monitor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -39,17 +39,17 @@ Built for one thing above all: **using as few resources as possible** while it r
 
 ## Install
 
-1. Download `MacResourceMonitor-X.Y.Z.dmg` from the
+1. Download `Dotwell-X.Y.Z.dmg` from the
    [latest release](https://github.com/Saissaken/mac-resource-monitor/releases/latest), open it and drag
-   **MacResourceMonitor** to **Applications**. The build is universal (Apple silicon and Intel).
+   **Dotwell** to **Applications**. The build is universal (Apple silicon and Intel).
 2. The build is not notarized yet, so Gatekeeper blocks the first launch. Allow it once, using either option:
    - **System Settings:** try to open the app and click **Done** on the warning. Then go to
      **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to
-     "MacResourceMonitor", and confirm with your password.
+     "Dotwell", and confirm with your password.
    - **Terminal:**
      ```sh
-     xattr -dr com.apple.quarantine /Applications/MacResourceMonitor.app
-     open /Applications/MacResourceMonitor.app
+     xattr -dr com.apple.quarantine /Applications/Dotwell.app
+     open /Applications/Dotwell.app
      ```
 
 > On macOS 15 Sequoia and later, the old right-click → Open shortcut no longer bypasses Gatekeeper.
@@ -68,8 +68,8 @@ Requirements: macOS 13+ and Xcode 15+ (or the matching Swift toolchain).
 git clone https://github.com/Saissaken/mac-resource-monitor.git
 cd mac-resource-monitor
 make test      # run unit tests
-make app       # build build/MacResourceMonitor.app
-open build/MacResourceMonitor.app
+make app       # build build/Dotwell.app
+open build/Dotwell.app
 ```
 
 You can also open `Package.swift` in Xcode.
@@ -78,7 +78,8 @@ You can also open `Package.swift` in Xcode.
 
 ```
 Sources/MonitorCore   Probes, ping engine, history and health evaluation (no UI, unit tested)
-Sources/MonitorApp    Menu bar item, popover and launch-at-login
+Sources/MonitorUI     Popover views and sparklines (SwiftUI)
+Sources/Dotwell       App: menu bar item, updates and launch-at-login
 Tests/                Unit tests for MonitorCore
 scripts/              Bundling, packaging and release helpers
 docs/                 Requirements, design and release process

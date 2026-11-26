@@ -49,7 +49,8 @@ Details:
 
 Modules (Swift Package):
 - `MonitorCore`: probes, history, health evaluation. No UI, unit tested.
-- `MonitorApp`: status item, popover, login item.
+- `MonitorUI`: popover views and sparklines (SwiftUI).
+- `Dotwell` (executable): status item, popover hosting, updates, login item.
 
 ## 3. How each metric is read (no root required)
 

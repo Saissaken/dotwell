@@ -26,7 +26,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.delegate = self
 
         guard let button = statusItem.button else { return }
-        let glyph = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "Resource monitor")
+        let glyph = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "Dotwell")
         glyph?.isTemplate = true  // follows light/dark menu bar automatically
         button.image = glyph
         button.target = self
@@ -106,7 +106,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         }
         menu.addItem(
             NSMenuItem(
-                title: "Quit Mac Resource Monitor", action: #selector(NSApplication.terminate(_:)),
+                title: "Quit Dotwell", action: #selector(NSApplication.terminate(_:)),
                 keyEquivalent: "q"))
         statusItem.menu = menu
         button.performClick(nil)  // shows the menu and returns once it closes

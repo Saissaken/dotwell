@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Mac Resource Monitor</string>
+    <string>Dotwell</string>
     <key>CFBundleDisplayName</key>
-    <string>Mac Resource Monitor</string>
+    <string>Dotwell</string>
     <key>CFBundleIdentifier</key>
-    <string>com.saissaken.MacResourceMonitor</string>
+    <string>com.saissaken.Dotwell</string>
     <key>CFBundleExecutable</key>
-    <string>MonitorApp</string>
+    <string>Dotwell</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

@@ -20,7 +20,7 @@ GitHub Release. Installed copies pick it up through [Sparkle](https://sparkle-pr
    - checks that the tag is on `main` and that `CHANGELOG.md` has a section for the version;
    - runs the tests and builds the universal app with `CFBundleShortVersionString = X.Y.Z` and
      `CFBundleVersion` = the number of commits on `main` (always increasing, which Sparkle relies on);
-   - creates `MacResourceMonitor-X.Y.Z.dmg` (for people) and `MacResourceMonitor-X.Y.Z.zip` (for Sparkle);
+   - creates `Dotwell-X.Y.Z.dmg` (for people) and `Dotwell-X.Y.Z.zip` (for Sparkle);
    - signs the zip with the EdDSA key, verifies the signature against `SUPublicEDKey` in `Resources/Info.plist`,
      and writes `appcast.xml` with the changelog section as release notes;
    - publishes the release with all three files attached.
