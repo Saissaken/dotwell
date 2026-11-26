@@ -6,7 +6,18 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-26
+
 ### Added
+- Ping rows: click any row (Router, ISP, DNS, the internet host or a cloud region, or the big number of the main
+  host) to see what it measures: the host and the IP address it reaches, how it is timed (ping, opening a
+  connection, a small HTTPS request or a DNS query) and how often, and its last minute of readings as average,
+  minimum, maximum, loss and jitter, with a small chart. Right-click a row to copy its IP address or host name,
+  trace the route to it (the five dots then lead there until you go back or close the popover), change its
+  region or host in Settings, or make it the main host the menu bar light follows. It all uses readings Dotwell
+  already takes, so it costs nothing while the popover is closed.
+- The route under Ping now also shows for an AWS, Azure or Google Cloud main host. These hosts ignore the
+  route's ICMP probes, so their dot shows the row's own measurement instead of "No reply".
 - Ping → Region → Choose… lists every region of AWS, Google Cloud or Azure with how long it takes to reach
   from your Mac right now, fastest first, so you can pick the ones that matter to you. It measures each region
   four times the same way as its row in the popover and shows the best, and only while the window is open. "Change
@@ -57,15 +68,6 @@ All notable changes to this project are documented here. The format is based on
 ## [0.6.0] - 2026-11-26
 
 ### Added
-- Ping rows: click any row (Router, ISP, DNS, the internet host or a cloud region, or the big number of the main
-  host) to see what it measures: the host and the IP address it reaches, how it is timed (ping, opening a
-  connection, a small HTTPS request or a DNS query) and how often, and its last minute of readings as average,
-  minimum, maximum, loss and jitter, with a small chart. Right-click a row to copy its IP address or host name,
-  trace the route to it (the five dots then lead there until you go back or close the popover), change its
-  region or host in Settings, or make it the main host the menu bar light follows. It all uses readings Dotwell
-  already takes, so it costs nothing while the popover is closed.
-- The route under Ping now also shows for an AWS, Azure or Google Cloud main host. These hosts ignore the
-  route's ICMP probes, so their dot shows the row's own measurement instead of "No reply".
 - Ping: a DNS row for the server your Mac uses to look up names. Every 5 seconds it asks that server a real
   question (the address of www.apple.com, which any resolver has cached) and shows how long the answer takes;
   an error answer or no answer counts as lost. It says "DNS Cloudflare", "DNS Google" and so on for
@@ -206,7 +208,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Saissaken/dotwell/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Saissaken/dotwell/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
