@@ -17,4 +17,14 @@ final class FormatTests: XCTestCase {
     func testMemoryStaysInBinaryUnits() {
         XCTAssertEqual(Format.gigabytes(17_179_869_184), Reading(value: "16.0", unit: "GB"))
     }
+
+    func testProcessCPUUsesActivityMonitorScale() {
+        XCTAssertEqual(Format.processCPU(0.042), "4.2%")
+        XCTAssertEqual(Format.processCPU(2.864), "286%")
+    }
+
+    func testProcessMemorySwitchesToGigabytes() {
+        XCTAssertEqual(Format.processMemory(671_088_640), "640 MB")
+        XCTAssertEqual(Format.processMemory(2_576_980_378), "2.4 GB")
+    }
 }

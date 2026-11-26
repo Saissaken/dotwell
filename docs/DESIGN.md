@@ -64,6 +64,7 @@ Modules (Swift Package):
 | Network | `sysctl(NET_RT_IFLIST2)` 64-bit counters (`getifaddrs` uses 32-bit counters that wrap at 4 GB). Loopback and point-to-point (VPN) interfaces are excluded to avoid double counting | 1 syscall |
 | Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
 | Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
+| Top processes | `proc_listallpids` + `proc_pid_rusage(RUSAGE_INFO_V4)`: CPU time delta and physical footprint. Helpers are grouped under their outermost `.app` bundle (`proc_pidpath`, cached per pid and start time). Only the current user's processes are readable without root, so system daemons are left out. **Only while the popover is open**, every 2 s | 1 syscall per process |
 
 The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by far the most expensive option.
 
@@ -75,7 +76,8 @@ The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by 
 | Mac or displays asleep | paused | paused | paused | paused | paused |
 
 Sampling at a fixed 1 s keeps history continuous; each tick is a handful of syscalls (microseconds).
-With the popover closed no history is copied for the UI and nothing is drawn. If real measurements exceed the
+With the popover closed no history is copied for the UI, nothing is drawn and processes are not sampled
+(the probe drops its caches on close). If real measurements exceed the
 budget, the closed-popover cadence drops to 2 s.
 
 - **One timer** with `leeway` so the system can coalesce wakeups.

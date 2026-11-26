@@ -26,6 +26,7 @@ public struct PopoverView: View {
                 if !healthy.isEmpty { GroupLabel("Everything Else") }
             }
             grid(healthy)
+            ProcessesModule(processes: snap.processes, icons: model.icons)
         }
         .padding(12)
         .frame(width: 360)

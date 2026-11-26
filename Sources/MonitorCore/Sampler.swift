@@ -31,6 +31,8 @@ public struct Snapshot: Sendable {
     public var levels: [MetricKind: HealthLevel] = [:]
     /// Only filled while the popover is open (`detailed == true`).
     public var history: [String: [Float]] = [:]
+    /// Heaviest apps, only sampled while the popover is open.
+    public var processes: TopProcesses?
 
     public init() {}
 
@@ -67,6 +69,7 @@ public final class Sampler: @unchecked Sendable {
     private let networkProbe = NetworkProbe()
     private let diskProbe = DiskProbe()
     private let powerProbe = PowerProbe()
+    private let processProbe = ProcessProbe()
     private let ping: PingEngine
 
     private var timer: DispatchSourceTimer?
@@ -127,8 +130,15 @@ public final class Sampler: @unchecked Sendable {
     /// While detailed, snapshots carry history for `range`.
     public func setDetailed(_ detailed: Bool, range: HistoryRange) {
         queue.async { [self] in
+            let opening = detailed && !detailedFlag
             detailedFlag = detailed
             historyRange = range
+            if opening {
+                current.processes = processProbe.sample()  // memory ranking right away, CPU from the next one
+            } else if !detailed {
+                processProbe.reset()
+                current.processes = nil
+            }
             if detailed { publish() }  // immediate data when the popover opens
         }
     }
@@ -186,6 +196,13 @@ public final class Sampler: @unchecked Sendable {
         }
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
+        // Per-process usage costs one syscall per process, so it only runs with the popover open:
+        // first CPU ranking one second after opening, then every 2 s like Activity Monitor's fast setting.
+        if detailedFlag, let elapsed = processProbe.elapsed(now: now),
+            elapsed >= (current.processes?.byCPU.isEmpty == false ? 1_900_000_000 : 900_000_000)
+        {
+            current.processes = processProbe.sample(now: now)
+        }
 
         evaluate()
         publish()

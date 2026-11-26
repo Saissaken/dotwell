@@ -91,6 +91,9 @@ enum SampleData {
             SeriesKey.netDown: wave(30, base: 200e6, amplitude: 120e6, seed: 4),
             SeriesKey.netUp: wave(30, base: 20e6, amplitude: 10e6, seed: 7),
         ]
+        s.processes = TopProcesses(
+            byCPU: [app("Safari", cpu: 0.214), app("Music", cpu: 0.063), app("Mail", cpu: 0.018)],
+            byMemory: [app("Safari", memory: 2.4), app("Photos", memory: 1.1), app("Messages", memory: 0.62)])
         return s
     }
 
@@ -105,7 +108,15 @@ enum SampleData {
         pingHistory[24] = PingStats.lost
         s.history[SeriesKey.ping(1)] = pingHistory
         s.history[SeriesKey.cpu] = wave(30, base: 0.85, amplitude: 0.08, seed: 3)
+        s.processes?.byCPU = [app("Photos", cpu: 2.864), app("Safari", cpu: 0.412), app("Mail", cpu: 0.071)]
         return s
+    }
+
+    /// A system app that exists on every Mac, so the screenshot shows its real icon.
+    private static func app(_ name: String, cpu: Float = 0, memory gigabytes: Double = 0) -> ProcessUsage {
+        let path = name == "Safari" ? "/Applications/Safari.app" : "/System/Applications/\(name).app"
+        let bytes = UInt64(gigabytes * 1_073_741_824)
+        return ProcessUsage(id: path, name: name, path: path, cpu: cpu, memoryBytes: bytes)
     }
 
     private static func pingTargets(primaryMs: Float, primaryLoss: Float) -> [PingTargetState] {
