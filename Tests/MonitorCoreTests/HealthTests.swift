@@ -41,6 +41,14 @@ final class HealthTests: XCTestCase {
         XCTAssertEqual(t.disk(DiskSpace(availableBytes: 1, totalBytes: 100)), .critical)
     }
 
+    func testThermalStateMapsToLevels() {
+        let t = Thresholds()
+        XCTAssertEqual(t.thermal(.nominal), .ok)
+        XCTAssertEqual(t.thermal(.fair), .ok)
+        XCTAssertEqual(t.thermal(.serious), .warning)
+        XCTAssertEqual(t.thermal(.critical), .critical)
+    }
+
     func testTieredSeriesDownsamples() {
         var s = TieredSeries()
         for i in 0..<10 { s.append(Float(i)) }

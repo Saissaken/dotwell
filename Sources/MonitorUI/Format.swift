@@ -54,6 +54,21 @@ enum Format {
         return String(format: "%.0f KB/s", value / 1e3)
     }
 
+    /// Temperature in the unit the user prefers (System Settings → Language & Region), e.g. "52°C".
+    static func temperature(_ celsius: Float?) -> String? {
+        guard let celsius else { return nil }
+        return temperatureFormatter.string(from: Measurement(value: Double(celsius), unit: UnitTemperature.celsius))
+    }
+
+    /// Internal so tests and screenshots can pin a locale.
+    static let temperatureFormatter: MeasurementFormatter = {
+        let formatter = MeasurementFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.unitStyle = .medium
+        formatter.numberFormatter.maximumFractionDigits = 0
+        return formatter
+    }()
+
     static func watts(_ watts: Double?) -> Reading {
         guard let watts else { return .none }
         return Reading(value: String(format: watts < 10 ? "%.1f" : "%.0f", watts), unit: "W")

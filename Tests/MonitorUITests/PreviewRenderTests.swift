@@ -15,6 +15,9 @@ final class PreviewRenderTests: XCTestCase {
         }
         let url = URL(fileURLWithPath: dir, isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        let locale = Format.temperatureFormatter.locale
+        Format.temperatureFormatter.locale = Locale(identifier: "en_GB")  // °C in the README screenshots
+        defer { Format.temperatureFormatter.locale = locale }
 
         let cases: [(String, Snapshot)] = [("healthy", SampleData.healthy), ("issues", SampleData.issues)]
         let appearances: [(String, NSAppearance.Name)] = [("light", .aqua), ("dark", .darkAqua)]
@@ -73,6 +76,7 @@ enum SampleData {
     static var healthy: Snapshot {
         var s = Snapshot()
         s.cpu = 0.18
+        s.cpuTemperature = 46
         s.memory = MemorySample(usedBytes: 11_400_000_000, totalBytes: 17_179_869_184, pressure: .normal)
         s.disk = DiskSpace(availableBytes: 212_000_000_000, totalBytes: 494_000_000_000)
         s.diskReadBytesPerSec = 2_400_000
@@ -97,6 +101,9 @@ enum SampleData {
     static var issues: Snapshot {
         var s = healthy
         s.cpu = 0.91
+        s.cpuTemperature = 97
+        s.thermal = .serious
+        s.levels[.thermal] = .warning
         s.ping = pingTargets(primaryMs: 96, primaryLoss: 0.03)
         s.levels[.ping] = .warning
         s.levels[.cpu] = .warning

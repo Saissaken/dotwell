@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- CPU temperature next to CPU usage, read from the SMC's CPU die sensors (Apple silicon and Intel). It follows
+  the temperature unit set in System Settings and is hidden when the Mac doesn't expose the sensors.
+- When macOS slows the Mac down to cool it (thermal state "serious" or "critical"), the Thermal module in
+  Needs Attention now also shows the CPU temperature.
+
 ## [0.1.2] - 2026-11-26
 
 ### Fixed
