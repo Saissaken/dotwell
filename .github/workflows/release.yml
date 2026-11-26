@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # the build number is the commit count
+
+      - name: Resolve version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          mkdir -p build
+          scripts/release-notes.sh "$VERSION" > build/notes.md
+
+      - name: Test
+        run: swift test
+
+      - name: Bundle app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+        run: scripts/bundle.sh
+
+      - name: Package
+        run: scripts/package.sh "${{ steps.version.outputs.version }}"
+
+      - name: Sign update and write appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP="MacResourceMonitor-$VERSION.zip"
+          scripts/appcast.sh "$VERSION" "${{ steps.version.outputs.build }}" "build/$ZIP" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$ZIP" build/notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "v$VERSION" --notes-file build/notes.md \
+            "build/MacResourceMonitor-$VERSION.dmg" "build/MacResourceMonitor-$VERSION.zip" build/appcast.xml

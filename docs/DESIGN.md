@@ -7,7 +7,8 @@ Status: **draft v0.1** (2026-11-26). Companion to [REQUIREMENTS.md](REQUIREMENTS
 
 ## 1. Stack
 
-**Swift 5.9+, AppKit for the menu bar item, SwiftUI for the popover content.** No third-party dependencies.
+**Swift 5.9+, AppKit for the menu bar item, SwiftUI for the popover content.** The only third-party dependency is
+[Sparkle 2](https://sparkle-project.org) for in-app updates; it stays idle between its daily check.
 
 | Option | Typical RAM | Notes |
 |---|---|---|
@@ -108,9 +109,11 @@ attention; optionally the primary ping in ms next to the glyph.
 - Swift Package plus `scripts/bundle.sh`, which assembles and ad-hoc signs the `.app`. No `.xcodeproj` needed;
   `swift build` and `swift test` work from the command line. The package also opens directly in Xcode.
 - GitHub Actions on `macos-15`: format lint, tests, bundle, and the zipped `.app` as a build artifact.
+- Releases: pushing a `vX.Y.Z` tag builds a `.dmg` and a `.zip`, signs the zip with Sparkle's EdDSA key and
+  publishes a GitHub Release whose `appcast.xml` asset is the update feed. See [RELEASING.md](RELEASING.md).
 - Without a Developer ID, builds are ad-hoc signed and must be allowed once in System Settings → Privacy & Security
   (or by removing the quarantine attribute), as described in the README.
-  With one, CI can sign and notarize releases.
+  With one, CI can sign and notarize releases; `scripts/bundle.sh` already accepts a `SIGN_IDENTITY`.
 
 ## 9. Delivery plan
 
