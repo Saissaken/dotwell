@@ -23,6 +23,11 @@ struct TopAppRow: View {
         .disabled(app == nil)
         .onHover { isHovered = $0 }
         .popover(isPresented: $showsList, arrowEdge: .bottom) { list }
+        .contextMenu {
+            if let app, app.pid > 0 {
+                AppContextMenu(app: app) { AppActions.copy(String(app.pid)) }
+            }
+        }
         .opacity(app == nil ? 0 : 1)
         .accessibilityLabel(app.map { "Top app: \($0.name), \(list.value($0))" } ?? "")
         .accessibilityHint("Shows the top apps and their process IDs")
@@ -54,7 +59,7 @@ struct TopAppRow: View {
 }
 
 /// The popover behind a top app line: the apps using the most of one resource, largest first.
-/// Clicking an app copies its process ID, e.g. for `kill`.
+/// Clicking an app copies its process ID, e.g. for `kill`; right-clicking it offers more, such as Quit.
 struct TopAppsList: View {
     /// "Top Apps by CPU".
     var title: String
@@ -92,7 +97,7 @@ struct TopAppsList: View {
             }
 
             Divider().padding(.vertical, 3)
-            Text(copied.map { "Copied PID \($0)" } ?? "Click an app to copy its PID")
+            Text(copied.map { "Copied PID \($0)" } ?? "Click an app to copy its PID, right-click for more")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
@@ -135,6 +140,11 @@ struct TopAppsList: View {
         }
         .buttonStyle(.plain)
         .disabled(app.pid <= 0)
+        .contextMenu {
+            if app.pid > 0 {
+                AppContextMenu(app: app) { copy(app.pid) }
+            }
+        }
         .onHover { inside in
             if inside {
                 hovered = app.id
@@ -154,8 +164,7 @@ struct TopAppsList: View {
 
     private func copy(_ pid: pid_t) {
         guard pid > 0 else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(String(pid), forType: .string)
+        AppActions.copy(String(pid))
         copied = pid
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
