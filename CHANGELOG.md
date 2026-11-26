@@ -16,10 +16,21 @@ All notable changes to this project are documented here. The format is based on
   was easy to mistake for a missing card. When that happens, the CPU card says "Slowed down to cool" and turns
   yellow or red; CPU → "Warn when macOS slows the Mac down" turns this off. Saved card orders keep working.
 - CPU: a "Show temperature and fan speed" switch. Off, Dotwell doesn't read the sensors at all.
-- The app CPU scale (whole Mac or one core) moved from General to the CPU page.
+- The app CPU scale (whole Mac or one core) moved from General to the CPU page, and the GPU card has a page
+  of its own.
 - "Top app" is now "Show the busiest app", and "Status light follows" is now "Main host", with what each does.
 - Network speed units and the IP addresses switch moved from General to the Network page.
 - The website is linked from Settings → General, the About page and the About Dotwell panel.
+
+## [0.8.0] - 2026-11-26
+
+### Added
+- GPU card on Macs with Apple silicon, next to CPU: how busy the GPU is, with its chart, the number of GPU
+  cores, its temperature, the power it draws and the app using the most of it (WindowServer included). Use
+  comes from the GPU driver's own statistics, per-app use from the GPU time macOS keeps for each app (like the
+  "% GPU" column of Activity Monitor), power from the same energy counters as `powermetrics`, and temperature
+  from the GPU's own sensors; anything your Mac doesn't report is left out instead of guessed. Nothing is
+  read while the popover is closed, so its chart starts when you open it. Hide it in Settings › Widgets.
 
 ## [0.7.0] - 2026-11-26
 
@@ -178,7 +189,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Saissaken/dotwell/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0

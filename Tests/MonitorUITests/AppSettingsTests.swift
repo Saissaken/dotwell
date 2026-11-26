@@ -121,14 +121,31 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(merged.count, Module.allCases.count)
     }
 
+    func testANewModuleJoinsAfterItsNeighbor() {
+        // Saved by a version without the GPU card, in a custom order.
+        let saved: [Module] = [.network, .ping, .cpu, .memory, .power, .disk]
+        let merged = WidgetSetting.merged(saved.map { WidgetSetting(module: $0) })
+        XCTAssertEqual(merged.map(\.module), [.network, .ping, .cpu, .gpu, .memory, .power, .disk])
+    }
+
+    func testHidingTheGPUCardStopsReadingTheGPU() throws {
+        let settings = AppSettings(defaults: nil)
+        XCTAssertTrue(settings.configuration.sampleGPU)
+        let index = try XCTUnwrap(settings.widgets.firstIndex { $0.module == .gpu })
+        settings.widgets[index].isVisible = false
+        XCTAssertFalse(settings.configuration.sampleGPU)
+    }
+
     func testVisibleModulesFollowTheSettings() {
         var snap = Snapshot()
         var widgets = WidgetSetting.defaults
         XCTAssertEqual(Module.visible(in: snap, widgets: widgets), [.ping, .cpu, .memory, .disk, .network])
         snap.power = PowerSample(source: .battery, watts: 5, isCharging: false)
-        widgets.move(fromOffsets: [5], toOffset: 0)
+        widgets.move(fromOffsets: [6], toOffset: 0)  // Network first
         widgets[2].isVisible = false  // CPU
         XCTAssertEqual(Module.visible(in: snap, widgets: widgets), [.network, .ping, .memory, .power, .disk])
+        snap.gpu = GPUSample(coreCount: 10)
+        XCTAssertEqual(Module.visible(in: snap, widgets: widgets), [.network, .ping, .gpu, .memory, .power, .disk])
     }
 
     /// Thermal used to be a card of its own; it is now part of CPU.

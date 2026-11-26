@@ -34,6 +34,8 @@ public struct Snapshot: Sendable {
     public var cpuTemperature: Float?
     /// Average fan speed in RPM (0 while stopped); nil on Macs without fans.
     public var fanRPM: Double?
+    /// Nil on Macs whose GPU can't be read. Its readings are only taken while the popover is open.
+    public var gpu: GPUSample?
     public var ping: [PingTargetState] = []
     public var levels: [MetricKind: HealthLevel] = [:]
     /// The thresholds the levels were computed with, so the UI can color secondary values the same way.
@@ -84,6 +86,8 @@ public struct ChartMotion: Sendable, Equatable {
 /// History keys used in `Snapshot.history`.
 public enum SeriesKey {
     public static let cpu = "cpu"
+    /// Only recorded while the popover is open, and cleared when it closes.
+    public static let gpu = "gpu"
     public static let memory = "memory"
     public static let power = "power"
     public static let netDown = "net.down"
@@ -113,6 +117,7 @@ public final class Sampler: @unchecked Sendable {
     private let powerProbe = PowerProbe()
     private let temperatureProbe = TemperatureProbe()
     private let processProbe = ProcessProbe()
+    private let gpuProbe = GPUProbe()
     private let ping: PingEngine
     private lazy var traceroute = Traceroute(queue: queue)
 
@@ -184,6 +189,7 @@ public final class Sampler: @unchecked Sendable {
             _ = cpuProbe.sample()  // prime deltas
             current.cpuTemperature = temperatureProbe.sample()  // finds the sensors once, off the popover's path
             current.fanRPM = temperatureProbe.fanRPM()
+            if gpuProbe.isAvailable { current.gpu = GPUSample(coreCount: gpuProbe.coreCount) }
             let t = DispatchSource.makeTimerSource(queue: queue)
             t.setEventHandler { [weak self] in self?.tickOnce() }
             timer = t
@@ -250,7 +256,11 @@ public final class Sampler: @unchecked Sendable {
                 processProbe.reset()
                 current.topApps = nil
             } else if !old.sampleTopApps, detailedFlag {
-                current.topApps = processProbe.sample()
+                current.topApps = processProbe.sample(gpuTimes: gpuTimes())
+            }
+            if newConfiguration.sampleGPU != old.sampleGPU {
+                stopGPU()
+                if detailedFlag { startGPU() }
             }
             for kind in MetricKind.allCases where !newConfiguration.alerts.contains(kind) {
                 current.levels[kind] = nil
@@ -274,13 +284,16 @@ public final class Sampler: @unchecked Sendable {
                     current.cpuTemperature = temperatureProbe.sample()
                     current.fanRPM = temperatureProbe.fanRPM()
                 }
+                startGPU()
                 if configuration.sampleTopApps {
-                    current.topApps = processProbe.sample()  // memory right away, rates from the next sample
+                    // Memory right away, rates from the next sample.
+                    current.topApps = processProbe.sample(gpuTimes: gpuTimes())
                 }
                 startTrace()
             } else if !detailed {
                 processProbe.reset()
                 current.topApps = nil
+                stopGPU()
                 traceroute.stop()
                 current.path = nil
             }
@@ -355,12 +368,13 @@ public final class Sampler: @unchecked Sendable {
             current.cpuTemperature = temperatureProbe.sample()
             current.fanRPM = temperatureProbe.fanRPM()
         }
+        if detailedFlag { sampleGPU(now: now) }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
         // first rates one second after opening, then every 2 s like Activity Monitor's fast setting.
         if detailedFlag, configuration.sampleTopApps, let elapsed = processProbe.elapsed(now: now),
             elapsed >= (current.topApps?.hasRates == true ? 1_900_000_000 : 900_000_000)
         {
-            current.topApps = processProbe.sample(now: now)
+            current.topApps = processProbe.sample(now: now, gpuTimes: gpuTimes())
         }
 
         if detailedFlag && traceroute.isRunning && every(1) {
@@ -374,6 +388,40 @@ public final class Sampler: @unchecked Sendable {
         // Sent last, so TCP handshakes complete while the queue is idle instead of waiting behind this tick.
         // ICMP every tick; TCP and HTTPS targets every 5 s to stay polite.
         ping.probe(ping.targets.indices.filter { ping.targets[$0].method == .icmp || every(5) })
+    }
+
+    // MARK: - GPU
+
+    private var readsGPU: Bool { configuration.sampleGPU && gpuProbe.isAvailable }
+
+    /// Per-app GPU time for the top apps, when the GPU card is on.
+    private func gpuTimes() -> [pid_t: UInt64]? {
+        readsGPU ? gpuProbe.processGPUTimes() : nil
+    }
+
+    /// First readings when the popover opens. Power needs a second sample, so it shows from the next tick.
+    private func startGPU() {
+        guard readsGPU else { return }
+        current.gpu?.utilization = gpuProbe.utilization()
+        current.gpu?.temperature = gpuProbe.temperature()
+        _ = gpuProbe.watts()
+    }
+
+    private func sampleGPU(now: UInt64) {
+        guard readsGPU else { return }
+        let utilization = gpuProbe.utilization()
+        current.gpu?.utilization = utilization
+        if let utilization { append(SeriesKey.gpu, utilization) }
+        current.gpu?.watts = gpuProbe.watts(now: now)
+        if every(5) { current.gpu?.temperature = gpuProbe.temperature() }
+    }
+
+    /// Nothing about the GPU is read while the popover is closed, so its readings and history are dropped
+    /// instead of showing stale values or a chart with a gap.
+    private func stopGPU() {
+        gpuProbe.reset()
+        series[SeriesKey.gpu] = nil
+        if current.gpu != nil { current.gpu = GPUSample(coreCount: gpuProbe.coreCount) }
     }
 
     /// Traces the route to the primary target while the popover is open. Not for the router, ISP or DNS rows

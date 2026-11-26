@@ -1,0 +1,115 @@
+name: Nightly
+
+# Every change merged to main is published as a nightly build: one rolling "nightly" prerelease whose
+# appcast puts the build on Sparkle's "nightly" channel. Only people who turn on Settings → Updates →
+# "Get nightly builds" receive it. Official releases (release.yml) are unaffected: GitHub's "latest
+# release", which the stable appcast URL points at, never resolves to a prerelease.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'site/**', 'Casks/**', 'scripts/build-site.sh', '.github/ISSUE_TEMPLATE/**', '.github/workflows/pages.yml', 'LICENSE']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Only the newest commit matters; a release run never shares this group.
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+env:
+  TAG: nightly
+
+jobs:
+  nightly:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # the build number is the commit count; notes list commits since the last release
+
+      - name: Resolve version
+        id: version
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo "::error::Nightlies are built from main"; exit 1; }
+          # Same build number scheme as release.yml, so nightlies and releases sort on one line:
+          # a release of commit X equals the nightly of X, and any later nightly is newer.
+          BUILD="$(git rev-list --count HEAD)"
+          BASE_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null || true)"
+          BASE="${BASE_TAG#v}"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          # SemVer build metadata: "0.7.0+nightly.312" reads as "0.7.0 plus later work".
+          VERSION="${BASE:-0.0.0}+nightly.$BUILD"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          mkdir -p build
+          {
+            echo "Nightly build $BUILD from [\`$SHORT_SHA\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA) on main."
+            echo "Nightly builds have every merged change before it is released, so they can be rough."
+            echo
+            if [[ -n "$BASE_TAG" ]]; then
+              echo "### Changes since $BASE_TAG"
+              git log --no-merges --format='- %s' "$BASE_TAG..HEAD"
+            else
+              echo "### Changes"
+              git log --no-merges --format='- %s' -20
+            fi
+          } > build/notes.md
+          cat build/notes.md
+
+      - name: Test
+        run: swift test
+
+      - name: Bundle app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+        run: scripts/bundle.sh
+
+      - name: Package
+        run: |
+          # Sparkle only needs the zip; nightlies are installed by updating an installed copy.
+          ditto -c -k --sequesterRsrc --keepParent build/Dotwell.app "build/Dotwell-nightly-${{ steps.version.outputs.build }}.zip"
+
+      - name: Sign update and write appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          CHANNEL: nightly
+        run: |
+          BUILD="${{ steps.version.outputs.build }}"
+          ZIP="Dotwell-nightly-$BUILD.zip"
+          # Carry the latest stable release in the nightly feed too, so turning nightlies on never
+          # hides a release that happens to be newer than the last nightly.
+          if gh release download --repo "$GITHUB_REPOSITORY" --pattern appcast.xml --output build/stable-appcast.xml; then
+            export INCLUDE_FEED=build/stable-appcast.xml
+          else
+            echo "::warning::No stable appcast found; the nightly feed only has the nightly build"
+          fi
+          scripts/appcast.sh "${{ steps.version.outputs.version }}" "$BUILD" "build/$ZIP" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$ZIP" build/notes.md
+          cat build/appcast.xml
+
+      - name: Publish nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP="build/Dotwell-nightly-${{ steps.version.outputs.build }}.zip"
+          # Move the rolling tag to this commit (it never matches release.yml's v*.*.* trigger).
+          git tag -f "$TAG" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$TAG"
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --prerelease --latest=false \
+              --title "Nightly" --notes "Rolling nightly build of main."
+          fi
+          # Upload the new zip before the feed that points at it, so the feed never names a missing
+          # file. Keep the previous zip for downloads already in flight; delete older ones.
+          gh release upload "$TAG" "$ZIP" --clobber
+          gh release upload "$TAG" build/appcast.xml --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name' \
+            | grep -E '^Dotwell-nightly-[0-9]+\.zip$' | sort -t- -k3 -rn | tail -n +3 \
+            | while read -r OLD; do gh release delete-asset "$TAG" "$OLD" --yes; done
+          gh release edit "$TAG" --prerelease --latest=false --title "Nightly $VERSION" --notes-file build/notes.md

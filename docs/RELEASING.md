@@ -29,6 +29,28 @@ GitHub Release. Installed copies pick it up through [Sparkle](https://sparkle-pr
 The appcast is served from `https://github.com/Saissaken/dotwell/releases/latest/download/appcast.xml`,
 so the newest release always carries the current feed and there is nothing else to host.
 
+## Nightly builds
+
+Every push to `main` that touches the app runs the [Nightly workflow](../.github/workflows/nightly.yml). It
+tests and builds `main` and publishes it to a single rolling prerelease tagged `nightly`:
+
+- the version is the last release plus build metadata, e.g. `0.7.0+nightly.312`, and `CFBundleVersion` is the
+  commit count, the same scheme as releases. A release of commit X has the same build number as the nightly of
+  X, so nightly users are never offered a "downgrade" and always move forward;
+- `Dotwell-nightly-<build>.zip` is signed with the same EdDSA key (the previous zip is kept for downloads in
+  flight, older ones are deleted), and there is no disk image: nightlies are reached by updating an install;
+- `appcast.xml` on that prerelease (`releases/download/nightly/appcast.xml`) lists the nightly with
+  `<sparkle:channel>nightly</sparkle:channel>`, followed by the items of the latest release's appcast;
+- the release notes list the commits since the last release.
+
+Installed copies only read the nightly feed after the person turns on **Settings → Updates → Get nightly
+builds**: the updater delegate then returns the nightly feed URL and allows the `nightly` channel. Turning it off
+goes back to `SUFeedURL`; Sparkle never downgrades, so the nightly stays until a newer release is out.
+
+Official releases are unaffected. GitHub's *latest release* never resolves to a prerelease, so
+`releases/latest/download/…` (the stable appcast, the DMG link on the site and in the README) keeps pointing at
+the last official release.
+
 ## How updates reach users
 
 `SUEnableAutomaticChecks` and `SUAutomaticallyUpdate` are on: Sparkle checks once a day, downloads new versions

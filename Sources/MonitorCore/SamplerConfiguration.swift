@@ -56,6 +56,8 @@ public struct SamplerConfiguration: Sendable, Equatable {
     public var sampleTopApps: Bool
     /// False skips the CPU temperature sensors (the CPU card doesn't show it).
     public var readsTemperature: Bool
+    /// False leaves the GPU alone even while the popover is open (its card is hidden).
+    public var sampleGPU: Bool
 
     public init(
         openInterval: SamplingInterval = .oneSecond,
@@ -66,7 +68,8 @@ public struct SamplerConfiguration: Sendable, Equatable {
         alerts: Set<MetricKind> = MetricKind.alertable,
         pingEnabled: Bool = true,
         sampleTopApps: Bool = true,
-        readsTemperature: Bool = true
+        readsTemperature: Bool = true,
+        sampleGPU: Bool = true
     ) {
         self.openInterval = openInterval
         self.closedInterval = closedInterval
@@ -77,6 +80,7 @@ public struct SamplerConfiguration: Sendable, Equatable {
         self.pingEnabled = pingEnabled
         self.sampleTopApps = sampleTopApps
         self.readsTemperature = readsTemperature
+        self.sampleGPU = sampleGPU
     }
 
     /// The targets actually probed.

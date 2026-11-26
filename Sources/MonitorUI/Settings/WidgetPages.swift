@@ -19,6 +19,7 @@ struct WidgetPage: View {
             switch module {
             case .ping: PingSettings(settings: settings)
             case .cpu: CPUSettings(settings: settings, topApp: topApp)
+            case .gpu: GPUSettings(topApp: topApp)
             case .memory: MemorySettings(settings: settings, topApp: topApp)
             case .power: BatterySettings(settings: settings, topApp: topApp)
             case .disk: DiskSettings(settings: settings, topApp: topApp)
@@ -61,6 +62,7 @@ extension Module {
     var resourceName: String {
         switch self {
         case .cpu: return "CPU"
+        case .gpu: return "GPU"
         case .memory: return "memory"
         case .power: return "energy"
         case .disk: return "disk"
@@ -214,6 +216,24 @@ private struct MemorySettings<TopApp: View>: View {
             Footer(
                 "Used memory alone says little: macOS fills spare memory on purpose. Pressure is what slows "
                     + "you down.")
+        }
+    }
+}
+
+// MARK: - GPU
+
+private struct GPUSettings<TopApp: View>: View {
+    var topApp: TopApp
+
+    var body: some View {
+        Section {
+            topApp
+        } header: {
+            Text("Card")
+        } footer: {
+            Footer(
+                "The GPU has no alert: a GPU at 100% during a game or an export is doing its job. Dotwell only "
+                    + "reads it while the panel is open.")
         }
     }
 }

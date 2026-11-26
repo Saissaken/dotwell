@@ -56,6 +56,7 @@ public enum SettingsPage: Hashable, Sendable {
             switch module {
             case .ping: return .blue
             case .cpu: return .orange
+            case .gpu: return .pink
             case .memory: return .purple
             case .power: return .green
             case .disk: return .indigo
@@ -78,6 +79,7 @@ public enum SettingsPage: Hashable, Sendable {
                     "processor", "temperature", "heat", "thermal", "slow", "throttle", "busiest app", "fan", "core",
                     "activity monitor",
                 ]
+            case .gpu: return ["graphics", "apple silicon", "watts", "temperature", "windowserver", "busiest app"]
             case .memory: return ["ram", "pressure", "swap", "busiest app"]
             case .power: return ["battery", "watts", "energy", "adapter", "charging", "busiest app"]
             case .disk: return ["storage", "free space", "ssd", "read", "write", "busiest app"]
@@ -103,6 +105,7 @@ extension Module {
         switch self {
         case .ping: return "network"
         case .cpu: return "cpu"
+        case .gpu: return "cube"
         case .memory: return "memorychip"
         case .power: return "battery.75percent"
         case .disk: return "internaldrive"
@@ -115,6 +118,7 @@ extension Module {
         switch self {
         case .ping: return "How long your router, your provider and the internet take to answer."
         case .cpu: return "How busy the processor is, how hot it runs, and whether macOS is slowing it down."
+        case .gpu: return "How busy the graphics processor is, and the power it draws. Only on Apple silicon."
         case .memory: return "How much memory apps use, and whether macOS is running short."
         case .power: return "How much power the Mac draws. Only shown on Macs with a battery."
         case .disk: return "Free space on the startup disk, and how fast it's being read and written."
