@@ -86,7 +86,7 @@ Every release measures these numbers and records them in its pull request.
 
 | # | Question | Default until decided |
 |---|---|---|
-| Q1 | Which ping targets, and which one is primary? | Router, Cloudflare (primary), Google, AWS São Paulo, AWS N. Virginia |
+| Q1 | Which ping targets, and which one is primary? | Router, ISP, Cloudflare (primary), AWS São Paulo, AWS N. Virginia; the internet host and both regions (AWS or Azure) are chosen in Settings |
 | Q2 | Battery: power draw (W) or time remaining? | Power draw (W) |
 | Q3 | Icon: always show the dot, or only when not green? Show ping ms next to the icon? | Always show the dot; no text |
 | Q4 | Which extras (§3.5)? | None beyond thermal state |

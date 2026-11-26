@@ -51,12 +51,17 @@ public final class AppSettings: ObservableObject {
     @Published public var widgets: [WidgetSetting] {
         didSet { storeJSON(widgets, .widgets) }
     }
-    @Published public private(set) var pingTargets: [PingTarget] {
-        didSet { storeJSON(pingTargets, .pingTargets) }
+    /// The host that stands for "the internet".
+    @Published public var internetHost: InternetHost {
+        didSet { store(internetHost.rawValue, .internetHost) }
     }
-    /// Index into `pingTargets` of the host that drives the status light.
-    @Published public var primaryTargetIndex: Int {
-        didSet { store(primaryTargetIndex, .primaryTarget) }
+    /// The two cloud regions to compare with; nil turns a slot off.
+    @Published public var regions: [CloudRegion?] {
+        didSet { storeJSON(regions.map { $0.map(SavedRegion.init) }, .regions) }
+    }
+    /// The row that drives the status light.
+    @Published public var primarySlot: PingSlot {
+        didSet { store(primarySlot.rawValue, .primarySlot) }
     }
     @Published public var thresholds: Thresholds {
         didSet { storeJSON(thresholds, .thresholds) }
@@ -76,8 +81,9 @@ public final class AppSettings: ObservableObject {
         case interval = "samplingInterval"
         case networkUnit
         case widgets
-        case pingTargets
-        case primaryTarget = "primaryPingTarget"
+        case internetHost
+        case regions = "pingRegions"
+        case primarySlot = "primaryPingSlot"
         case thresholds
         case alerts
     }
@@ -93,10 +99,13 @@ public final class AppSettings: ObservableObject {
         interval = savedInterval.flatMap(SamplingInterval.init) ?? .oneSecond
         networkUnit = defaults?.string(forKey: Key.networkUnit.rawValue).flatMap(NetworkUnit.init) ?? .bits
         widgets = WidgetSetting.merged(load([WidgetSetting].self, .widgets) ?? [])
-        let targets = load([PingTarget].self, .pingTargets) ?? PingTarget.defaults
-        pingTargets = targets
-        let primary = defaults?.object(forKey: Key.primaryTarget.rawValue) as? Int ?? PingTarget.defaultPrimaryIndex
-        primaryTargetIndex = min(max(0, primary), max(0, targets.count - 1))
+        internetHost = defaults?.string(forKey: Key.internetHost.rawValue).flatMap(InternetHost.init) ?? .cloudflare
+        if let saved = load([SavedRegion?].self, .regions), saved.count == PingSlot.regionCount {
+            regions = saved.map { $0.flatMap { CloudRegion.find($0.provider, $0.code) } }
+        } else {
+            regions = [CloudRegion.defaultFirst, CloudRegion.defaultSecond]
+        }
+        primarySlot = defaults?.string(forKey: Key.primarySlot.rawValue).flatMap(PingSlot.init) ?? .internet
         thresholds = load(Thresholds.self, .thresholds) ?? Thresholds()
         if let saved = defaults?.stringArray(forKey: Key.alerts.rawValue) {
             alerts = Set(saved.compactMap(MetricKind.init))
@@ -111,8 +120,8 @@ public final class AppSettings: ObservableObject {
     public var configuration: SamplerConfiguration {
         SamplerConfiguration(
             interval: interval,
-            targets: pingTargets,
-            primaryIndex: primaryTargetIndex,
+            targets: pingSlots.map(\.target),
+            primaryIndex: pingSlots.firstIndex { $0.slot == effectivePrimarySlot } ?? 0,
             thresholds: thresholds,
             alerts: alerts,
             pingEnabled: isVisible(.ping) || alerts.contains(.ping),
@@ -129,36 +138,25 @@ public final class AppSettings: ObservableObject {
 
     // MARK: - Ping targets
 
-    public var canAddTarget: Bool { pingTargets.count < PingTarget.maximumCount }
-
-    public func addTarget(_ target: PingTarget) {
-        guard canAddTarget else { return }
-        pingTargets.append(target)
+    /// The rows of the ping card, in order: router, ISP, internet, then the regions that are on.
+    public var pingSlots: [(slot: PingSlot, target: PingTarget)] {
+        var slots: [(slot: PingSlot, target: PingTarget)] = [
+            (.router, .router), (.isp, .isp), (.internet, internetHost.target),
+        ]
+        for (index, region) in regions.enumerated() {
+            if let region, let slot = PingSlot.region(index) { slots.append((slot: slot, target: region.target)) }
+        }
+        return slots
     }
 
-    public func replaceTarget(at index: Int, with target: PingTarget) {
-        guard pingTargets.indices.contains(index) else { return }
-        pingTargets[index] = target
+    /// `primarySlot`, or the internet host when it points at a region that is off.
+    public var effectivePrimarySlot: PingSlot {
+        pingSlots.contains { $0.slot == primarySlot } ? primarySlot : .internet
     }
 
-    /// Removes targets, keeping the same primary when it survives (or the first one otherwise).
-    public func removeTargets(at offsets: IndexSet) {
-        guard pingTargets.count - offsets.count >= 1 else { return }  // keep at least one
-        let primary = pingTargets.indices.contains(primaryTargetIndex) ? primaryTargetIndex : 0
-        let primaryRemoved = offsets.contains(primary)
-        let shift = offsets.count(in: 0..<primary)
-        var targets = pingTargets
-        for index in offsets.sorted(by: >) where targets.indices.contains(index) { targets.remove(at: index) }
-        pingTargets = targets
-        primaryTargetIndex = primaryRemoved ? 0 : primary - shift
-    }
-
-    public func moveTargets(from source: IndexSet, to destination: Int) {
-        var indices = Array(pingTargets.indices)
-        indices.move(fromOffsets: source, toOffset: destination)
-        let primary = primaryTargetIndex
-        pingTargets = indices.map { pingTargets[$0] }
-        primaryTargetIndex = indices.firstIndex(of: primary) ?? 0
+    public func setRegion(_ region: CloudRegion?, at index: Int) {
+        guard regions.indices.contains(index) else { return }
+        regions[index] = region
     }
 
     public func moveWidgets(from source: IndexSet, to destination: Int) {
@@ -168,8 +166,9 @@ public final class AppSettings: ObservableObject {
     // MARK: - Restore
 
     public func restoreDefaultTargets() {
-        pingTargets = PingTarget.defaults
-        primaryTargetIndex = PingTarget.defaultPrimaryIndex
+        internetHost = .cloudflare
+        regions = [CloudRegion.defaultFirst, CloudRegion.defaultSecond]
+        primarySlot = .internet
     }
 
     public func restoreDefaultAlerts() {
@@ -198,6 +197,32 @@ public final class AppSettings: ObservableObject {
         guard configuration != lastConfiguration else { return }
         lastConfiguration = configuration
         onConfigurationChange?(configuration)
+    }
+}
+
+/// A row of the ping card.
+public enum PingSlot: String, CaseIterable, Codable, Sendable {
+    case router, isp, internet, region1, region2
+
+    static let regionCount = 2
+
+    static func region(_ index: Int) -> PingSlot? {
+        switch index {
+        case 0: return .region1
+        case 1: return .region2
+        default: return nil
+        }
+    }
+}
+
+/// A region as saved: provider and code only, so a later version can fix an endpoint.
+private struct SavedRegion: Codable {
+    var provider: CloudProvider
+    var code: String
+
+    init(_ region: CloudRegion) {
+        provider = region.provider
+        code = region.code
     }
 }
 

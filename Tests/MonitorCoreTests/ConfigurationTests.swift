@@ -25,19 +25,21 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode([PingTarget].self, from: data), PingTarget.defaults)
     }
 
-    func testHostValidation() {
-        for host in ["1.1.1.1", "example.com", "dynamodb.sa-east-1.amazonaws.com", "router"] {
-            XCTAssertTrue(PingTarget.isValidHost(host), host)
-        }
-        for host in ["", "https://example.com", "exa mple.com", ".com", "-a", "::1", "ejemplo.ñ"] {
-            XCTAssertFalse(PingTarget.isValidHost(host), host)
-        }
+    func testRegionCatalog() {
+        let ids = CloudRegion.all.map(\.id)
+        XCTAssertEqual(Set(ids).count, ids.count)
+        XCTAssertEqual(Set(CloudRegion.all.map(\.host)).count, ids.count)
+        for provider in CloudProvider.allCases { XCTAssertFalse(CloudRegion.regions(of: provider).isEmpty) }
+        XCTAssertEqual(CloudRegion.find(.aws, "sa-east-1"), CloudRegion.defaultFirst)
+        XCTAssertEqual(CloudRegion.defaultSecond.target.host, "dynamodb.us-east-1.amazonaws.com")
+        XCTAssertNil(CloudRegion.find(.azure, "nowhere"))
     }
 
-    func testPresetsAreValidAndUnique() {
-        let targets = PingTarget.presets.flatMap(\.targets)
-        XCTAssertEqual(Set(targets).count, targets.count)
-        for target in targets where !target.isGateway { XCTAssertTrue(PingTarget.isValidHost(target.host)) }
+    func testDefaultTargets() {
+        XCTAssertEqual(
+            PingTarget.defaults.map(\.name), ["Router", "ISP", "Cloudflare", "AWS São Paulo", "AWS Virginia"])
+        XCTAssertEqual(PingTarget.defaults[PingTarget.defaultPrimaryIndex].host, "1.1.1.1")
+        XCTAssertTrue(PingTarget.defaults[1].isISP)
     }
 
     func testPrimaryIsClampedToActiveTargets() {

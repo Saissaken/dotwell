@@ -64,6 +64,7 @@ public final class PingEngine {
     private func address(for index: Int) -> in_addr? {
         let now = Self.now()
         let target = targets[index]
+        if target.isISP { return nil }  // not discovered yet: the row stays empty
         if let cached = addresses[index], now - cached.resolvedAt < (target.isGateway ? gatewayTTL : hostTTL) {
             return cached.addr
         }

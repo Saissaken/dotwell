@@ -119,7 +119,7 @@ enum SampleData {
         s.ping = pingTargets(primaryMs: 14, primaryLoss: 0)
         s.levels = [.ping: .ok, .cpu: .ok, .memory: .ok, .disk: .ok, .power: .ok, .thermal: .ok]
         s.history = [
-            SeriesKey.ping(1): wave(30, base: 14, amplitude: 3),
+            SeriesKey.ping(PingTarget.defaultPrimaryIndex): wave(30, base: 14, amplitude: 3),
             SeriesKey.cpu: wave(30, base: 0.18, amplitude: 0.08, seed: 3),
             SeriesKey.memory: wave(30, base: 0.66, amplitude: 0.01, seed: 1),
             SeriesKey.power: wave(30, base: 7.8, amplitude: 2, seed: 5),
@@ -145,7 +145,7 @@ enum SampleData {
         var pingHistory = wave(30, base: 40, amplitude: 10)
         for i in 18..<30 { pingHistory[i] += Float(i - 16) * 6 }
         pingHistory[24] = PingStats.lost
-        s.history[SeriesKey.ping(1)] = pingHistory
+        s.history[SeriesKey.ping(PingTarget.defaultPrimaryIndex)] = pingHistory
         s.history[SeriesKey.cpu] = wave(30, base: 0.85, amplitude: 0.08, seed: 3)
         s.topApps?.cpu = app("Photos", cpu: 2.864)
         return s
@@ -162,11 +162,11 @@ enum SampleData {
     }
 
     private static func pingTargets(primaryMs: Float, primaryLoss: Float) -> [PingTargetState] {
-        let samples: [Float] = [3.1, primaryMs, 21, 34, 142]
+        let samples: [Float] = [3.1, 9.4, primaryMs, 34, 142]
         return PingTarget.defaults.enumerated().map { index, target in
             var values = wave(10, base: samples[index], amplitude: samples[index] * 0.08, seed: Float(index))
             values[9] = samples[index]
-            if index == 1 && primaryLoss > 0 { values[3] = PingStats.lost }
+            if index == PingTarget.defaultPrimaryIndex && primaryLoss > 0 { values[3] = PingStats.lost }
             return PingTargetState(
                 index: index, target: target, stats: PingStats.compute(values),
                 isPrimary: index == PingTarget.defaultPrimaryIndex)

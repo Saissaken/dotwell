@@ -32,8 +32,9 @@ final class AppSettingsTests: XCTestCase {
         settings.networkUnit = .bytes
         settings.thresholds.pingWarningMs = 50
         settings.alerts.remove(.cpu)
-        settings.addTarget(PingTarget(name: "Quad9", host: "9.9.9.9", method: .icmp))
-        settings.primaryTargetIndex = 5
+        settings.internetHost = .quad9
+        settings.setRegion(CloudRegion.find(.azure, "brazilsouth"), at: 1)
+        settings.primarySlot = .region2
         settings.moveWidgets(from: [6], to: 0)
         settings.widgets[1].showsTopApp = false
 
@@ -42,8 +43,9 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(reloaded.networkUnit, .bytes)
         XCTAssertEqual(reloaded.thresholds.pingWarningMs, 50)
         XCTAssertFalse(reloaded.alerts.contains(.cpu))
-        XCTAssertEqual(reloaded.pingTargets.last?.host, "9.9.9.9")
-        XCTAssertEqual(reloaded.primaryTargetIndex, 5)
+        XCTAssertEqual(reloaded.internetHost, .quad9)
+        XCTAssertEqual(reloaded.regions, [CloudRegion.defaultFirst, CloudRegion.find(.azure, "brazilsouth")])
+        XCTAssertEqual(reloaded.configuration.primaryIndex, 4)
         XCTAssertEqual(reloaded.widgets, settings.widgets)
         XCTAssertEqual(reloaded.configuration, settings.configuration)
     }
@@ -58,32 +60,22 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(received.map(\.interval), [.twoSeconds])
     }
 
-    func testRemovingTargetsKeepsThePrimary() {
-        let settings = AppSettings(defaults: nil)  // Router, Cloudflare (primary), Google, AWS ×2
-        settings.removeTargets(at: [0, 2])
-        XCTAssertEqual(settings.pingTargets.map(\.name), ["Cloudflare", "AWS São Paulo", "AWS Virginia"])
-        XCTAssertEqual(settings.primaryTargetIndex, 0)
-
-        settings.primaryTargetIndex = 2
-        settings.removeTargets(at: [2])
-        XCTAssertEqual(settings.primaryTargetIndex, 0, "removing the primary falls back to the first target")
-
-        settings.removeTargets(at: [0, 1])
-        XCTAssertEqual(settings.pingTargets.count, 2, "at least one target must remain")
-    }
-
-    func testMovingTargetsFollowsThePrimary() {
+    func testPingRows() {
         let settings = AppSettings(defaults: nil)
-        settings.moveTargets(from: [1], to: 5)
-        XCTAssertEqual(settings.pingTargets.last?.name, "Cloudflare")
-        XCTAssertEqual(settings.primaryTargetIndex, 4)
-    }
+        XCTAssertEqual(settings.configuration.targets, PingTarget.defaults)
+        XCTAssertEqual(settings.configuration.primaryIndex, PingTarget.defaultPrimaryIndex)
 
-    func testTargetLimit() {
-        let settings = AppSettings(defaults: nil)
-        for i in 0..<10 { settings.addTarget(PingTarget(name: "\(i)", host: "10.0.0.\(i)", method: .icmp)) }
-        XCTAssertEqual(settings.pingTargets.count, PingTarget.maximumCount)
-        XCTAssertFalse(settings.canAddTarget)
+        settings.primarySlot = .region2
+        XCTAssertEqual(settings.configuration.primaryIndex, 4)
+        settings.setRegion(nil, at: 0)
+        XCTAssertEqual(settings.configuration.targets.map(\.name), ["Router", "ISP", "Cloudflare", "AWS Virginia"])
+        XCTAssertEqual(settings.configuration.primaryIndex, 3, "the primary follows its row")
+        settings.setRegion(nil, at: 1)
+        XCTAssertEqual(settings.effectivePrimarySlot, .internet, "a region that is off falls back to the internet")
+        XCTAssertEqual(settings.configuration.primaryIndex, 2)
+
+        settings.restoreDefaultTargets()
+        XCTAssertEqual(settings.configuration.targets, PingTarget.defaults)
     }
 
     func testHidingCardsStopsTheWorkBehindThem() {
