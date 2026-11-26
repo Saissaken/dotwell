@@ -5,15 +5,17 @@ import SwiftUI
 /// Modules that need attention move to the top, in their own group.
 public struct PopoverView: View {
     @ObservedObject private var model: PopoverModel
+    @ObservedObject private var settings: AppSettings
 
-    public init(model: PopoverModel) {
+    public init(model: PopoverModel, settings: AppSettings) {
         self.model = model
+        self.settings = settings
     }
 
     private var snap: Snapshot { model.snapshot }
 
     public var body: some View {
-        let modules = Module.visible(in: snap)
+        let modules = Module.visible(in: snap, widgets: settings.widgets)
         let problems = modules.filter { snap.level($0.kind) != .ok }
             .sorted { snap.level($0.kind) > snap.level($1.kind) }
         let healthy = modules.filter { snap.level($0.kind) == .ok }
@@ -49,9 +51,8 @@ public struct PopoverView: View {
             .controlSize(.small)
             .fixedSize()
             Menu {
-                Toggle(
-                    "Open at Login",
-                    isOn: Binding(get: { model.launchAtLogin }, set: { model.toggleLaunchAtLogin($0) }))
+                Button("Settings…") { model.openSettings?() }
+                    .keyboardShortcut(",")
                 if let checkForUpdates = model.checkForUpdates {
                     Button("Check for Updates…") { checkForUpdates() }
                 }
@@ -101,29 +102,31 @@ public struct PopoverView: View {
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
-                caption: cpuCaption, topApp: topApp(\.cpu) { Format.processCPU($0.cpu) },
+                caption: cpuCaption, topApp: topApp(.cpu, \.cpu) { Format.processCPU($0.cpu) },
                 values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
             MetricModule(
                 symbol: "memorychip", title: "Memory", level: level,
                 reading: snap.memory.map { Format.gigabytes($0.usedBytes) } ?? .none,
                 caption: snap.memory.map(memoryCaption),
-                topApp: topApp(\.memory) { Format.processMemory($0.memoryBytes) },
+                topApp: topApp(.memory, \.memory) { Format.processMemory($0.memoryBytes) },
                 values: history(SeriesKey.memory), maxValue: 1)
         case .power:
             MetricModule(
                 symbol: powerSymbol, title: snap.power?.source == .adapter ? "Power Adapter" : "Battery",
                 level: level, reading: Format.watts(snap.power?.watts), caption: powerCaption,
-                topApp: topApp(\.power) { Format.watts($0.watts).text },
+                topApp: topApp(.power, \.power) { Format.watts($0.watts).text },
                 values: history(SeriesKey.power), maxValue: nil)
         case .disk:
             MetricModule(
                 symbol: "internaldrive", title: "Disk", level: level,
                 reading: snap.disk.map { Format.storage($0.availableBytes) } ?? .none,
-                caption: diskCaption, topApp: topApp(\.disk) { Format.bytesPerSec($0.diskBytesPerSec) },
+                caption: diskCaption, topApp: topApp(.disk, \.disk) { Format.bytesPerSec($0.diskBytesPerSec) },
                 values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
         case .network:
-            NetworkModule(snapshot: snap, down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
+            NetworkModule(
+                snapshot: snap, unit: settings.networkUnit, down: history(SeriesKey.netDown),
+                up: history(SeriesKey.netUp))
         case .thermal:
             MetricModule(
                 symbol: "thermometer.medium", title: "Thermal", level: level,
@@ -136,9 +139,9 @@ public struct PopoverView: View {
 
     /// The top app line for a module, present only while per-app usage is sampled (popover open).
     private func topApp(
-        _ key: KeyPath<TopApps, ProcessUsage?>, value: (ProcessUsage) -> String
+        _ module: Module, _ key: KeyPath<TopApps, ProcessUsage?>, value: (ProcessUsage) -> String
     ) -> TopAppRow? {
-        guard let apps = snap.topApps else { return nil }
+        guard settings.showsTopApp(module), let apps = snap.topApps else { return nil }
         let app = apps[keyPath: key]
         return TopAppRow(app: app, value: app.map(value) ?? "", icon: app.map { model.icons.icon(for: $0.path) })
     }
@@ -193,8 +196,9 @@ public struct PopoverView: View {
 
 // MARK: - Layout model
 
-enum Module: Hashable {
-    case ping, cpu, memory, power, disk, network, thermal
+/// A card of the popover. The raw value is saved in settings, so cases must keep their names.
+public enum Module: String, CaseIterable, Codable, Sendable {
+    case ping, cpu, memory, power, disk, thermal, network
 
     var kind: MetricKind {
         switch self {
@@ -211,13 +215,16 @@ enum Module: Hashable {
     /// Full-width modules take a row of their own.
     var isWide: Bool { self == .ping || self == .network }
 
-    static func visible(in snap: Snapshot) -> [Module] {
-        var modules: [Module] = [.ping, .cpu, .memory]
-        if snap.power != nil { modules.append(.power) }
-        modules.append(.disk)
-        if snap.level(.thermal) != .ok { modules.append(.thermal) }
-        modules.append(.network)
-        return modules
+    /// The cards to show, in the person's order. Power appears only on Macs with a battery, and
+    /// Thermal only while macOS is slowing the Mac down to cool it.
+    static func visible(in snap: Snapshot, widgets: [WidgetSetting]) -> [Module] {
+        widgets.filter(\.isVisible).map(\.module).filter { module in
+            switch module {
+            case .power: return snap.power != nil
+            case .thermal: return snap.level(.thermal) != .ok || snap.thermal == .serious || snap.thermal == .critical
+            default: return true
+            }
+        }
     }
 
     /// Packs modules into rows: wide modules alone, others in pairs.
@@ -403,7 +410,8 @@ struct PingModule: View {
             if let trace = snapshot.path, let primary {
                 Divider().opacity(0.5)
                 NetworkPathView(
-                    path: NetworkPath(trace: trace), serverName: primary.target.name, expanded: pathExpanded)
+                    path: NetworkPath(trace: trace, thresholds: snapshot.thresholds),
+                    serverName: primary.target.name, expanded: pathExpanded)
             }
             if !others.isEmpty {
                 Divider().opacity(0.5)
@@ -436,13 +444,14 @@ struct PingModule: View {
     }
 
     private func targetColor(_ target: PingTargetState) -> Color {
-        let level = Thresholds().ping(target.stats)
+        let level = snapshot.thresholds.ping(target.stats)
         return level == .ok ? .green : levelColor(level)
     }
 }
 
 struct NetworkModule: View {
     var snapshot: Snapshot
+    var unit: NetworkUnit = .bits
     var down: [Float]
     var up: [Float]
 
@@ -455,12 +464,12 @@ struct NetworkModule: View {
             }
             HStack(spacing: 16) {
                 Label {
-                    ValueText(reading: Format.bits(snapshot.networkDownBitsPerSec))
+                    ValueText(reading: Format.network(snapshot.networkDownBitsPerSec, unit: unit))
                 } icon: {
                     Image(systemName: "arrow.down").foregroundStyle(Color.accentColor)
                 }
                 Label {
-                    ValueText(reading: Format.bits(snapshot.networkUpBitsPerSec))
+                    ValueText(reading: Format.network(snapshot.networkUpBitsPerSec, unit: unit))
                 } icon: {
                     Image(systemName: "arrow.up").foregroundStyle(Color.purple)
                 }

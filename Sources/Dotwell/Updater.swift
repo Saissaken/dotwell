@@ -1,4 +1,5 @@
 import AppKit
+import MonitorUI
 import Sparkle
 
 /// Wraps Sparkle's standard updater so the rest of the app does not depend on it.
@@ -28,6 +29,19 @@ final class Updater: NSObject, NSMenuItemValidation {
         // The app has no Dock icon, so bring it forward or Sparkle's window opens behind others.
         NSApp.activate(ignoringOtherApps: true)
         controller?.checkForUpdates(sender)
+    }
+
+    /// The updater's preferences for the Settings window; Sparkle saves them itself.
+    func makeSettings() -> UpdateSettings? {
+        guard let updater = controller?.updater else { return nil }
+        return UpdateSettings(
+            UpdateSettings.Backend(
+                automaticallyChecks: { updater.automaticallyChecksForUpdates },
+                setAutomaticallyChecks: { updater.automaticallyChecksForUpdates = $0 },
+                automaticallyDownloads: { updater.automaticallyDownloadsUpdates },
+                setAutomaticallyDownloads: { updater.automaticallyDownloadsUpdates = $0 },
+                lastCheck: { updater.lastUpdateCheckDate },
+                checkNow: { [weak self] in self?.checkForUpdates(nil) }))
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {

@@ -32,12 +32,14 @@ public struct TieredSeries: Sendable {
 
     public var last: Float? { raw.last }
 
-    /// Samples for a range, oldest → newest. 30 s returns the last 30 raw samples.
-    public func values(for range: HistoryRange) -> [Float] {
+    /// Samples for a range, oldest → newest, when one sample is taken every `interval` seconds.
+    /// At 1 s, 30 s returns the last 30 raw samples; longer intervals return proportionally fewer.
+    public func values(for range: HistoryRange, interval: Int = 1) -> [Float] {
+        let step = max(1, interval)
         switch range {
-        case .seconds30: return Array(raw.values.suffix(30))
-        case .minutes5: return mid.values
-        case .hour1: return long.values
+        case .seconds30: return Array(raw.values.suffix(max(2, 30 / step)))
+        case .minutes5: return Array(mid.values.suffix(max(2, 60 / step)))
+        case .hour1: return Array(long.values.suffix(max(2, 120 / step)))
         }
     }
 
