@@ -21,6 +21,9 @@ Details:
 - `NSStatusItem` with a template glyph plus a small colored dot. The dot is redrawn **only when the level changes**.
 - `NSPopover` hosting SwiftUI. The view tree is **created on open and released on close**, so nothing UI-related
   is retained while the popover is hidden.
+- Text never shrinks to fit. `Format` shows every value with at most three significant digits and steps up a
+  unit instead of growing (`998 KB/s` → `1.0 MB/s`), digits are tabular, and a test checks that the widest
+  caption each module can show fits a half-width module at its fixed size.
 - Charts: custom SwiftUI `Canvas` sparklines. Swift Charts is heavier than needed for simple lines.
 - Launch at login: `SMAppService.mainApp` (macOS 13+).
 - Minimum target: **macOS 13 Ventura**. Universal binary (Apple Silicon + Intel).
@@ -68,6 +71,7 @@ Modules (Swift Package):
 | Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
 | Local IP | interface of the default route (`sysctl(NET_RT_FLAGS)` `rtm_index`), its IPv4 from `getifaddrs`, its kind (Wi‑Fi, Ethernet) from `SCNetworkInterfaceCopyAll`. **Only while the popover is open**, again on `NWPathMonitor` path changes | 1 syscall + 1 `getifaddrs` |
 | Public IP | `https://1.1.1.1/cdn-cgi/trace` and `https://[2606:4700:4700::1111]/cdn-cgi/trace` (literal addresses force each family, no DNS). Ephemeral `URLSession`, no cache or cookies. Cached until the local address or interface changes, or for 10 min | 2 small HTTPS requests |
+| Route (traceroute) | MTR-style: one ICMP echo per TTL (`IP_TTL` on the same unprivileged datagram socket), routers answer "time exceeded" quoting our id and sequence. Reverse DNS per router via `getnameinfo` on a background queue, cached. Hops are grouped into router (hop 1), ISP (private/CGNAT hops up to the first public one, plus later hops in its domain), internet and server; a hop is judged by the best latency and loss at or after it, since routers deprioritize traceroute replies. **Only while the popover is open**, ICMP primary target only | ≤ 30 packets per second, usually ~10 |
 | Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
 | Top app per metric | `proc_listallpids` + `proc_pid_rusage(RUSAGE_INFO_V6)`: deltas of CPU time, disk bytes read+written and `ri_energy_nj`, plus the physical footprint. Per-app network traffic is not available without private APIs (NetworkStatistics) or spawning `nettop`, so the Network module has no top app. Helpers are grouped under their outermost `.app` bundle (`proc_pidpath`, cached per pid and start time). Only the current user's processes are readable without root, so system daemons are left out. **Only while the popover is open**, every 2 s | 1 syscall per process |
 

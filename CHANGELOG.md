@@ -10,6 +10,10 @@ All notable changes to this project are documented here. The format is based on
 - Network: the Mac's local IP address (with Wi‑Fi, Ethernet or VPN) and its public IPv4 and IPv6. Click an
   address to copy it. The public address is looked up from Cloudflare's 1.1.1.1 only when the popover opens
   on a new network, or after 10 minutes, and nothing runs while the popover is closed.
+- Ping: the route to the ping server as five dots (Mac, router, ISP, internet, server), each with the latency up
+  to that point and colored by health, plus a one-line verdict such as "Slow from your ISP". Click it to see
+  every router on the way. It is traced like MTR, without root or helper tools, and only while the popover is
+  open.
 
 ## [0.3.0] - 2026-11-26
 
@@ -18,6 +22,10 @@ All notable changes to this project are documented here. The format is based on
   Memory, Disk (reads and writes per second) and Battery or Power Adapter (energy in watts). This replaces
   the separate top-processes list, so the popover is shorter. Network has none: macOS only exposes
   per-app traffic through private APIs.
+- Text in the modules keeps one fixed size instead of shrinking when a number gets longer. Every value now
+  shows at most three significant digits and switches unit instead of growing ("998 KB/s", then "1.0 MB/s";
+  "12.3 Mbps"; free disk space as "249 GB"), and digits have a fixed width so values don't jitter. The Disk
+  caption is shortened to "R 123 MB/s · W 773 KB/s" so it always fits.
 
 ## [0.2.0] - 2026-11-26
 

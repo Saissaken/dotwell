@@ -35,6 +35,8 @@ public struct Snapshot: Sendable {
     public var history: [String: [Float]] = [:]
     /// The app using the most of each resource, only sampled while the popover is open.
     public var topApps: TopApps?
+    /// Route to the primary ping target, traced only while the popover is open.
+    public var path: PathTrace?
 
     public init() {}
 
@@ -74,6 +76,7 @@ public final class Sampler: @unchecked Sendable {
     private let temperatureProbe = TemperatureProbe()
     private let processProbe = ProcessProbe()
     private let ping: PingEngine
+    private lazy var traceroute = Traceroute(queue: queue)
 
     private var timer: DispatchSourceTimer?
     private var tick: UInt64 = 0
@@ -124,6 +127,8 @@ public final class Sampler: @unchecked Sendable {
             timer?.cancel()
             timer = nil
             ping.reset()
+            traceroute.stop()
+            current.path = nil
             pendingPing.removeAll()
             lastNet = nil
             lastDiskIO = nil
@@ -138,9 +143,12 @@ public final class Sampler: @unchecked Sendable {
             historyRange = range
             if opening {
                 current.topApps = processProbe.sample()  // memory right away, rates from the next sample
+                startTrace()
             } else if !detailed {
                 processProbe.reset()
                 current.topApps = nil
+                traceroute.stop()
+                current.path = nil
             }
             if detailed { publish() }  // immediate data when the popover opens
         }
@@ -208,8 +216,24 @@ public final class Sampler: @unchecked Sendable {
             current.topApps = processProbe.sample(now: now)
         }
 
+        if detailedFlag && traceroute.isRunning {
+            current.path = traceroute.snapshot()
+            traceroute.probeRound()
+        }
+
         evaluate()
         publish()
+    }
+
+    /// Traces the route to the primary target while the popover is open. Not for the router itself
+    /// (the route is one hop) or TCP targets, which drop the ICMP probes.
+    private func startTrace() {
+        guard ping.targets.indices.contains(primaryIndex) else { return }
+        let target = ping.targets[primaryIndex]
+        guard !target.isGateway, target.method == .icmp else { return }
+        traceroute.start(host: target.host)
+        traceroute.probeRound()
+        current.path = traceroute.snapshot()  // the path shows "tracing" right away instead of popping in
     }
 
     private func append(_ key: String, _ value: Float) {
