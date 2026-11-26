@@ -65,6 +65,44 @@ final class PingDetailViewTests: XCTestCase {
         XCTAssertEqual(PingDetail.windowTitle(target), "Last Second")
     }
 
+    /// The DNS row says who set its server, what the network's own server is and when it last changed.
+    func testDNSDetail() {
+        var dns = state(.dns, address: "100.100.100.100", interval: 5)
+        let now = Date(timeIntervalSince1970: 10_000)
+        let change = DNSChange(previous: "192.168.1.1", at: now - 240)
+        dns.dnsChange = change
+        let setup = DNSSetup(
+            servers: ["100.100.100.100"],
+            resolvers: [
+                .init(source: "Wi-Fi", interface: "en0", isVPN: false, servers: ["192.168.1.1"]),
+                .init(source: nil, interface: "utun4", isVPN: true, servers: ["100.100.100.100"]),
+            ])
+        let detail = PingDetail.dnsDetail(dns, setup: setup, routerAddress: "192.168.1.1", now: now)
+        let facts = PingDetail.facts(for: dns, extra: detail.lines)
+        XCTAssertEqual(facts.map(\.label), ["Host", "IP", "Set by", "Network", "Changed", "Measured"])
+        XCTAssertEqual(value("IP", in: facts), "100.100.100.100")
+        XCTAssertEqual(value("Set by", in: facts), "Tailscale (VPN)")
+        XCTAssertEqual(value("Network", in: facts), "Router (192.168.1.1)")
+        XCTAssertEqual(value("Changed", in: facts), "4 min ago, was Router (192.168.1.1)")
+        XCTAssertNotNil(detail.summary)
+        XCTAssertTrue(PingDetail.isRecent(change, now: now))
+        XCTAssertFalse(PingDetail.isRecent(change, now: now + 600))
+
+        // Other rows get nothing extra, and neither does DNS before its server is known.
+        let router = state(.router, address: "192.168.1.1")
+        XCTAssertTrue(PingDetail.dnsDetail(router, setup: setup, routerAddress: nil, now: now).lines.isEmpty)
+        let unknown = state(.dns, address: nil)
+        XCTAssertTrue(PingDetail.dnsDetail(unknown, setup: setup, routerAddress: nil, now: now).lines.isEmpty)
+    }
+
+    func testAgoWording() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        XCTAssertEqual(PingDetail.ago(now - 20, now: now), "just now")
+        XCTAssertEqual(PingDetail.ago(now - 125, now: now), "2 min ago")
+        XCTAssertEqual(PingDetail.ago(now - 7300, now: now), "2 h ago")
+        XCTAssertEqual(PingDetail.ago(now - 90_000, now: now), "1 day ago")
+    }
+
     func testFrequencyWording() {
         XCTAssertEqual(PingDetail.every(milliseconds: 500), "every 0.5 seconds")
         XCTAssertEqual(PingDetail.every(milliseconds: 1000), "every second")

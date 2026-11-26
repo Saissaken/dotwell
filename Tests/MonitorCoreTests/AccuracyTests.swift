@@ -170,6 +170,26 @@ final class AccuracyTests: XCTestCase {
         XCTAssertLessThan(abs(ours - dig), max(3, dig * 0.3))
     }
 
+    /// The servers the DNS detail lists as answering first are the ones `scutil --dns` lists for its first
+    /// resolver, the system's default.
+    func testDNSSetupMatchesScutil() throws {
+        let setup = try XCTUnwrap(DNSSetup.current(), "configd has no DNS setup")
+        let output = try run("/usr/sbin/scutil", "--dns")
+        guard let first = output.components(separatedBy: "resolver #").dropFirst().first else {
+            throw XCTSkip("No DNS resolver here")
+        }
+        // IPv4 only: scutil writes link-local IPv6 servers with their interface ("fe80::1%en0").
+        let servers = first.split(separator: "\n").compactMap { line -> String? in
+            guard line.contains("nameserver[") else { return nil }
+            return line.split(separator: ":", maxSplits: 1).last?.trimmingCharacters(in: .whitespaces)
+        }
+        print("dns setup \(setup.servers) scutil \(servers)")
+        XCTAssertEqual(setup.servers.filter { $0.contains(".") }, servers.filter { $0.contains(".") })
+        if let measured = DNSServer.primaryIPv4().map(Traceroute.text) {
+            XCTAssertTrue(setup.resolvers.contains { $0.servers.contains(measured) } || setup.resolvers.isEmpty)
+        }
+    }
+
     // MARK: - Top apps
 
     /// Touching 256 MB must add that much to this process's app in the memory ranking.

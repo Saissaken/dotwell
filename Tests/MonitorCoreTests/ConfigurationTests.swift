@@ -81,7 +81,13 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(name("1.1.1.1"), "DNS Cloudflare")
         XCTAssertEqual(name("8.8.4.4"), "DNS Google")
         XCTAssertEqual(name("192.168.1.1"), "DNS Router")
-        XCTAssertEqual(name("200.45.191.35"), "DNS 200.45.191.35")
+        XCTAssertEqual(name("100.100.100.100"), "DNS Tailscale")
+        XCTAssertEqual(name("9.9.9.9"), "DNS Quad9")
+        XCTAssertEqual(name("45.90.28.17"), "DNS NextDNS")
+        XCTAssertEqual(name("127.0.0.1"), "DNS This Mac")
+        // An unknown server is just "DNS": its address is in the detail, so the row never truncates.
+        XCTAssertEqual(name("200.45.191.35"), "DNS")
+        XCTAssertEqual(name("192.168.1.1", router: nil), "DNS")
         let router = PingTargetState(
             index: 0, target: .router, stats: PingStats.compute([]), isPrimary: false, address: "192.168.1.1")
         XCTAssertEqual(router.displayName(routerAddress: "192.168.1.1"), "Router")

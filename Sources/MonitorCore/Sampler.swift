@@ -19,6 +19,8 @@ public struct PingTargetState: Sendable, Identifiable {
     public var lastMinuteSeconds = 60
     /// Milliseconds between two readings of this target at the current interval.
     public var probeIntervalMilliseconds: Int
+    /// For the DNS row: the last time its server changed by itself, and what it was before.
+    public var dnsChange: DNSChange?
 
     public init(
         index: Int, target: PingTarget, stats: PingStats, isPrimary: Bool, address: String? = nil,
@@ -179,6 +181,8 @@ public final class Sampler: @unchecked Sendable {
     ]
 
     private var detailedFlag = false
+    /// Notices when the DNS row's server changes by itself, e.g. when a VPN connects.
+    private var dnsTracker = DNSChangeTracker()
     /// The overall level last handed to the main queue. While the popover is closed, snapshots only go there
     /// when it changes, since the menu bar dot is all that shows them.
     private var publishedLevel: HealthLevel?
@@ -551,6 +555,10 @@ public final class Sampler: @unchecked Sendable {
                 stats: PingStats.compute(pingSeries[i].recent(pingWindow)),
                 isPrimary: i == primaryIndex, address: ping.probedAddress(i),
                 probeIntervalMilliseconds: Self.probeInterval(method, interval: interval))
+            if state.target.isDNS {
+                dnsTracker.observe(state.address, now: Date())
+                state.dnsChange = dnsTracker.change
+            }
             if detailedFlag {
                 let minuteSlots = UInt64(60_000 / TieredSeries.slotMilliseconds)
                 let minute = pingLogs[i].readings(after: slots > minuteSlots ? slots - minuteSlots : 0)

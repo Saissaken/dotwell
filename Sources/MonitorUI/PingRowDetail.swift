@@ -35,6 +35,13 @@ struct PingRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                if let change = target.dnsChange, PingDetail.isRecent(change, now: Date()) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .help("Your DNS server changed \(PingDetail.ago(change.at, now: Date()))")
+                        .accessibilityHidden(true)
+                }
                 Spacer(minLength: 4)
                 Text(target.stats.lastLost ? "—" : Format.msText(target.stats.latestMs))
                     .monospacedDigit()
@@ -66,6 +73,8 @@ struct PingRowContext {
     var thresholds: Thresholds
     /// Index of the row the route above is traced to.
     var pathIndex: Int?
+    /// The router's address, so the DNS detail can call a router that resolves names "Router".
+    var routerAddress: String?
     var actions: PingActions?
 }
 
@@ -75,8 +84,12 @@ struct PingDetail: View {
     var name: String
     var context: PingRowContext
 
+    /// The Mac's whole DNS setup, read when the DNS row's detail opens.
+    @State private var dnsSetup: DNSSetup?
+
     var body: some View {
         let stats = target.minuteStats
+        let dns = PingDetail.dnsDetail(target, setup: dnsSetup, routerAddress: context.routerAddress, now: Date())
         let level = context.thresholds.ping(stats)
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -92,17 +105,23 @@ struct PingDetail: View {
                 }
             }
             Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 3) {
-                ForEach(PingDetail.facts(for: target), id: \.label) { fact in
+                ForEach(PingDetail.facts(for: target, extra: dns.lines), id: \.label) { fact in
                     GridRow {
                         Text(fact.label).foregroundStyle(.secondary)
                         Text(fact.value)
                             .textSelection(.enabled)
-                            .lineLimit(2)
+                            .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
             .font(.caption)
+            if let summary = dns.summary {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             Divider()
             Text(PingDetail.windowTitle(target))
@@ -138,6 +157,10 @@ struct PingDetail: View {
         }
         .padding(10)
         .frame(width: 270)
+        .task(id: target.address) {
+            // Read again if the server changes while the detail is open.
+            if target.target.isDNS { dnsSetup = DNSSetup.current() }
+        }
     }
 
     struct Line {
@@ -145,8 +168,8 @@ struct PingDetail: View {
         var value: String
     }
 
-    /// Host, address and method, in plain words.
-    static func facts(for target: PingTargetState) -> [Line] {
+    /// Host, address and method, in plain words. `extra` goes after the address (the DNS row's setup).
+    static func facts(for target: PingTargetState, extra: [Line] = []) -> [Line] {
         let t = target.target
         var lines: [Line] = []
         if t.isGateway {
@@ -162,9 +185,46 @@ struct PingDetail: View {
             lines.append(Line(label: "Region", value: region.code))
         }
         lines.append(Line(label: "IP", value: target.address ?? (t.isISP ? "Looking for it…" : "Looking it up…")))
+        lines += extra
         let frequency = every(milliseconds: target.probeIntervalMilliseconds)
         lines.append(Line(label: "Measured", value: "\(method(t.method)), \(frequency)"))
         return lines
+    }
+
+    /// The DNS row's extra lines: who set the server, the network's own server when something else took over,
+    /// domains that go elsewhere and the last change, plus one sentence that explains them.
+    static func dnsDetail(
+        _ target: PingTargetState, setup: DNSSetup?, routerAddress: String?, now: Date
+    ) -> (lines: [Line], summary: String?) {
+        guard target.target.isDNS, let address = target.address else { return ([], nil) }
+        var lines: [Line] = []
+        var summary: String?
+        if let setup {
+            let chain = DNSChain(setup: setup, answering: address, routerAddress: routerAddress)
+            lines = chain.lines.map { Line(label: $0.label, value: $0.value) }
+            summary = chain.summary
+        }
+        if let change = target.dnsChange {
+            let before = DNSServer.label(of: change.previous, routerAddress: routerAddress)
+            lines.append(Line(label: "Changed", value: "\(ago(change.at, now: now)), was \(before)"))
+        }
+        return (lines, summary)
+    }
+
+    /// A change stays marked on the row this long.
+    static func isRecent(_ change: DNSChange, now: Date) -> Bool {
+        now.timeIntervalSince(change.at) < 10 * 60
+    }
+
+    /// "just now", "4 min ago", "2 h ago".
+    static func ago(_ date: Date, now: Date) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(date)))
+        switch seconds {
+        case ..<60: return "just now"
+        case ..<3600: return "\(seconds / 60) min ago"
+        case ..<86_400: return "\(seconds / 3600) h ago"
+        default: return seconds / 86_400 == 1 ? "1 day ago" : "\(seconds / 86_400) days ago"
+        }
     }
 
     static func method(_ method: PingTarget.Method) -> String {
