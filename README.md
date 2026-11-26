@@ -31,7 +31,7 @@ Built for one thing above all: **using as few resources as possible** while it r
   the popover is open.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
 - **Yours to arrange**: a native Settings window to pick and reorder cards, choose ping hosts (presets for
-  public DNS and every major AWS region), tune alert thresholds and the sampling interval.
+  public DNS and every major AWS region), tune alert thresholds and how often readings are taken with the popover open and closed.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
 - **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
 - **Private by default.** Besides ping and update checks, the only request it makes is the public IP lookup

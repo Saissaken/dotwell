@@ -5,11 +5,22 @@ import XCTest
 final class ConfigurationTests: XCTestCase {
     func testHistoryRangesAdaptToTheInterval() {
         var s = TieredSeries()
-        for i in 0..<60 { s.append(Float(i)) }
-        XCTAssertEqual(s.values(for: .seconds30).count, 30)
-        XCTAssertEqual(s.values(for: .seconds30, interval: 2).count, 15)
-        XCTAssertEqual(s.values(for: .seconds30, interval: 10), [57, 58, 59])
-        XCTAssertEqual(s.values(for: .minutes5, interval: 5).count, 12)
+        for i in 0..<120 { s.append(Float(i)) }
+        XCTAssertEqual(s.values(for: .seconds30).count, 60, "0.5 s readings: 60 points in 30 s")
+        XCTAssertEqual(s.values(for: .seconds30, stepSlots: 2).count, 30)
+        XCTAssertEqual(s.values(for: .seconds30, stepSlots: 2).last, 119, "the newest reading is always there")
+        XCTAssertEqual(s.values(for: .seconds30, stepSlots: 20), [79, 99, 119])
+        XCTAssertEqual(s.values(for: .minutes5).count, 12, "one point per 5 s")
+    }
+
+    func testIntervalChoices() {
+        XCTAssertEqual(SamplingInterval.whileOpen.map(\.milliseconds), [500, 1000, 2000])
+        XCTAssertEqual(SamplingInterval.whileClosed.map(\.milliseconds), [1000, 2000, 5000, 10000, 30000])
+        XCTAssertEqual(SamplingInterval.halfSecond.slots, 1)
+        XCTAssertEqual(SamplingInterval.fiveSeconds.slots, 10)
+        XCTAssertEqual(SamplingInterval.halfSecond.label, "Every 0.5 seconds")
+        XCTAssertEqual(SamplingInterval(legacySeconds: 10), .tenSeconds)
+        XCTAssertEqual(SamplerConfiguration().closedInterval, .fiveSeconds)
     }
 
     func testThresholdsDecodeWithMissingKeys() throws {
