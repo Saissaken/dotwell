@@ -351,7 +351,20 @@ public final class PingEngine {
         pending.source.cancel()
         // A refused connection still completed a round trip.
         let ok = (err == 0 || err == ECONNREFUSED) && now &- pending.sentAt < timeoutNanos
-        onResult?(pending.target, ok ? Float(Double(now - pending.sentAt) / 1_000_000) : nil)
+        let ms = err == 0 ? Self.kernelRTT(fd) : nil
+        onResult?(pending.target, ok ? ms ?? Float(Double(now &- pending.sentAt) / 1_000_000) : nil)
+    }
+
+    /// The handshake's round trip as the kernel measured it (SYN sent to SYN-ACK received), in whole
+    /// milliseconds, so it doesn't include how long this queue took to notice the connection. Nil when the
+    /// kernel has no sample (under 1 ms, e.g. on the local network); the caller then uses its own timing.
+    static func kernelRTT(_ fd: Int32) -> Float? {
+        var info = tcp_connection_info()
+        var size = socklen_t(MemoryLayout<tcp_connection_info>.size)
+        guard getsockopt(fd, IPPROTO_TCP, TCP_CONNECTION_INFO, &info, &size) == 0, info.tcpi_rttcur > 0 else {
+            return nil
+        }
+        return Float(info.tcpi_rttcur)
     }
 
     static func now() -> UInt64 { ICMPSocket.now() }
