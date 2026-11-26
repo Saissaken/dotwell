@@ -6,7 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-26
+
 ### Added
+- First public release.
 - Menu bar item with a traffic-light status dot and launch at login.
 - Probes for CPU, memory and memory pressure, disk space and I/O, battery/adapter power, network throughput
   and thermal state.
@@ -18,5 +21,8 @@ All notable changes to this project are documented here. The format is based on
 - README screenshots rendered from the real SwiftUI view in CI (light and dark).
 - CI on macOS with tests, format lint and a universal app artifact.
 - Automatic updates with Sparkle 2: daily background checks, silent install on quit, and
-  **Check for Updates…** in the menu bar icon's right-click menu.
+  **Check for Updates…** in the menu bar icon's right-click menu and the popover's ⋯ menu.
 - Release workflow: tagging `vX.Y.Z` publishes a GitHub Release with a `.dmg`, a `.zip` and a signed appcast.
+
+[Unreleased]: https://github.com/Saissaken/mac-resource-monitor/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Saissaken/mac-resource-monitor/releases/tag/v0.1.0
