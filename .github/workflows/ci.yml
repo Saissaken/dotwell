@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Test
+        run: swift test
+      - name: Bundle app
+        run: ./scripts/bundle.sh
+      - name: Zip
+        run: cd build && ditto -c -k --keepParent MacResourceMonitor.app MacResourceMonitor.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MacResourceMonitor
+          path: build/MacResourceMonitor.zip
+          retention-days: 14
