@@ -38,9 +38,76 @@ final class ConfigurationTests: XCTestCase {
 
     func testDefaultTargets() {
         XCTAssertEqual(
-            PingTarget.defaults.map(\.name), ["Router", "ISP", "Cloudflare", "AWS São Paulo", "AWS Virginia"])
+            PingTarget.defaults.map(\.name),
+            ["Router", "ISP", "DNS", "Cloudflare", "AWS São Paulo", "AWS Virginia"])
         XCTAssertEqual(PingTarget.defaults[PingTarget.defaultPrimaryIndex].host, "1.1.1.1")
         XCTAssertTrue(PingTarget.defaults[1].isISP)
+        XCTAssertTrue(PingTarget.defaults[2].isDNS)
+    }
+
+    func testDNSRowName() {
+        func name(_ address: String?, router: String? = "192.168.1.1") -> String {
+            PingTargetState(index: 0, target: .dns, stats: PingStats.compute([]), isPrimary: false, address: address)
+                .displayName(routerAddress: router)
+        }
+        XCTAssertEqual(name(nil), "DNS")
+        XCTAssertEqual(name("1.1.1.1"), "DNS Cloudflare")
+        XCTAssertEqual(name("8.8.4.4"), "DNS Google")
+        XCTAssertEqual(name("192.168.1.1"), "DNS Router")
+        XCTAssertEqual(name("200.45.191.35"), "DNS 200.45.191.35")
+        let router = PingTargetState(
+            index: 0, target: .router, stats: PingStats.compute([]), isPrimary: false, address: "192.168.1.1")
+        XCTAssertEqual(router.displayName(routerAddress: "192.168.1.1"), "Router")
+    }
+
+    func testDNSQueryEncoding() {
+        let q = DNSQuery.query(id: 0xBEEF, name: "www.apple.com")
+        XCTAssertEqual(Array(q.prefix(4)), [0xBE, 0xEF, 0x01, 0x00])
+        let question: [UInt8] = [
+            3, 0x77, 0x77, 0x77,  // www
+            5, 0x61, 0x70, 0x70, 0x6c, 0x65,  // apple
+            3, 0x63, 0x6f, 0x6d,  // com
+            0, 0, 1, 0, 1,  // root, type A, class IN
+        ]
+        XCTAssertEqual(Array(q[12...]), question)
+        let answer: [UInt8] = [0xBE, 0xEF, 0x81, 0x80] + [UInt8](repeating: 0, count: 8)
+        let parsed = answer.withUnsafeBytes { DNSQuery.parseResponse($0) }
+        XCTAssertEqual(parsed?.id, 0xBEEF)
+        XCTAssertEqual(parsed?.ok, true)
+        let servfail: [UInt8] = [0xBE, 0xEF, 0x81, 0x82] + [UInt8](repeating: 0, count: 8)
+        XCTAssertEqual(servfail.withUnsafeBytes { DNSQuery.parseResponse($0) }?.ok, false)
+        let ourQuery = q.withUnsafeBytes { DNSQuery.parseResponse($0) }
+        XCTAssertNil(ourQuery, "a query is not an answer")
+    }
+
+    /// Times the Mac's own resolver; never fails where there is none.
+    func testLiveSystemDNS() throws {
+        let queue = DispatchQueue(label: "dns.test")
+        let engine = PingEngine(targets: [.dns], queue: queue)
+        var results: [Float?] = []
+        engine.onResult = { _, ms in results.append(ms) }
+        queue.sync { engine.probe([0]) }  // reads the server
+        queue.sync {
+            engine.collect()
+            engine.probe([0])
+        }
+        let waited = expectation(description: "answer")
+        queue.asyncAfter(deadline: .now() + 0.9) { waited.fulfill() }
+        wait(for: [waited], timeout: 3)
+        let answer = queue.sync {
+            engine.collect()
+            return results.last ?? nil
+        }
+        let server = queue.sync { engine.probedAddress(0) }
+        let ms = try XCTUnwrap(answer, "no DNS answer from \(server ?? "no server")")
+        print("dns", server ?? "?", ms)
+        XCTAssertLessThan(ms, 900)
+    }
+
+    func testFirstIPv4DNSServer() {
+        XCTAssertNil(DNSServer.firstIPv4(["2606:4700:4700::1111"]))
+        let found = DNSServer.firstIPv4(["fe80::1", "192.168.1.1", "8.8.8.8"]).map(Traceroute.text)
+        XCTAssertEqual(found, "192.168.1.1")
     }
 
     func testPrimaryIsClampedToActiveTargets() {
