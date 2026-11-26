@@ -19,6 +19,8 @@ public final class PingEngine {
     private let identifier = UInt16(truncatingIfNeeded: getpid())
     private var sequence: UInt16 = 0
     private var icmpSocket: Int32 = -1
+    private var dnsSocket: Int32 = -1
+    private var pendingDNS: [UInt16: (target: Int, sentAt: UInt64)] = [:]
     private var receiveBuffer = [UInt8](repeating: 0, count: 256)
     private var pendingICMP: [UInt16: (target: Int, sentAt: UInt64)] = [:]
     private var pendingTCP: [Int32: (target: Int, sentAt: UInt64, source: DispatchSourceWrite)] = [:]
@@ -39,6 +41,7 @@ public final class PingEngine {
 
     deinit {
         if icmpSocket >= 0 { close(icmpSocket) }
+        if dnsSocket >= 0 { close(dnsSocket) }
         for (_, p) in pendingTCP { p.source.cancel() }
     }
 
@@ -54,6 +57,7 @@ public final class PingEngine {
             switch targets[i].method {
             case .icmp: sendICMP(target: i, to: addr)
             case .tcp(let port): connectTCP(target: i, to: addr, port: port)
+            case .dns: sendDNS(target: i, to: addr)
             case .https: break
             }
         }
@@ -64,8 +68,11 @@ public final class PingEngine {
     public func collect() {
         dispatchPrecondition(condition: .onQueue(queue))
         drainICMP()
+        drainDNS()
         for (_, p) in pendingICMP { onResult?(p.target, nil) }
         pendingICMP.removeAll(keepingCapacity: true)
+        for (_, p) in pendingDNS { onResult?(p.target, nil) }
+        pendingDNS.removeAll()
         for (_, p) in pendingTCP {
             p.source.cancel()
             onResult?(p.target, nil)
@@ -78,6 +85,9 @@ public final class PingEngine {
         dispatchPrecondition(condition: .onQueue(queue))
         if icmpSocket >= 0 { close(icmpSocket) }
         icmpSocket = -1
+        if dnsSocket >= 0 { close(dnsSocket) }
+        dnsSocket = -1
+        pendingDNS.removeAll()
         for (_, p) in pendingTCP { p.source.cancel() }
         pendingTCP.removeAll()
         pendingICMP.removeAll()
@@ -255,6 +265,48 @@ public final class PingEngine {
             else { continue }
             let rtt = packet.receivedAt &- pending.sentAt
             onResult?(pending.target, rtt < timeoutNanos ? Float(Double(rtt) / 1_000_000) : nil)
+        }
+    }
+
+    // MARK: - DNS
+
+    /// Sends one query from a single UDP socket; answers are read by `collect()` like ICMP replies.
+    private func sendDNS(target: Int, to addr: in_addr) {
+        if dnsSocket < 0 { dnsSocket = ICMPSocket.open(protocol: IPPROTO_UDP) }
+        guard dnsSocket >= 0 else { return }
+        var id = UInt16.random(in: 0...UInt16.max)
+        while pendingDNS[id] != nil { id &+= 1 }
+        let packet = DNSQuery.query(id: id)
+        var sa = sockaddr_in()
+        sa.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        sa.sin_family = sa_family_t(AF_INET)
+        sa.sin_port = UInt16(53).bigEndian
+        sa.sin_addr = addr
+        let sentAt = Self.now()
+        let sent = packet.withUnsafeBytes { buf in
+            withUnsafePointer(to: &sa) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    sendto(dnsSocket, buf.baseAddress, buf.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
+            }
+        }
+        if sent == packet.count {
+            pendingDNS[id] = (target, sentAt)
+        } else {
+            onResult?(target, nil)
+        }
+    }
+
+    private func drainDNS() {
+        guard dnsSocket >= 0 else { return }
+        var buffer = [UInt8](repeating: 0, count: 512)
+        while let packet = ICMPSocket.receive(dnsSocket, into: &buffer) {
+            let parsed = buffer.withUnsafeBytes {
+                DNSQuery.parseResponse(UnsafeRawBufferPointer(rebasing: $0[0..<packet.length]))
+            }
+            guard let answer = parsed, let pending = pendingDNS.removeValue(forKey: answer.id) else { continue }
+            let rtt = packet.receivedAt &- pending.sentAt
+            onResult?(pending.target, answer.ok && rtt < timeoutNanos ? Float(Double(rtt) / 1_000_000) : nil)
         }
     }
 

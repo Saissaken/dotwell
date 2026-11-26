@@ -8,6 +8,9 @@ public struct PingTarget: Hashable, Sendable, Codable {
         /// Time from sending a small HTTPS GET to the first byte of the answer, on a kept-alive
         /// connection. For hosts behind an anycast edge, where the handshake would only reach the edge.
         case https(path: String)
+        /// Time to get the answer to a DNS query (UDP port 53) for a name the resolver almost surely has cached,
+        /// so it measures the resolver itself. A failed answer counts as lost.
+        case dns
     }
 
     /// Special host value meaning "the current default IPv4 gateway (your router)".
@@ -33,7 +36,7 @@ public struct PingTarget: Hashable, Sendable, Codable {
 
     public static let router = PingTarget(name: "Router", host: gatewayHost, method: .icmp)
     public static let isp = PingTarget(name: "ISP", host: ispHost, method: .icmp)
-    public static let dns = PingTarget(name: "DNS", host: dnsHost, method: .icmp)
+    public static let dns = PingTarget(name: "DNS", host: dnsHost, method: .dns)
 
     /// Default targets: your network (router, ISP, DNS server), the internet (Cloudflare) and two cloud regions.
     public static let defaults: [PingTarget] = [
