@@ -65,6 +65,74 @@ public final class PingEngine {
         pendingICMP.removeAll()
         addresses.removeAll()
         http.reset()
+        ispProbe?.stop()
+        ispProbe = nil
+        isp = nil
+    }
+
+    // MARK: - ISP discovery
+
+    /// The provider's first router, found with a short traceroute (see `NetworkPath.ispHop`).
+    private struct ISPRouter {
+        /// Nil when the trace found none; retried after `ispRetry`.
+        var addr: in_addr?
+        /// The router this was found behind: a different one means a different network.
+        var gateway: UInt32?
+        var foundAt: UInt64
+        var checkedAt: UInt64
+    }
+    private var isp: ISPRouter?
+    private var ispProbe: Traceroute?
+    private let ispTTL: UInt64 = 300 * 1_000_000_000
+    private let ispRetry: UInt64 = 60 * 1_000_000_000
+    private let ispGatewayCheck: UInt64 = 30 * 1_000_000_000
+    /// Any well-connected host works: only the first few routers on the way matter.
+    static let ispTraceHost = "1.1.1.1"
+
+    private func ispAddress(now: UInt64) -> in_addr? {
+        guard var router = isp else {
+            discoverISP()
+            return nil
+        }
+        if now - router.checkedAt >= ispGatewayCheck {
+            router.checkedAt = now
+            isp = router
+            if Gateway.defaultIPv4()?.s_addr != router.gateway {  // joined another network
+                isp = nil
+                discoverISP()
+                return nil
+            }
+        }
+        if now - router.foundAt >= (router.addr == nil ? ispRetry : ispTTL) { discoverISP() }
+        return router.addr
+    }
+
+    /// Two rounds of TTL-limited probes, then the first provider router that answered. About 60 small
+    /// packets every 5 minutes, also with the popover closed, since the ISP row lives in the menu bar alert.
+    private func discoverISP() {
+        guard ispProbe == nil else { return }
+        let gateway = Gateway.defaultIPv4()
+        let probe = Traceroute(queue: queue, resolvesNames: false)
+        ispProbe = probe
+        probe.start(host: Self.ispTraceHost)
+        probe.probeRound()
+        queue.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self, self.ispProbe === probe else { return }
+            probe.probeRound()
+        }
+        queue.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+            guard let self, self.ispProbe === probe else { return }
+            let hops = probe.snapshot()?.hops ?? []
+            probe.stop()
+            self.ispProbe = nil
+            var found: in_addr?
+            if let text = NetworkPath.ispHop(in: hops, gateway: gateway.map(Traceroute.text)) {
+                var addr = in_addr()
+                if inet_pton(AF_INET, text, &addr) == 1 { found = addr }
+            }
+            let now = Self.now()
+            self.isp = ISPRouter(addr: found, gateway: gateway?.s_addr, foundAt: now, checkedAt: now)
+        }
     }
 
     // MARK: - Address resolution
@@ -72,7 +140,7 @@ public final class PingEngine {
     private func address(for index: Int) -> in_addr? {
         let now = Self.now()
         let target = targets[index]
-        if target.isISP { return nil }  // not discovered yet: the row stays empty
+        if target.isISP { return ispAddress(now: now) }
         if let cached = addresses[index], now - cached.resolvedAt < (target.isGateway ? gatewayTTL : hostTTL) {
             return cached.addr
         }

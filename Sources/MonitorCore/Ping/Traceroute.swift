@@ -51,8 +51,12 @@ final class Traceroute {
     static let window = 10
 
     private let queue: DispatchQueue
-    /// Distinct from `PingEngine`'s so each ignores the other's replies (both sockets see every ICMP packet).
-    private let identifier = UInt16(truncatingIfNeeded: getpid()) ^ 0x5a5a
+    /// Random per trace and distinct from `PingEngine`'s, so each ignores the others' replies
+    /// (every ICMP socket sees every ICMP packet).
+    private let identifier: UInt16 = {
+        let id = UInt16.random(in: 0...UInt16.max)
+        return id == UInt16(truncatingIfNeeded: getpid()) ? id ^ 0x5a5a : id
+    }()
     private var sequence: UInt16 = 0
     private var socketFD: Int32 = -1
     private var readSource: DispatchSourceRead?
@@ -77,8 +81,12 @@ final class Traceroute {
         var samples = RingBuffer(capacity: Traceroute.window)
     }
 
-    init(queue: DispatchQueue) {
+    /// Off for quick one-off traces whose router names nobody sees.
+    private let resolvesNames: Bool
+
+    init(queue: DispatchQueue, resolvesNames: Bool = true) {
         self.queue = queue
+        self.resolvesNames = resolvesNames
     }
 
     deinit {
@@ -232,7 +240,7 @@ final class Traceroute {
         }
         hops[ttl - 1].address = from
         hops[ttl - 1].samples.append(ms)
-        lookUpName(from)
+        if resolvesNames { lookUpName(from) }
     }
 
     private func expire(now: UInt64) {
