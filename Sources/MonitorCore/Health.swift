@@ -1,7 +1,10 @@
 import Foundation
 
-public enum MetricKind: String, CaseIterable, Sendable {
+public enum MetricKind: String, CaseIterable, Codable, Sendable {
     case ping, cpu, memory, disk, power, network, thermal
+
+    /// Metrics that can raise a warning. Network throughput has no healthy range.
+    public static let alertable: Set<MetricKind> = [.ping, .cpu, .memory, .disk, .power, .thermal]
 }
 
 /// Debounces a raw level so the icon doesn't flicker: a higher level must hold for
@@ -20,6 +23,13 @@ public struct LevelDebouncer: Sendable {
         self.lowerAfter = max(1, lowerAfter)
     }
 
+    /// Back to healthy, with no pending change.
+    public mutating func reset() {
+        level = .ok
+        candidate = .ok
+        streak = 0
+    }
+
     @discardableResult
     public mutating func feed(_ raw: HealthLevel) -> HealthLevel {
         if raw == level { candidate = level; streak = 0; return level }
@@ -31,8 +41,8 @@ public struct LevelDebouncer: Sendable {
     }
 }
 
-/// Thresholds from docs/REQUIREMENTS.md §4. All values are defaults pending confirmation.
-public struct Thresholds: Sendable {
+/// Alert thresholds. Defaults come from docs/REQUIREMENTS.md §4; people can change them in Settings.
+public struct Thresholds: Sendable, Equatable, Codable {
     public var pingWarningMs: Float = 80
     public var pingCriticalMs: Float = 200
     public var pingLossWarning: Float = 0.02
@@ -44,6 +54,22 @@ public struct Thresholds: Sendable {
     public var batteryDrawWarningWatts: Double = 25
 
     public init() {}
+
+    /// Missing keys keep their default, so settings saved by older versions still load.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = Thresholds()
+        pingWarningMs = try c.decodeIfPresent(Float.self, forKey: .pingWarningMs) ?? d.pingWarningMs
+        pingCriticalMs = try c.decodeIfPresent(Float.self, forKey: .pingCriticalMs) ?? d.pingCriticalMs
+        pingLossWarning = try c.decodeIfPresent(Float.self, forKey: .pingLossWarning) ?? d.pingLossWarning
+        pingLossCritical = try c.decodeIfPresent(Float.self, forKey: .pingLossCritical) ?? d.pingLossCritical
+        cpuWarning = try c.decodeIfPresent(Float.self, forKey: .cpuWarning) ?? d.cpuWarning
+        cpuCritical = try c.decodeIfPresent(Float.self, forKey: .cpuCritical) ?? d.cpuCritical
+        diskFreeWarning = try c.decodeIfPresent(Float.self, forKey: .diskFreeWarning) ?? d.diskFreeWarning
+        diskFreeCritical = try c.decodeIfPresent(Float.self, forKey: .diskFreeCritical) ?? d.diskFreeCritical
+        batteryDrawWarningWatts =
+            try c.decodeIfPresent(Double.self, forKey: .batteryDrawWarningWatts) ?? d.batteryDrawWarningWatts
+    }
 
     public func ping(_ s: PingStats) -> HealthLevel {
         if s.averageMs == nil && s.lossFraction > 0 { return .critical }  // nothing answers

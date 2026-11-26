@@ -23,10 +23,17 @@ final class PreviewRenderTests: XCTestCase {
         let appearances: [(String, NSAppearance.Name)] = [("light", .aqua), ("dark", .darkAqua)]
         for (name, snapshot) in cases {
             for (mode, appearance) in appearances {
-                let model = PopoverModel(snapshot: snapshot, launchAtLogin: true)
+                let model = PopoverModel(snapshot: snapshot)
                 model.addresses = SampleData.addresses
-                let data = try render(PopoverView(model: model), appearance: appearance)
+                let data = try render(
+                    PopoverView(model: model, settings: AppSettings(defaults: nil)), appearance: appearance)
                 try data.write(to: url.appendingPathComponent("popover-\(name)-\(mode).png"))
+            }
+        }
+        for (mode, appearance) in appearances {
+            for tab in SettingsTab.allCases {
+                let data = try renderSettings(tab: tab, appearance: appearance)
+                try data.write(to: url.appendingPathComponent("settings-\(tab.rawValue)-\(mode).png"))
             }
         }
         // The Ping module with the route's router list open.
@@ -38,6 +45,28 @@ final class PreviewRenderTests: XCTestCase {
             let data = try render(module, appearance: appearance)
             try data.write(to: url.appendingPathComponent("ping-path-\(mode).png"))
         }
+    }
+
+    /// Renders the real Settings window, title bar and toolbar included, on one tab.
+    private func renderSettings(tab: SettingsTab, appearance: NSAppearance.Name) throws -> Data {
+        let updates = UpdateSettings(
+            UpdateSettings.Backend(
+                automaticallyChecks: { true }, setAutomaticallyChecks: { _ in },
+                automaticallyDownloads: { true }, setAutomaticallyDownloads: { _ in },
+                lastCheck: { Date().addingTimeInterval(-2 * 3600) }, checkNow: {}))
+        let model = SettingsModel(settings: AppSettings(defaults: nil), launchAtLogin: true, updates: updates)
+        model.version = "0.4.0 (14)"
+        let tabs = SettingsTabViewController(model: model)
+        tabs.selectedTabViewItemIndex = SettingsTab.allCases.firstIndex(of: tab) ?? 0
+        let window = tabs.makeWindow()
+        window.appearance = NSAppearance(named: appearance)
+        window.setFrameOrigin(NSPoint(x: 100, y: 100))
+        window.orderFront(nil)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        defer { window.orderOut(nil) }
+        // The theme frame is the window's root view: it draws the title bar and toolbar too.
+        guard let frame = window.contentView?.superview else { throw XCTSkip("No window frame view") }
+        return try pngData(of: frame)
     }
 
     private func render(_ content: some View, appearance: NSAppearance.Name) throws -> Data {
@@ -58,7 +87,11 @@ final class PreviewRenderTests: XCTestCase {
         window.contentView = host
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        return try pngData(of: host)
+    }
 
+    private func pngData(of view: NSView) throws -> Data {
+        let size = view.bounds.size
         let scale = 2
         guard
             let rep = NSBitmapImageRep(
@@ -67,7 +100,7 @@ final class PreviewRenderTests: XCTestCase {
                 bytesPerRow: 0, bitsPerPixel: 0)
         else { throw XCTSkip("Could not allocate bitmap") }
         rep.size = size
-        host.cacheDisplay(in: host.bounds, to: rep)
+        view.cacheDisplay(in: view.bounds, to: rep)
         guard let png = rep.representation(using: .png, properties: [:]) else {
             throw XCTSkip("Could not encode PNG")
         }
@@ -98,7 +131,7 @@ enum SampleData {
         s.ping = pingTargets(primaryMs: 14, primaryLoss: 0)
         s.levels = [.ping: .ok, .cpu: .ok, .memory: .ok, .disk: .ok, .power: .ok, .thermal: .ok]
         s.history = [
-            SeriesKey.ping(1): wave(30, base: 14, amplitude: 3),
+            SeriesKey.ping(PingTarget.defaultPrimaryIndex): wave(30, base: 14, amplitude: 3),
             SeriesKey.cpu: wave(30, base: 0.18, amplitude: 0.08, seed: 3),
             SeriesKey.memory: wave(30, base: 0.66, amplitude: 0.01, seed: 1),
             SeriesKey.power: wave(30, base: 7.8, amplitude: 2, seed: 5),
@@ -130,7 +163,7 @@ enum SampleData {
         var pingHistory = wave(30, base: 40, amplitude: 10)
         for i in 18..<30 { pingHistory[i] += Float(i - 16) * 6 }
         pingHistory[24] = PingStats.lost
-        s.history[SeriesKey.ping(1)] = pingHistory
+        s.history[SeriesKey.ping(PingTarget.defaultPrimaryIndex)] = pingHistory
         s.history[SeriesKey.cpu] = wave(30, base: 0.85, amplitude: 0.08, seed: 3)
         s.topApps?.cpu = app("Photos", cpu: 2.864)
         s.path = path(ispMs: 72, internetMs: 81, serverMs: 96, serverLost: 1)
@@ -169,11 +202,11 @@ enum SampleData {
     }
 
     private static func pingTargets(primaryMs: Float, primaryLoss: Float) -> [PingTargetState] {
-        let samples: [Float] = [3.1, primaryMs, 21, 34, 142]
+        let samples: [Float] = [3.1, 9.4, primaryMs, 34, 142]
         return PingTarget.defaults.enumerated().map { index, target in
             var values = wave(10, base: samples[index], amplitude: samples[index] * 0.08, seed: Float(index))
             values[9] = samples[index]
-            if index == 1 && primaryLoss > 0 { values[3] = PingStats.lost }
+            if index == PingTarget.defaultPrimaryIndex && primaryLoss > 0 { values[3] = PingStats.lost }
             return PingTargetState(
                 index: index, target: target, stats: PingStats.compute(values),
                 isPrimary: index == PingTarget.defaultPrimaryIndex)
