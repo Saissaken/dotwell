@@ -6,13 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-## [0.4.1] - 2026-11-26
-
 ### Added
 - Network: the Mac's local IP address (with Wi‑Fi, Ethernet or VPN) and its public IPv4 and IPv6. Click an
   address to copy it. The public address is looked up from Cloudflare's 1.1.1.1 only when the popover opens
   on a new network, or after 10 minutes, and nothing runs while the popover is closed. Settings → General can
   hide them (for screen sharing), which also stops the lookup.
+
+## [0.4.1] - 2026-11-26
+
+### Added
 - Ping: the ISP row now measures your internet provider's first router. Dotwell finds it with a short
   traceroute (about 60 tiny packets every 5 minutes, and again when you join another network), so you can
   tell whether a slow connection starts at your router or at your provider.
