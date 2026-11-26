@@ -125,8 +125,9 @@ public struct PopoverView: View {
                 values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
         case .network:
             NetworkModule(
-                snapshot: snap, unit: settings.networkUnit, down: history(SeriesKey.netDown),
-                up: history(SeriesKey.netUp))
+                snapshot: snap, unit: settings.networkUnit,
+                addresses: settings.showsIPAddresses ? model.addresses : nil,
+                down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
         case .thermal:
             MetricModule(
                 symbol: "thermometer.medium", title: "Thermal", level: level,
@@ -452,6 +453,7 @@ struct PingModule: View {
 struct NetworkModule: View {
     var snapshot: Snapshot
     var unit: NetworkUnit = .bits
+    var addresses: NetworkAddresses?
     var down: [Float]
     var up: [Float]
 
@@ -482,6 +484,10 @@ struct NetworkModule: View {
                 Sparkline(values: down, maxValue: peak, color: .accentColor)
             }
             .frame(height: 26)
+            if let addresses {
+                Divider().opacity(0.5)
+                AddressesView(addresses: addresses)
+            }
         }
         .modifier(ModuleBackground(level: .ok))
     }

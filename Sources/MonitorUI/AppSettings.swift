@@ -48,6 +48,10 @@ public final class AppSettings: ObservableObject {
     @Published public var networkUnit: NetworkUnit {
         didSet { store(networkUnit.rawValue, .networkUnit) }
     }
+    /// Show the local and public IP addresses in the Network card. Off also skips the public address lookup.
+    @Published public var showsIPAddresses: Bool {
+        didSet { store(showsIPAddresses, .showsIPAddresses) }
+    }
     @Published public var widgets: [WidgetSetting] {
         didSet { storeJSON(widgets, .widgets) }
     }
@@ -80,6 +84,7 @@ public final class AppSettings: ObservableObject {
     private enum Key: String {
         case interval = "samplingInterval"
         case networkUnit
+        case showsIPAddresses
         case widgets
         case internetHost
         case regions = "pingRegions"
@@ -98,6 +103,7 @@ public final class AppSettings: ObservableObject {
         let savedInterval = defaults?.object(forKey: Key.interval.rawValue) as? Int
         interval = savedInterval.flatMap(SamplingInterval.init) ?? .oneSecond
         networkUnit = defaults?.string(forKey: Key.networkUnit.rawValue).flatMap(NetworkUnit.init) ?? .bits
+        showsIPAddresses = defaults?.object(forKey: Key.showsIPAddresses.rawValue) as? Bool ?? true
         widgets = WidgetSetting.merged(load([WidgetSetting].self, .widgets) ?? [])
         internetHost = defaults?.string(forKey: Key.internetHost.rawValue).flatMap(InternetHost.init) ?? .cloudflare
         if let saved = load([SavedRegion?].self, .regions), saved.count == PingSlot.regionCount {
@@ -127,6 +133,9 @@ public final class AppSettings: ObservableObject {
             pingEnabled: isVisible(.ping) || alerts.contains(.ping),
             sampleTopApps: widgets.contains { $0.isVisible && $0.showsTopApp && $0.module.hasTopApp })
     }
+
+    /// Whether the popover needs the IP addresses at all.
+    public var wantsIPAddresses: Bool { showsIPAddresses && isVisible(.network) }
 
     public func isVisible(_ module: Module) -> Bool {
         widgets.first { $0.module == module }?.isVisible ?? true

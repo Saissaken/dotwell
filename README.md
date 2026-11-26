@@ -25,6 +25,7 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **Where it slows down**: the route to the ping server as five dots (Mac, router, ISP, internet, server)
   with the latency at each, so you can tell Wi-Fi trouble from an ISP problem. Click it for every router.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
+- **Your IP addresses**: the Mac's local IP (Wi‑Fi or Ethernet) and its public IPv4 and IPv6. Click one to copy it.
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
 - **What's using it**: CPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
   the popover is open.
@@ -33,6 +34,9 @@ Built for one thing above all: **using as few resources as possible** while it r
   public DNS and every major AWS region), tune alert thresholds and the sampling interval.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
 - **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
+- **Private by default.** Besides ping and update checks, the only request it makes is the public IP lookup
+  (to Cloudflare's `1.1.1.1/cdn-cgi/trace`), and only when the popover opens on a new network or every
+  10 minutes at most. Turn it off in Settings. No analytics.
 
 <p align="center">
   <picture>

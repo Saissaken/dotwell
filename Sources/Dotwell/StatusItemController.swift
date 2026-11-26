@@ -18,6 +18,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private let openSettings: () -> Void
     private var latest = Snapshot()
     private var model: PopoverModel?
+    /// Lives as long as the app so the public address stays cached between openings.
+    private let addressMonitor = NetworkAddressMonitor()
 
     init(sampler: Sampler, settings: AppSettings, updater: Updater, openSettings: @escaping () -> Void) {
         self.sampler = sampler
@@ -91,6 +93,11 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             model.onRangeChange = { [weak self] range in self?.sampler.setDetailed(true, range: range) }
             self.model = model
             sampler.setDetailed(true, range: model.range)
+            if settings.wantsIPAddresses {
+                addressMonitor.onChange = { [weak model] in model?.addresses = $0 }
+                addressMonitor.start()
+                model.addresses = addressMonitor.addresses
+            }
             popover.contentViewController = NSHostingController(rootView: PopoverView(model: model, settings: settings))
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
@@ -126,6 +133,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         sampler.setDetailed(false, range: .seconds30)
+        addressMonitor.stop()
+        addressMonitor.onChange = nil
         model = nil
         popover.contentViewController = nil
     }

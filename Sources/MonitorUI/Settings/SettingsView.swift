@@ -69,6 +69,11 @@ struct GeneralSettingsView: View {
                 Text("Bytes per second (MB/s)").tag(NetworkUnit.bytes)
             }
             .pickerStyle(.radioGroup)
+            Spacer().frame(height: 8)
+            LabeledContent("IP addresses:") {
+                Toggle("Show local and public IP addresses", isOn: $settings.showsIPAddresses)
+            }
+            SettingNote("Turn off before sharing your screen. When off, Dotwell never looks up your public address.")
         }
         .formStyle(.columns)
     }

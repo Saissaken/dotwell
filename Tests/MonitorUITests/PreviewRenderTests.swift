@@ -24,6 +24,7 @@ final class PreviewRenderTests: XCTestCase {
         for (name, snapshot) in cases {
             for (mode, appearance) in appearances {
                 let model = PopoverModel(snapshot: snapshot)
+                model.addresses = SampleData.addresses
                 let data = try render(
                     PopoverView(model: model, settings: AppSettings(defaults: nil)), appearance: appearance)
                 try data.write(to: url.appendingPathComponent("popover-\(name)-\(mode).png"))
@@ -144,6 +145,11 @@ enum SampleData {
         s.path = path(ispMs: 9, internetMs: 12, serverMs: 14, serverLost: 0)
         return s
     }
+
+    /// Documentation-range addresses (RFC 5737, RFC 3849), never a real Mac's.
+    static let addresses = NetworkAddresses(
+        local: LocalAddress(interface: "en0", kind: .wifi, ipv4: "192.168.1.42"),
+        publicAddresses: PublicAddresses(ipv4: "203.0.113.24", ipv6: "2001:db8:85a3::8a2e:370:7334"))
 
     static var issues: Snapshot {
         var s = healthy

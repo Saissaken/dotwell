@@ -8,6 +8,8 @@ public final class PopoverModel: ObservableObject {
     @Published public var range: HistoryRange = .seconds30 {
         didSet { onRangeChange?(range) }
     }
+    /// Local and public IP addresses; `nil` hides them.
+    @Published public var addresses: NetworkAddresses?
 
     public var onRangeChange: ((HistoryRange) -> Void)?
     public var openSettings: (() -> Void)?
