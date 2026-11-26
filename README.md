@@ -23,7 +23,8 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
 - **Your IP addresses**: the Mac's local IP (Wi‑Fi or Ethernet) and its public IPv4 and IPv6. Click one to copy it.
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
-- **What's using it**: the top 3 apps by CPU and memory, sampled only while the popover is open.
+- **What's using it**: CPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
+  the popover is open.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
 - **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.

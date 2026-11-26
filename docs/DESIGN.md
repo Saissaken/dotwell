@@ -69,7 +69,7 @@ Modules (Swift Package):
 | Local IP | interface of the default route (`sysctl(NET_RT_FLAGS)` `rtm_index`), its IPv4 from `getifaddrs`, its kind (Wi‑Fi, Ethernet) from `SCNetworkInterfaceCopyAll`. **Only while the popover is open**, again on `NWPathMonitor` path changes | 1 syscall + 1 `getifaddrs` |
 | Public IP | `https://1.1.1.1/cdn-cgi/trace` and `https://[2606:4700:4700::1111]/cdn-cgi/trace` (literal addresses force each family, no DNS). Ephemeral `URLSession`, no cache or cookies. Cached until the local address or interface changes, or for 10 min | 2 small HTTPS requests |
 | Gateway | default route from `sysctl(NET_RT_FLAGS)`, cached for 30 s | 1 syscall |
-| Top processes | `proc_listallpids` + `proc_pid_rusage(RUSAGE_INFO_V4)`: CPU time delta and physical footprint. Helpers are grouped under their outermost `.app` bundle (`proc_pidpath`, cached per pid and start time). Only the current user's processes are readable without root, so system daemons are left out. **Only while the popover is open**, every 2 s | 1 syscall per process |
+| Top app per metric | `proc_listallpids` + `proc_pid_rusage(RUSAGE_INFO_V6)`: deltas of CPU time, disk bytes read+written and `ri_energy_nj`, plus the physical footprint. Per-app network traffic is not available without private APIs (NetworkStatistics) or spawning `nettop`, so the Network module has no top app. Helpers are grouped under their outermost `.app` bundle (`proc_pidpath`, cached per pid and start time). Only the current user's processes are readable without root, so system daemons are left out. **Only while the popover is open**, every 2 s | 1 syscall per process |
 
 The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by far the most expensive option.
 
