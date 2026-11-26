@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- The app using the most of each resource now shows inside its module, in one line under the value: CPU,
+  Memory, Disk (reads and writes per second) and Battery or Power Adapter (energy in watts). This replaces
+  the separate top-processes list, so the popover is shorter. Network has none: macOS only exposes
+  per-app traffic through private APIs.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added

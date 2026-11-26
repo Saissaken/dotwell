@@ -33,8 +33,8 @@ public struct Snapshot: Sendable {
     public var levels: [MetricKind: HealthLevel] = [:]
     /// Only filled while the popover is open (`detailed == true`).
     public var history: [String: [Float]] = [:]
-    /// Heaviest apps, only sampled while the popover is open.
-    public var processes: TopProcesses?
+    /// The app using the most of each resource, only sampled while the popover is open.
+    public var topApps: TopApps?
 
     public init() {}
 
@@ -137,10 +137,10 @@ public final class Sampler: @unchecked Sendable {
             detailedFlag = detailed
             historyRange = range
             if opening {
-                current.processes = processProbe.sample()  // memory ranking right away, CPU from the next one
+                current.topApps = processProbe.sample()  // memory right away, rates from the next sample
             } else if !detailed {
                 processProbe.reset()
-                current.processes = nil
+                current.topApps = nil
             }
             if detailed { publish() }  // immediate data when the popover opens
         }
@@ -201,11 +201,11 @@ public final class Sampler: @unchecked Sendable {
         current.thermal = ProcessInfo.processInfo.thermalState
         if tick % 5 == 1 { current.cpuTemperature = temperatureProbe.sample() }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
-        // first CPU ranking one second after opening, then every 2 s like Activity Monitor's fast setting.
+        // first rates one second after opening, then every 2 s like Activity Monitor's fast setting.
         if detailedFlag, let elapsed = processProbe.elapsed(now: now),
-            elapsed >= (current.processes?.byCPU.isEmpty == false ? 1_900_000_000 : 900_000_000)
+            elapsed >= (current.topApps?.hasRates == true ? 1_900_000_000 : 900_000_000)
         {
-            current.processes = processProbe.sample(now: now)
+            current.topApps = processProbe.sample(now: now)
         }
 
         evaluate()

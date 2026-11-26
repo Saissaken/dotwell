@@ -16,7 +16,7 @@ public final class PopoverModel: ObservableObject {
     public var quit: (() -> Void)?
     /// Set only when in-app updates are available.
     public var checkForUpdates: (() -> Void)?
-    /// App icons for the process list, kept only as long as the popover is open.
+    /// Icons of the top apps, kept only as long as the popover is open.
     let icons = IconCache()
 
     public init(snapshot: Snapshot, launchAtLogin: Bool = false) {

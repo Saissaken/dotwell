@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-/// CPU and memory used by one app (all of its processes) or by one standalone process.
+/// Resources used by one app (all of its processes) or by one standalone process.
 public struct ProcessUsage: Sendable, Equatable, Identifiable {
     /// Bundle path for apps, executable path or name otherwise.
     public var id: String
@@ -12,28 +12,49 @@ public struct ProcessUsage: Sendable, Equatable, Identifiable {
     public var cpu: Float
     /// Physical footprint, the "Memory" column of Activity Monitor.
     public var memoryBytes: UInt64
+    /// Bytes read plus written per second.
+    public var diskBytesPerSec: Double
+    /// Energy the kernel attributes to the app, in watts. Zero where macOS doesn't report it.
+    public var watts: Double
 
-    public init(id: String, name: String, path: String?, cpu: Float, memoryBytes: UInt64) {
+    public init(
+        id: String, name: String, path: String?, cpu: Float = 0, memoryBytes: UInt64 = 0,
+        diskBytesPerSec: Double = 0, watts: Double = 0
+    ) {
         self.id = id
         self.name = name
         self.path = path
         self.cpu = cpu
         self.memoryBytes = memoryBytes
+        self.diskBytesPerSec = diskBytesPerSec
+        self.watts = watts
     }
 }
 
-/// The heaviest apps right now. `byCPU` is empty until two samples exist.
-public struct TopProcesses: Sendable, Equatable {
-    public var byCPU: [ProcessUsage]
-    public var byMemory: [ProcessUsage]
+/// The app using the most of each resource right now. Rates (CPU, disk, power) need two samples,
+/// so they are nil right after the first one; any of them is also nil when nothing uses that resource.
+public struct TopApps: Sendable, Equatable {
+    public var cpu: ProcessUsage?
+    public var memory: ProcessUsage?
+    public var disk: ProcessUsage?
+    public var power: ProcessUsage?
+    /// False until a second sample makes rates available.
+    public var hasRates: Bool
 
-    public init(byCPU: [ProcessUsage] = [], byMemory: [ProcessUsage] = []) {
-        self.byCPU = byCPU
-        self.byMemory = byMemory
+    public init(
+        cpu: ProcessUsage? = nil, memory: ProcessUsage? = nil, disk: ProcessUsage? = nil,
+        power: ProcessUsage? = nil, hasRates: Bool = true
+    ) {
+        self.cpu = cpu
+        self.memory = memory
+        self.disk = disk
+        self.power = power
+        self.hasRates = hasRates
     }
 }
 
-/// Ranks apps by CPU and memory with `proc_pid_rusage`, one syscall per process.
+/// Finds the apps using the most CPU, memory, disk I/O and energy with `proc_pid_rusage`,
+/// one syscall per process.
 ///
 /// Helper processes are grouped under the outermost `.app` bundle in their path, so Safari or Chrome
 /// count as one entry. Without root, macOS only allows reading processes of the current user, so
@@ -46,7 +67,7 @@ public final class ProcessProbe {
         var name: String
         var path: String?
 
-        var emptyUsage: ProcessUsage { ProcessUsage(id: id, name: name, path: path, cpu: 0, memoryBytes: 0) }
+        var emptyUsage: ProcessUsage { ProcessUsage(id: id, name: name, path: path) }
     }
 
     private struct Known {
@@ -54,8 +75,16 @@ public final class ProcessProbe {
         var group: Group
     }
 
+    /// Cumulative per-process counters, diffed between samples.
+    private struct Counters {
+        var startTime: UInt64
+        var cpuNanos: UInt64
+        var diskBytes: UInt64
+        var energyNanojoules: UInt64
+    }
+
     private var known: [pid_t: Known] = [:]
-    private var lastCPUNanos: [pid_t: UInt64] = [:]
+    private var last: [pid_t: Counters] = [:]
     private var lastSampleNanos: UInt64?
     private var pids = [pid_t](repeating: 0, count: 1024)
     private let timebase: (numer: UInt64, denom: UInt64)
@@ -71,68 +100,85 @@ public final class ProcessProbe {
         lastSampleNanos.map { now &- $0 }
     }
 
-    public func sample(now: UInt64 = DispatchTime.now().uptimeNanoseconds, limit: Int = 3) -> TopProcesses {
+    public func sample(now: UInt64 = DispatchTime.now().uptimeNanoseconds) -> TopApps {
+        let (all, hasRates) = usage(now: now)
+        guard hasRates else {
+            return TopApps(memory: Self.top(all, by: \.memoryBytes, minimum: 1), hasRates: false)
+        }
+        return TopApps(
+            cpu: Self.top(all, by: \.cpu, minimum: 0.001),
+            memory: Self.top(all, by: \.memoryBytes, minimum: 1),
+            disk: Self.top(all, by: \.diskBytesPerSec, minimum: 1024),
+            power: Self.top(all, by: \.watts, minimum: 0.01))
+    }
+
+    /// Usage of every readable app. Rates stay zero on the first call (`hasRates == false`).
+    func usage(now: UInt64) -> (apps: [ProcessUsage], hasRates: Bool) {
         let count = listPIDs()
         let elapsed = lastSampleNanos.map { now > $0 ? Double(now - $0) : 0 } ?? 0
 
         var usage: [String: ProcessUsage] = [:]
         var nextKnown: [pid_t: Known] = [:]
-        var nextCPU: [pid_t: UInt64] = [:]
+        var next: [pid_t: Counters] = [:]
         nextKnown.reserveCapacity(count)
-        nextCPU.reserveCapacity(count)
+        next.reserveCapacity(count)
 
         for pid in pids.prefix(count) where pid > 0 {
             guard let info = Self.rusage(pid) else { continue }
-            let cpuNanos = (info.ri_user_time &+ info.ri_system_time) &* timebase.numer / timebase.denom
+            let start = info.ri_proc_start_abstime
+            let counters = Counters(
+                startTime: start,
+                cpuNanos: (info.ri_user_time &+ info.ri_system_time) &* timebase.numer / timebase.denom,
+                diskBytes: info.ri_diskio_bytesread &+ info.ri_diskio_byteswritten,
+                energyNanojoules: info.ri_energy_nj)
 
             let group: Group
-            if let cached = known[pid], cached.startTime == info.ri_proc_start_abstime {
+            if let cached = known[pid], cached.startTime == start {
                 group = cached.group
             } else {
                 group = Self.group(pid: pid)
             }
-            nextKnown[pid] = Known(startTime: info.ri_proc_start_abstime, group: group)
-            nextCPU[pid] = cpuNanos
+            nextKnown[pid] = Known(startTime: start, group: group)
+            next[pid] = counters
 
-            var cpu: Float = 0
-            if elapsed > 0, let previous = lastCPUNanos[pid], cpuNanos >= previous,
-                known[pid]?.startTime == info.ri_proc_start_abstime
-            {
-                cpu = Float(Double(cpuNanos - previous) / elapsed)
-            }
             var entry = usage[group.id] ?? group.emptyUsage
-            entry.cpu += cpu
             entry.memoryBytes &+= info.ri_phys_footprint
+            if elapsed > 0, let previous = last[pid], previous.startTime == start {
+                entry.cpu += Float(Self.delta(previous.cpuNanos, counters.cpuNanos) / elapsed)
+                entry.diskBytesPerSec += Self.delta(previous.diskBytes, counters.diskBytes) / (elapsed / 1e9)
+                // nJ per ns is J per s.
+                entry.watts += Self.delta(previous.energyNanojoules, counters.energyNanojoules) / elapsed
+            }
             usage[group.id] = entry
         }
 
-        let hadBaseline = elapsed > 0
+        let hasRates = elapsed > 0
         known = nextKnown
-        lastCPUNanos = nextCPU
+        last = next
         lastSampleNanos = now
 
-        let all = Array(usage.values)
-        return TopProcesses(
-            byCPU: hadBaseline ? Self.top(all, limit: limit, by: \.cpu, minimum: 0.001) : [],
-            byMemory: Self.top(all, limit: limit, by: \.memoryBytes, minimum: 1))
+        return (Array(usage.values), hasRates)
     }
 
     public func reset() {
         known = [:]
-        lastCPUNanos = [:]
+        last = [:]
         lastSampleNanos = nil
     }
 
     // MARK: - Helpers
 
-    /// The `limit` largest entries by `key`, ignoring those below `minimum`. Ties break by name for stable order.
+    /// The entry with the largest `key`, ignoring those below `minimum`. Ties break by name for a stable choice.
     static func top<Value: Comparable>(
-        _ entries: [ProcessUsage], limit: Int, by key: KeyPath<ProcessUsage, Value>, minimum: Value
-    ) -> [ProcessUsage] {
-        let sorted = entries.filter { $0[keyPath: key] >= minimum }.sorted {
+        _ entries: [ProcessUsage], by key: KeyPath<ProcessUsage, Value>, minimum: Value
+    ) -> ProcessUsage? {
+        entries.filter { $0[keyPath: key] >= minimum }.min {
             $0[keyPath: key] != $1[keyPath: key] ? $0[keyPath: key] > $1[keyPath: key] : $0.name < $1.name
         }
-        return Array(sorted.prefix(limit))
+    }
+
+    private static func delta(_ old: UInt64, _ new: UInt64) -> Double {
+        new >= old ? Double(new - old) : 0
     }
 
     /// Fills `pids` and returns how many are valid, growing the buffer if the system has more processes.
@@ -146,11 +192,12 @@ public final class ProcessProbe {
         }
     }
 
-    private static func rusage(_ pid: pid_t) -> rusage_info_v4? {
-        var info = rusage_info_v4()
+    /// V6 (macOS 12+) adds `ri_energy_nj`.
+    private static func rusage(_ pid: pid_t) -> rusage_info_v6? {
+        var info = rusage_info_v6()
         let result = withUnsafeMutablePointer(to: &info) { pointer in
             pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
-                proc_pid_rusage(pid, RUSAGE_INFO_V4, $0)
+                proc_pid_rusage(pid, RUSAGE_INFO_V6, $0)
             }
         }
         return result == 0 ? info : nil

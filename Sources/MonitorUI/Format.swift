@@ -6,6 +6,9 @@ struct Reading: Equatable {
     var unit: String
 
     static let none = Reading(value: "—", unit: "")
+
+    /// Single-string form, e.g. "2.1 W".
+    var text: String { unit.isEmpty ? value : "\(value) \(unit)" }
 }
 
 enum Format {
@@ -22,8 +25,7 @@ enum Format {
 
     /// Short "12 ms" form for secondary labels.
     static func msText(_ value: Float?) -> String {
-        let r = ms(value)
-        return r.unit.isEmpty ? r.value : "\(r.value) \(r.unit)"
+        ms(value).text
     }
 
     /// Memory size in binary gigabytes (GiB, shown as "GB" like Activity Monitor does).
