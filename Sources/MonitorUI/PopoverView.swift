@@ -103,26 +103,29 @@ public struct PopoverView: View {
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
-                caption: cpuCaption, topApp: topApp(.cpu, \.cpu) { Format.processCPU($0.cpu) },
+                caption: cpuCaption, topApp: topApp(.cpu, \.byCPU, column: "CPU") { Format.processCPU($0.cpu) },
                 values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
             MetricModule(
                 symbol: "memorychip", title: "Memory", level: level,
                 reading: snap.memory.map { Format.gigabytes($0.usedBytes) } ?? .none,
                 caption: snap.memory.map(memoryCaption),
-                topApp: topApp(.memory, \.memory) { Format.processMemory($0.memoryBytes) },
+                topApp: topApp(.memory, \.byMemory, column: "Memory") { Format.processMemory($0.memoryBytes) },
                 values: history(SeriesKey.memory), maxValue: 1)
         case .power:
             MetricModule(
                 symbol: powerSymbol, title: snap.power?.source == .adapter ? "Power Adapter" : "Battery",
                 level: level, reading: Format.watts(snap.power?.watts), caption: powerCaption,
-                topApp: topApp(.power, \.power) { Format.watts($0.watts).text },
+                topApp: topApp(.power, \.byPower, column: "Power") { Format.watts($0.watts).text },
                 values: history(SeriesKey.power), maxValue: nil)
         case .disk:
             MetricModule(
                 symbol: "internaldrive", title: "Disk", level: level,
                 reading: snap.disk.map { Format.storage($0.availableBytes) } ?? .none,
-                caption: diskCaption, topApp: topApp(.disk, \.disk) { Format.bytesPerSec($0.diskBytesPerSec) },
+                caption: diskCaption,
+                topApp: topApp(.disk, \.byDisk, column: "Disk") {
+                    Format.bytesPerSec($0.diskBytesPerSec)
+                },
                 values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
         case .network:
             NetworkModule(
@@ -141,11 +144,14 @@ public struct PopoverView: View {
 
     /// The top app line for a module, present only while per-app usage is sampled (popover open).
     private func topApp(
-        _ module: Module, _ key: KeyPath<TopApps, ProcessUsage?>, value: (ProcessUsage) -> String
+        _ module: Module, _ key: KeyPath<TopApps, [ProcessUsage]>, column: String,
+        value: @escaping (ProcessUsage) -> String
     ) -> TopAppRow? {
         guard settings.showsTopApp(module), let apps = snap.topApps else { return nil }
-        let app = apps[keyPath: key]
-        return TopAppRow(app: app, value: app.map(value) ?? "", icon: app.map { model.icons.icon(for: $0.path) })
+        return TopAppRow(
+            list: TopAppsList(
+                title: "Top Apps by \(column)", column: column, apps: apps[keyPath: key], value: value,
+                icons: model.icons))
     }
 
     private func memoryCaption(_ memory: MemorySample) -> String {

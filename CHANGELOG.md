@@ -12,6 +12,9 @@ All notable changes to this project are documented here. The format is based on
   an error answer or no answer counts as lost. It says "DNS Cloudflare", "DNS Google" and so on for
   well-known resolvers, "DNS Router" when your router answers, or the server's address (hover a row to see the
   address it measures). It follows network changes within 30 seconds.
+- Top apps: click the app line in CPU, Memory, Power or Disk to see the five apps using the most of it, each
+  with its process ID. Click an app to copy its process ID (for example to `kill` it). An app's process ID is
+  its own main process, not one of its helpers; hover an app to see how many processes were added up.
 - Charts scroll smoothly: each new reading slides in from the right instead of the line jumping once a second
   (or every 5 or 30 seconds on the longer ranges). This only runs while the popover is open, at up to 30 frames
   per second, and not when Reduce Motion is on.
