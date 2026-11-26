@@ -8,16 +8,14 @@ struct AddressesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 12) {
-                AddressRow(
-                    symbol: localSymbol, label: localLabel, value: addresses.local?.ipv4,
-                    placeholder: "Not connected")
-                AddressRow(
-                    symbol: "globe", label: "Public", value: publicIPv4,
-                    placeholder: publicPlaceholder)
-            }
+            AddressRow(
+                symbol: localSymbol, label: localLabel, value: addresses.local?.ipv4,
+                placeholder: "Not connected")
+            AddressRow(
+                symbol: "globe", label: "Public", value: publicIPv4,
+                placeholder: publicPlaceholder)
             if let ipv6 = addresses.publicAddresses?.ipv6 {
-                AddressRow(symbol: "globe", label: "Public IPv6", value: ipv6, placeholder: "")
+                AddressRow(symbol: "globe", label: "IPv6", value: ipv6, placeholder: "")
             }
         }
         .font(.caption)

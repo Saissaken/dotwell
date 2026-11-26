@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- Cards no longer move when something needs attention: the "Needs Attention" group is gone, and a card that
+  has a problem just turns yellow or red where it is.
+- Disk and Network are now half-width cards like CPU and Memory, so the popover is shorter. Only Ping still
+  spans the full width. A card left alone in the last row keeps its half width.
+
+### Fixed
+- The icons in the cards' colored circles, and in the route's dots under Ping, are now centered exactly.
+
 ## [0.9.0] - 2026-11-26
 
 ### Added

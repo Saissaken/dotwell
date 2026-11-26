@@ -34,7 +34,8 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
 - **What's using it**: CPU, GPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
   the popover is open. Click it to see the top five with their process IDs, and click one to copy its PID; right-click one to quit it.
-- **Problems on top**: anything that needs attention is listed first. No scrolling.
+- **Problems stand out**: a card that needs attention turns yellow or red in place, so nothing moves around. No
+  scrolling.
 - **Yours to arrange**: a Settings window laid out like System Settings, with one page per card: show, hide
   and reorder cards, choose ping hosts (Cloudflare, Google or Quad9, and AWS, Google Cloud or Azure regions),
   set each card's alert, and choose how often readings are taken with the popover open and closed.

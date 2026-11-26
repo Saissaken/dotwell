@@ -2,7 +2,7 @@ import MonitorCore
 import SwiftUI
 
 /// The popover content: a header, then metric modules in the style of Control Center.
-/// Modules that need attention move to the top, in their own group.
+/// Cards keep their place when something needs attention: only their color changes, so nothing jumps around.
 public struct PopoverView: View {
     @ObservedObject private var model: PopoverModel
     @ObservedObject private var settings: AppSettings
@@ -16,18 +16,11 @@ public struct PopoverView: View {
 
     public var body: some View {
         let modules = Module.visible(in: snap, widgets: settings.widgets)
-        let problems = modules.filter { $0.level(in: snap) != .ok }
-            .sorted { $0.level(in: snap) > $1.level(in: snap) }
-        let healthy = modules.filter { $0.level(in: snap) == .ok }
+        let problemCount = modules.filter { $0.level(in: snap) != .ok }.count
 
         VStack(alignment: .leading, spacing: 10) {
-            header(problemCount: problems.count)
-            if !problems.isEmpty {
-                GroupLabel("Needs Attention")
-                grid(problems)
-                if !healthy.isEmpty { GroupLabel("Everything Else") }
-            }
-            grid(healthy)
+            header(problemCount: problemCount)
+            grid(modules)
         }
         .padding(PopoverLayout.padding)
         .frame(width: PopoverLayout.width)
@@ -88,6 +81,10 @@ public struct PopoverView: View {
             ForEach(rows.indices, id: \.self) { i in
                 HStack(alignment: .top, spacing: PopoverLayout.spacing) {
                     ForEach(rows[i], id: \.self) { module($0) }
+                    // A half-width card left alone in the last row keeps its width.
+                    if rows[i].count == 1, !rows[i][0].isWide {
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                    }
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -250,8 +247,8 @@ public enum Module: String, CaseIterable, Codable, Sendable {
         self == .cpu ? max(snap.level(.cpu), snap.level(.thermal)) : snap.level(kind)
     }
 
-    /// Full-width modules take a row of their own.
-    var isWide: Bool { self == .ping || self == .network }
+    /// Full-width modules take a row of their own. Only Ping needs the room, for its route and extra hosts.
+    var isWide: Bool { self == .ping }
 
     /// The cards to show, in the person's order. Power appears only on Macs with a battery, GPU only on
     /// Macs whose GPU Dotwell can read (Apple silicon).
@@ -306,19 +303,6 @@ enum PopoverLayout {
     }
 }
 
-struct GroupLabel: View {
-    var text: String
-    init(_ text: String) { self.text = text }
-
-    var body: some View {
-        Text(text)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 4)
-            .padding(.top, 2)
-    }
-}
-
 /// Rounded "module" surface like Control Center's, tinted when the metric needs attention.
 struct ModuleBackground: ViewModifier {
     var level: HealthLevel
@@ -340,12 +324,29 @@ struct SymbolBadge: View {
     var level: HealthLevel
 
     var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: 11, weight: .semibold))
+        CenteredSymbol(name: symbol, size: 13, weight: .semibold)
             .foregroundStyle(.white)
             .frame(width: 24, height: 24)
             .background(Circle().fill(levelColor(level)))
             .accessibilityHidden(true)
+    }
+}
+
+/// An SF Symbol centered on its drawn shape. A symbol drawn as text sits on a baseline and carries the
+/// font's side bearings, so it looks off-center inside a circle; a resizable image is laid out by its own
+/// bounds instead.
+struct CenteredSymbol: View {
+    var name: String
+    /// The longer side of the symbol, in points.
+    var size: CGFloat
+    var weight: Font.Weight
+
+    var body: some View {
+        Image(systemName: name)
+            .resizable()
+            .fontWeight(weight)
+            .scaledToFit()
+            .frame(width: size, height: size)
     }
 }
 
@@ -536,31 +537,34 @@ struct NetworkModule: View {
                 Text("Network").font(.callout.weight(.medium))
                 Spacer(minLength: 0)
             }
-            HStack(spacing: 16) {
-                Label {
-                    ValueText(reading: Format.network(snapshot.networkDownBitsPerSec, unit: unit))
-                } icon: {
-                    Image(systemName: "arrow.down").foregroundStyle(Color.accentColor)
-                }
-                Label {
-                    ValueText(reading: Format.network(snapshot.networkUpBitsPerSec, unit: unit))
-                } icon: {
-                    Image(systemName: "arrow.up").foregroundStyle(Color.purple)
-                }
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 2) {
+                rate(
+                    Format.network(snapshot.networkDownBitsPerSec, unit: unit), arrow: "arrow.down", color: .accentColor
+                )
+                rate(Format.network(snapshot.networkUpBitsPerSec, unit: unit), arrow: "arrow.up", color: .purple)
             }
-            .font(.callout.weight(.semibold))
+            Spacer(minLength: 0)
             let peak = max((down + up).max() ?? 1, 1)
             ZStack {
                 Sparkline(values: up, maxValue: peak, color: .purple)
                 Sparkline(values: down, maxValue: peak, color: .accentColor)
             }
-            .frame(height: 26)
+            .frame(height: 22)
             if let addresses {
                 Divider().opacity(0.5)
                 AddressesView(addresses: addresses)
             }
         }
         .modifier(ModuleBackground(level: .ok))
+    }
+
+    private func rate(_ reading: Reading, arrow: String, color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: arrow)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(color)
+                .accessibilityHidden(true)
+            ValueText(reading: reading, size: 17)
+        }
     }
 }
