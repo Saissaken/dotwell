@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- Charts no longer jump sideways while their time range is still filling (for example the first 30 s after
+  opening the popover or switching ranges): the line now grows in from the right at its final spacing.
+
 ## [0.9.0] - 2026-11-26
 
 ### Added
