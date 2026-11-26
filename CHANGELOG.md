@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Ping: a DNS row for the server your Mac uses to look up names. Every 5 seconds it asks that server a real
+  question (the address of www.apple.com, which any resolver has cached) and shows how long the answer takes;
+  an error answer or no answer counts as lost. It says "DNS Cloudflare", "DNS Google" and so on for
+  well-known resolvers, "DNS Router" when your router answers, or the server's address (hover a row to see the
+  address it measures). It follows network changes within 30 seconds.
+
 ### Fixed
 - Ping: round trips no longer include the time Dotwell itself took to read the reply. With the popover open
   they could read 20–35 ms too high, so the Router row showed 37 ms while the route above it showed 1.3 ms.

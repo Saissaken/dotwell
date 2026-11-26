@@ -147,10 +147,10 @@ public final class AppSettings: ObservableObject {
 
     // MARK: - Ping targets
 
-    /// The rows of the ping card, in order: router, ISP, internet, then the regions that are on.
+    /// The rows of the ping card, in order: router, ISP, DNS server, internet, then the regions that are on.
     public var pingSlots: [(slot: PingSlot, target: PingTarget)] {
         var slots: [(slot: PingSlot, target: PingTarget)] = [
-            (.router, .router), (.isp, .isp), (.internet, internetHost.target),
+            (.router, .router), (.isp, .isp), (.dns, .dns), (.internet, internetHost.target),
         ]
         for (index, region) in regions.enumerated() {
             if let region, let slot = PingSlot.region(index) { slots.append((slot: slot, target: region.target)) }
@@ -211,7 +211,7 @@ public final class AppSettings: ObservableObject {
 
 /// A row of the ping card.
 public enum PingSlot: String, CaseIterable, Codable, Sendable {
-    case router, isp, internet, region1, region2
+    case router, isp, dns, internet, region1, region2
 
     static let regionCount = 2
 

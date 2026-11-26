@@ -45,7 +45,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertFalse(reloaded.alerts.contains(.cpu))
         XCTAssertEqual(reloaded.internetHost, .quad9)
         XCTAssertEqual(reloaded.regions, [CloudRegion.defaultFirst, CloudRegion.find(.azure, "brazilsouth")])
-        XCTAssertEqual(reloaded.configuration.primaryIndex, 4)
+        XCTAssertEqual(reloaded.configuration.primaryIndex, 5)
         XCTAssertEqual(reloaded.widgets, settings.widgets)
         XCTAssertEqual(reloaded.configuration, settings.configuration)
     }
@@ -66,13 +66,14 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.configuration.primaryIndex, PingTarget.defaultPrimaryIndex)
 
         settings.primarySlot = .region2
-        XCTAssertEqual(settings.configuration.primaryIndex, 4)
+        XCTAssertEqual(settings.configuration.primaryIndex, 5)
         settings.setRegion(nil, at: 0)
-        XCTAssertEqual(settings.configuration.targets.map(\.name), ["Router", "ISP", "Cloudflare", "AWS Virginia"])
-        XCTAssertEqual(settings.configuration.primaryIndex, 3, "the primary follows its row")
+        XCTAssertEqual(
+            settings.configuration.targets.map(\.name), ["Router", "ISP", "DNS", "Cloudflare", "AWS Virginia"])
+        XCTAssertEqual(settings.configuration.primaryIndex, 4, "the primary follows its row")
         settings.setRegion(nil, at: 1)
         XCTAssertEqual(settings.effectivePrimarySlot, .internet, "a region that is off falls back to the internet")
-        XCTAssertEqual(settings.configuration.primaryIndex, 2)
+        XCTAssertEqual(settings.configuration.primaryIndex, 3)
 
         settings.restoreDefaultTargets()
         XCTAssertEqual(settings.configuration.targets, PingTarget.defaults)

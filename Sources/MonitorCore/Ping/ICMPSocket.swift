@@ -15,9 +15,14 @@ enum ICMPSocket {
     /// route trace's probes, so the buffer holds a few seconds of them even when read only once per tick.
     private static let receiveBuffer: Int32 = 256 * 1024
 
-    /// A non-blocking socket, or -1.
+    /// A non-blocking ICMP socket, or -1.
     static func open() -> Int32 {
-        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)
+        open(protocol: IPPROTO_ICMP)
+    }
+
+    /// A non-blocking datagram socket of `protocol` (ICMP or UDP) with receive timestamps, or -1.
+    static func open(protocol proto: Int32) -> Int32 {
+        let fd = socket(AF_INET, SOCK_DGRAM, proto)
         guard fd >= 0 else { return -1 }
         _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         var on: Int32 = 1

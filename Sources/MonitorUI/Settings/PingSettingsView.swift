@@ -9,10 +9,10 @@ struct PingSettingsView: View {
         Form {
             LabeledContent("Your network:") {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Router and ISP")
+                    Text("Router, ISP and DNS")
                     SettingNote(
-                        "Found automatically: your Wi-Fi or Ethernet router, then the first router of your "
-                            + "internet provider.")
+                        "Found automatically: your Wi-Fi or Ethernet router, the first router of your internet "
+                            + "provider, and the DNS server your Mac uses to look up names.")
                 }
             }
             Spacer().frame(height: 8)
