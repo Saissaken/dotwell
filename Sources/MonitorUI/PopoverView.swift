@@ -81,9 +81,10 @@ public struct PopoverView: View {
         let rows = Module.rows(modules)
         VStack(spacing: 8) {
             ForEach(rows.indices, id: \.self) { i in
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     ForEach(rows[i], id: \.self) { module($0) }
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -97,7 +98,8 @@ public struct PopoverView: View {
         case .cpu:
             MetricModule(
                 symbol: "cpu", title: "CPU", level: level, reading: Format.percent(snap.cpu),
-                caption: nil, values: history(SeriesKey.cpu), maxValue: 1)
+                caption: "\(ProcessInfo.processInfo.activeProcessorCount) cores",
+                values: history(SeriesKey.cpu), maxValue: 1)
         case .memory:
             MetricModule(
                 symbol: "memorychip", title: "Memory", level: level,
@@ -239,7 +241,7 @@ struct ModuleBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(level == .ok ? Color.primary.opacity(0.06) : levelColor(level).opacity(0.14))
@@ -309,6 +311,7 @@ struct MetricModule: View {
                     .minimumScaleFactor(0.85)
             }
             if !values.isEmpty {
+                Spacer(minLength: 0)
                 Sparkline(values: values, maxValue: maxValue, color: levelColor(level))
                     .frame(height: 22)
             }
