@@ -14,6 +14,8 @@ All notable changes to this project are documented here. The format is based on
 - The popover is 10% wider (396 pt), so the half-width cards have more room.
 
 ### Fixed
+- Charts no longer jump sideways while their time range is still filling (for example the first 30 s after
+  opening the popover or switching ranges): the line now grows in from the right at its final spacing.
 - The icons in the cards' colored circles, and in the route's dots under Ping, are now centered exactly.
 
 ## [0.9.0] - 2026-11-26

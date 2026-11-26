@@ -11,6 +11,42 @@ extension EnvironmentValues {
         get { self[ChartMotionKey.self] }
         set { self[ChartMotionKey.self] = newValue }
     }
+
+    /// Set by the popover: how many points a full chart of the range on screen holds.
+    var chartPoints: Int? {
+        get { self[ChartPointsKey.self] }
+        set { self[ChartPointsKey.self] = newValue }
+    }
+}
+
+private struct ChartPointsKey: EnvironmentKey {
+    static let defaultValue: Int? = nil
+}
+
+/// Where a sparkline's points go across its width.
+///
+/// The spacing comes from how many points the chart holds when full, not from how many it has, so a chart whose
+/// history is still filling draws its line at the final spacing, ending at the right edge, and new points push
+/// it left. Spreading the few points over the whole width instead would stretch the line and make every point
+/// jump sideways each time one is added.
+struct SparklineLayout: Equatable {
+    /// Points across the chart: its capacity, or the values it has if that is more.
+    var slots: Int
+    /// While sliding, the oldest slot is a lead-in kept just past the left edge, so no gap opens there.
+    var lead: Int
+    var step: CGFloat
+    /// Where value 0 sits, in steps from the left edge.
+    var origin: CGFloat
+
+    /// `slide` is how far right of its resting place the line is, in steps (0...1); nil draws it still.
+    init(count: Int, capacity: Int?, slide: Double?, width: CGFloat) {
+        slots = max(capacity ?? count, count)
+        lead = slide == nil || slots < 3 ? 0 : 1
+        step = width / CGFloat(max(1, slots - 1 - lead))
+        origin = CGFloat(slots - count) + CGFloat(slide ?? 0) - CGFloat(lead)
+    }
+
+    func x(_ i: Int) -> CGFloat { (origin + CGFloat(i)) * step }
 }
 
 /// Minimal line chart. Negative values are gaps (e.g. lost pings) drawn as small red ticks.
@@ -26,6 +62,7 @@ struct Sparkline: View {
     var capacity: Int? = nil
 
     @Environment(\.chartMotion) private var motion
+    @Environment(\.chartPoints) private var chartPoints
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Smooth enough for a line that moves a few points a second, at a fraction of the display's refresh rate.
@@ -42,19 +79,15 @@ struct Sparkline: View {
     }
 
     /// `slide` is how far right of its resting place the line is, in steps (0...1); nil draws it still.
-    /// While sliding, the oldest value is a lead-in kept just past the left edge, so no gap opens there.
     private func chart(slide: Double?) -> some View {
         Canvas { ctx, size in
             guard values.count > 1 else { return }
-            let slots = max(capacity ?? values.count, values.count)
-            let lead = slide == nil || slots < 3 ? 0 : 1
-            let step = size.width / CGFloat(max(1, slots - 1 - lead))
-            let shift = CGFloat(slide ?? 0) - CGFloat(lead)
-            let offset = CGFloat(slots - values.count) * step
+            let layout = SparklineLayout(
+                count: values.count, capacity: capacity ?? chartPoints, slide: slide, width: size.width)
             let peak = maxValue ?? max(values.max() ?? 1, 0.0001)
             let h = size.height - 2
 
-            func x(_ i: Int) -> CGFloat { offset + (CGFloat(i) + shift) * step }
+            func x(_ i: Int) -> CGFloat { layout.x(i) }
             func point(_ i: Int, _ v: Float) -> CGPoint {
                 CGPoint(x: x(i), y: 1 + h - CGFloat(min(v, peak) / peak) * h)
             }
