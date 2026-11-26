@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dotwell · Your Mac's health at a glance</title>
+  <meta name="description" content="A tiny, native macOS menu bar app that watches ping, CPU, memory, disk, power and network, and tells you with one dot whether everything is fine. Free and open source.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/png" href="images/icon-64.png">
+  <link rel="apple-touch-icon" href="images/icon-256.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Dotwell">
+  <meta property="og:description" content="Your Mac's health at a glance. A tiny, native menu bar monitor that barely uses any resources itself.">
+  <meta property="og:url" content="https://saissaken.github.io/dotwell/">
+  <meta property="og:image" content="https://saissaken.github.io/dotwell/images/icon-256.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="stylesheet" href="style.css">
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="./" aria-label="Dotwell home">
+        <img src="images/icon-64.png" alt="" width="28" height="28">
+        <span>Dotwell</span>
+      </a>
+      <nav aria-label="Main">
+        <!-- Docs and What's new point to GitHub until their own pages exist. -->
+        <a href="https://github.com/Saissaken/dotwell#readme">Docs</a>
+        <a href="https://github.com/Saissaken/dotwell/releases" data-whats-new>What's new</a>
+        <a href="https://github.com/Saissaken/dotwell" class="nav-github" aria-label="Dotwell on GitHub">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <a class="release-pill" href="https://github.com/Saissaken/dotwell/releases/latest" data-release-pill hidden>
+        <span class="pill-dot" aria-hidden="true"></span>
+        <span data-release-pill-text></span>
+        <span class="chevron" aria-hidden="true">›</span>
+      </a>
+      <img class="hero-icon" src="images/icon-256.png" alt="Dotwell app icon" width="128" height="128">
+      <h1>Your Mac's health,<br>at a glance.</h1>
+      <p class="lead">
+        Dotwell is a tiny, native menu bar app that watches ping, CPU, memory, disk, power and network,
+        and tells you with a single dot whether everything is fine. It barely uses any resources itself.
+      </p>
+      <div class="cta">
+        <a class="button primary" href="https://github.com/Saissaken/dotwell/releases/latest/download/Dotwell.dmg" data-download>
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m0 0-4-4m4 4 4-4M4 16.5h12"/></svg>
+          <span>Download for Mac</span>
+        </a>
+        <a class="button secondary" href="https://github.com/Saissaken/dotwell">
+          <span>View source</span>
+          <span class="chevron" aria-hidden="true">›</span>
+        </a>
+      </div>
+      <p class="meta"><span data-version-meta></span>macOS 13 or later · Apple silicon and Intel · Free and open source</p>
+    </section>
+
+    <section class="stage-wrap" aria-label="Screenshots">
+      <div class="segmented" role="tablist" aria-label="Choose a screenshot">
+        <button role="tab" aria-selected="true" data-shot="healthy">All good</button>
+        <button role="tab" aria-selected="false" data-shot="issues">Something's wrong</button>
+      </div>
+      <div class="stage">
+        <div class="menubar" aria-hidden="true">
+          <div class="menubar-left">
+            <svg viewBox="0 0 14 17" width="13" height="16"><path fill="currentColor" d="M11.6 9c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.5.8-3.1.8-.7 0-1.6-.8-2.7-.8C3.2 4.2 1.9 5 1.2 6.3c-1.5 2.6-.4 6.4 1 8.5.7 1 1.5 2.1 2.6 2.1 1 0 1.4-.7 2.7-.7 1.2 0 1.6.7 2.7.7 1.1 0 1.8-1 2.5-2 .8-1.2 1.1-2.3 1.1-2.4 0 0-2.2-.8-2.2-3.5zM9.5 2.8c.6-.7 1-1.7.9-2.8-.9 0-1.9.6-2.6 1.3-.5.6-1 1.6-.9 2.6 1 .1 2-.5 2.6-1.1z"/></svg>
+            <span class="menubar-app">Finder</span>
+            <span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span>
+          </div>
+          <div class="menubar-right">
+            <span class="status-dot" data-status-dot></span>
+            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 18.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM12 14c1.6 0 3 .6 4.1 1.6l-1.4 1.5A3.9 3.9 0 0 0 12 16c-1 0-2 .4-2.7 1.1l-1.4-1.5A6 6 0 0 1 12 14zm0-4.5c2.8 0 5.3 1.1 7.2 2.9l-1.4 1.4A8.2 8.2 0 0 0 12 11.5c-2.2 0-4.3.9-5.8 2.3l-1.4-1.4A10.2 10.2 0 0 1 12 9.5zM12 5c4 0 7.6 1.6 10.3 4.1L20.9 10.6A12.6 12.6 0 0 0 12 7c-3.4 0-6.6 1.4-8.9 3.6L1.7 9.1A14.6 14.6 0 0 1 12 5z"/></svg>
+            <svg viewBox="0 0 28 14" width="24" height="12"><rect x="0.75" y="0.75" width="23" height="12.5" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/><rect x="2.5" y="2.5" width="16" height="9" rx="2" fill="currentColor"/><path d="M25.5 5v4c.9-.3 1.5-1.1 1.5-2s-.6-1.7-1.5-2z" fill="currentColor" opacity=".45"/></svg>
+            <span>Thu 9:41</span>
+          </div>
+        </div>
+        <div class="popover" data-popover>
+          <picture data-shot-picture="healthy">
+            <source media="(prefers-color-scheme: dark)" srcset="images/popover-healthy-dark.png">
+            <img src="images/popover-healthy-light.png" width="408" height="668" alt="Dotwell's popover when everything is healthy: ping, CPU, memory, battery, disk and network, each with a sparkline">
+          </picture>
+          <picture data-shot-picture="issues" hidden>
+            <source media="(prefers-color-scheme: dark)" srcset="images/popover-issues-dark.png">
+            <img src="images/popover-issues-light.png" width="408" height="877" loading="lazy" alt="Dotwell's popover with three issues: high ping, high CPU and heat throttling are listed first under Needs Attention">
+          </picture>
+        </div>
+      </div>
+      <p class="caption" data-caption>When everything is fine, the dot is green and the popover stays calm.</p>
+    </section>
+
+    <section class="features" aria-labelledby="features-title">
+      <h2 id="features-title">Everything you need. Nothing you don't.</h2>
+      <div class="grid">
+        <article class="card">
+          <div class="glyph green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".35"/></svg></div>
+          <h3>One dot tells you</h3>
+          <p>Green, yellow or red in the menu bar, with hysteresis so it never flickers. Look up only when it changes.</p>
+        </article>
+        <article class="card">
+          <div class="glyph blue"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+          <h3>Ping comes first</h3>
+          <p>Latency, packet loss and jitter against your router, public DNS and cloud regions, so you know whose fault it is.</p>
+        </article>
+        <article class="card">
+          <div class="glyph indigo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16l4.5-5 4 3.5L16 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>The whole picture</h3>
+          <p>CPU, memory pressure, disk, power draw in watts and network throughput, each with a minimal sparkline.</p>
+        </article>
+        <article class="card">
+          <div class="glyph orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="17" r="1.8" fill="currentColor"/></svg></div>
+          <h3>Knows when it's hot</h3>
+          <p>Tells you when macOS slows your Mac down to cool it, and shows the CPU temperature next to the load.</p>
+        </article>
+        <article class="card">
+          <div class="glyph pink"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+          <h3>Names the culprit</h3>
+          <p>CPU, memory, disk and battery each show the app using the most, sampled only while the popover is open.</p>
+        </article>
+        <article class="card">
+          <div class="glyph teal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4.5h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Updates itself</h3>
+          <p>Signed updates download quietly in the background and install the next time it quits.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="budget" aria-labelledby="budget-title">
+      <h2 id="budget-title">Lighter than what it measures.</h2>
+      <p class="section-lead">A monitor shouldn't be the thing slowing your Mac down. These are the targets Dotwell is built against, with the popover closed.</p>
+      <dl class="stats">
+        <div><dt>CPU</dt><dd><span class="lt">&lt;</span>0.2<small>%</small></dd><p>of one core</p></div>
+        <div><dt>Memory</dt><dd><span class="lt">&lt;</span>25<small>MB</small></dd><p>resident</p></div>
+        <div><dt>Wakeups</dt><dd><span class="lt">&lt;</span>2<small>/s</small></dd><p>easy on the battery</p></div>
+        <div><dt>App size</dt><dd><span class="lt">&lt;</span>5<small>MB</small></dd><p>universal binary</p></div>
+      </dl>
+      <p class="fine">No helpers, no subprocesses. Everything is read directly from Mach, IOKit and <code>sysctl</code>, in Swift.</p>
+    </section>
+
+    <section class="install" id="install" aria-labelledby="install-title">
+      <h2 id="install-title">Get Dotwell.</h2>
+      <div class="install-grid">
+        <div class="card install-card">
+          <h3>Download</h3>
+          <ol>
+            <li>Open <strong>Dotwell.dmg</strong> and drag Dotwell onto Applications.</li>
+            <li>The first launch is blocked because the app isn't notarized yet. Allow it once in <strong>System Settings → Privacy &amp; Security → Open Anyway</strong>.</li>
+            <li>That's it. Dotwell opens at login and keeps itself up to date.</li>
+          </ol>
+          <a class="button primary small" href="https://github.com/Saissaken/dotwell/releases/latest/download/Dotwell.dmg" data-download>
+            <span>Download Dotwell.dmg</span>
+          </a>
+        </div>
+        <div class="card install-card">
+          <h3>Homebrew</h3>
+          <p>The repository is its own tap.</p>
+          <div class="code">
+            <pre><code>brew tap saissaken/dotwell https://github.com/Saissaken/dotwell
+brew install --cask dotwell</code></pre>
+            <button class="copy" type="button" data-copy aria-label="Copy commands">
+              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13.5 4.2V4A1.5 1.5 0 0 0 12 2.5H5A1.5 1.5 0 0 0 3.5 4v7A1.5 1.5 0 0 0 5 12.5h.3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+              <span data-copy-label>Copy</span>
+            </button>
+          </div>
+          <p class="hint">Or build it yourself with <code>make app</code>. See the <a href="https://github.com/Saissaken/dotwell#build-from-source">README</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="images/icon-64.png" alt="" width="20" height="20">
+        <span>Dotwell is free and open source under the <a href="https://github.com/Saissaken/dotwell/blob/main/LICENSE">MIT License</a>.</span>
+      </div>
+      <nav aria-label="Footer">
+        <a href="https://github.com/Saissaken/dotwell#readme">Docs</a>
+        <a href="https://github.com/Saissaken/dotwell/releases" data-whats-new>What's new</a>
+        <a href="https://github.com/Saissaken/dotwell/issues/new/choose">Report an issue</a>
+        <a href="https://github.com/Saissaken/dotwell/blob/main/CONTRIBUTING.md">Contribute</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

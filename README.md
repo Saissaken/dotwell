@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-lightgrey)
 
+**[saissaken.github.io/dotwell](https://saissaken.github.io/dotwell/)**
+
 A tiny, native macOS menu bar app that tells you at a glance whether your Mac is healthy.
 Built for one thing above all: **using as few resources as possible** while it runs all day.
 
@@ -98,6 +100,7 @@ Tests/                Unit tests for MonitorCore
 scripts/              Bundling, packaging and release helpers
 Casks/                Homebrew cask (this repository is also a tap)
 docs/                 Requirements, design and release process
+site/                 Project page (GitHub Pages), built by scripts/build-site.sh
 ```
 
 ## Contributing
