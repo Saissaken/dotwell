@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  actions: write  # to refresh the nightly feed after publishing
 
 concurrency:
   group: release
@@ -79,3 +80,10 @@ jobs:
           [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]] && TARGET=(--target "$GITHUB_SHA") || TARGET=(--verify-tag)
           gh release create "$TAG" "${TARGET[@]}" --title "v$VERSION" --notes-file build/notes.md \
             build/Dotwell.dmg "build/Dotwell-$VERSION.zip" build/appcast.xml
+
+      - name: Refresh the nightly feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # The nightly feed carries the latest release, so nightly users get this one too. Release
+        # commits only touch CHANGELOG.md, which doesn't trigger the Nightly workflow on its own.
+        run: gh workflow run nightly.yml --ref main || echo "::warning::Could not start the Nightly workflow"

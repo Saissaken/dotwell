@@ -108,6 +108,11 @@ public struct PopoverView: View {
                     Format.processCPU($0.cpu, scale: settings.processCPUScale)
                 },
                 values: history(SeriesKey.cpu), maxValue: 1)
+        case .gpu:
+            MetricModule(
+                symbol: "cube", title: "GPU", level: level, reading: Format.percent(snap.gpu?.utilization),
+                caption: gpuCaption, topApp: topApp(.gpu, \.byGPU, column: "GPU") { Format.processCPU($0.gpu) },
+                values: history(SeriesKey.gpu), maxValue: 1)
         case .memory:
             MetricModule(
                 symbol: "memorychip", title: "Memory", level: level,
@@ -207,6 +212,16 @@ public struct PopoverView: View {
         return parts.compactMap { $0 }.joined(separator: " · ")
     }
 
+    /// "40 cores · 52 °C · 1.8 W", leaving out what the Mac doesn't report.
+    private var gpuCaption: String {
+        guard let gpu = snap.gpu else { return "" }
+        var parts: [String] = []
+        if let cores = gpu.coreCount { parts.append("\(cores) cores") }
+        if let temperature = Format.temperature(gpu.temperature) { parts.append(temperature) }
+        if gpu.watts != nil { parts.append(Format.watts(gpu.watts).text) }
+        return parts.joined(separator: " · ")
+    }
+
     private var thermalCaption: String {
         guard let temperature = Format.temperature(snap.cpuTemperature) else { return "macOS is limiting performance" }
         return "Slowed down to cool · \(temperature)"
@@ -226,12 +241,13 @@ public struct PopoverView: View {
 
 /// A card of the popover. The raw value is saved in settings, so cases must keep their names.
 public enum Module: String, CaseIterable, Codable, Sendable {
-    case ping, cpu, memory, power, disk, thermal, network
+    case ping, cpu, gpu, memory, power, disk, thermal, network
 
     var kind: MetricKind {
         switch self {
         case .ping: return .ping
         case .cpu: return .cpu
+        case .gpu: return .gpu
         case .memory: return .memory
         case .power: return .power
         case .disk: return .disk
@@ -243,12 +259,14 @@ public enum Module: String, CaseIterable, Codable, Sendable {
     /// Full-width modules take a row of their own.
     var isWide: Bool { self == .ping || self == .network }
 
-    /// The cards to show, in the person's order. Power appears only on Macs with a battery, and
-    /// Thermal only while macOS is slowing the Mac down to cool it.
+    /// The cards to show, in the person's order. Power appears only on Macs with a battery, GPU only on
+    /// Macs whose GPU Dotwell can read (Apple silicon), and Thermal only while macOS is slowing the Mac
+    /// down to cool it.
     static func visible(in snap: Snapshot, widgets: [WidgetSetting]) -> [Module] {
         widgets.filter(\.isVisible).map(\.module).filter { module in
             switch module {
             case .power: return snap.power != nil
+            case .gpu: return snap.gpu != nil
             case .thermal: return snap.level(.thermal) != .ok || snap.thermal == .serious || snap.thermal == .critical
             default: return true
             }

@@ -28,9 +28,11 @@ Built for one thing above all: **using as few resources as possible** while it r
   address, how it is measured, and its last minute: average, minimum, maximum, loss, jitter and a chart.
   Right-click it to copy its IP, trace the route to it, change its region or make it the main host.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
+- **GPU** (Apple silicon): how busy the GPU is, its cores, temperature and power draw, read only while the
+  popover is open.
 - **Your IP addresses**: the Mac's local IP (Wi‑Fi or Ethernet) and its public IPv4 and IPv6. Click one to copy it.
 - **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
-- **What's using it**: CPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
+- **What's using it**: CPU, GPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
   the popover is open. Click it to see the top five with their process IDs, and click one to copy its PID; right-click one to quit it.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
 - **Yours to arrange**: a native Settings window to pick and reorder cards, choose ping hosts (presets for

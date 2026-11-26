@@ -1,9 +1,10 @@
 import Foundation
 
 public enum MetricKind: String, CaseIterable, Codable, Sendable {
-    case ping, cpu, memory, disk, power, network, thermal
+    case ping, cpu, memory, disk, power, network, thermal, gpu
 
-    /// Metrics that can raise a warning. Network throughput has no healthy range.
+    /// Metrics that can raise a warning. Network throughput and GPU use have no healthy range: a GPU at
+    /// 100 % during a game is doing its job.
     public static let alertable: Set<MetricKind> = [.ping, .cpu, .memory, .disk, .power, .thermal]
 }
 

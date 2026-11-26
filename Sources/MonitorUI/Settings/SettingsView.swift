@@ -169,6 +169,7 @@ extension Module {
         switch self {
         case .ping: return "Hidden with its alert off, Dotwell stops pinging"
         case .power: return "Only on Macs with a battery"
+        case .gpu: return "Only on Macs with Apple silicon"
         case .thermal: return "Appears only while macOS slows the Mac down to cool it"
         default: return nil
         }
