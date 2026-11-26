@@ -32,6 +32,8 @@ public struct Snapshot: Sendable {
     public var thermal: ProcessInfo.ThermalState = .nominal
     /// Average CPU die temperature in °C, when the Mac exposes its sensors.
     public var cpuTemperature: Float?
+    /// Average fan speed in RPM (0 while stopped); nil on Macs without fans.
+    public var fanRPM: Double?
     /// Nil on Macs whose GPU can't be read. Its readings are only taken while the popover is open.
     public var gpu: GPUSample?
     public var ping: [PingTargetState] = []
@@ -186,6 +188,7 @@ public final class Sampler: @unchecked Sendable {
             guard timer == nil else { return }
             _ = cpuProbe.sample()  // prime deltas
             current.cpuTemperature = temperatureProbe.sample()  // finds the sensors once, off the popover's path
+            current.fanRPM = temperatureProbe.fanRPM()
             if gpuProbe.isAvailable { current.gpu = GPUSample(coreCount: gpuProbe.coreCount) }
             let t = DispatchSource.makeTimerSource(queue: queue)
             t.setEventHandler { [weak self] in self?.tickOnce() }
@@ -277,6 +280,7 @@ public final class Sampler: @unchecked Sendable {
             historyRange = range
             if opening {
                 current.cpuTemperature = temperatureProbe.sample()
+                current.fanRPM = temperatureProbe.fanRPM()
                 startGPU()
                 if configuration.sampleTopApps {
                     // Memory right away, rates from the next sample.
@@ -356,8 +360,11 @@ public final class Sampler: @unchecked Sendable {
         }
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
-        // The temperature is only shown in the popover.
-        if detailedFlag, every(5) { current.cpuTemperature = temperatureProbe.sample() }
+        // Temperature and fans are only shown in the popover.
+        if detailedFlag, every(5) {
+            current.cpuTemperature = temperatureProbe.sample()
+            current.fanRPM = temperatureProbe.fanRPM()
+        }
         if detailedFlag { sampleGPU(now: now) }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
         // first rates one second after opening, then every 2 s like Activity Monitor's fast setting.

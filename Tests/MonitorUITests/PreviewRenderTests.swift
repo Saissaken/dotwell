@@ -129,11 +129,12 @@ enum SampleData {
         var s = Snapshot()
         s.cpu = 0.18
         s.cpuTemperature = 46
+        s.fanRPM = 0
         s.memory = MemorySample(usedBytes: 11_400_000_000, totalBytes: 17_179_869_184, pressure: .normal)
         s.disk = DiskSpace(availableBytes: 212_000_000_000, totalBytes: 494_000_000_000)
         s.diskReadBytesPerSec = 2_400_000
         s.diskWriteBytesPerSec = 600_000
-        s.power = PowerSample(source: .battery, watts: 7.8, isCharging: false)
+        s.power = PowerSample(source: .battery, watts: 7.8, isCharging: false, batteryCelsius: 31)
         s.gpu = GPUSample(utilization: 0.12, coreCount: 10, watts: 0.9, temperature: 41)
         s.networkDownBitsPerSec = 312_000_000
         s.networkUpBitsPerSec = 24_000_000

@@ -14,6 +14,20 @@ All notable changes to this project are documented here. The format is based on
   from the GPU's own sensors; anything your Mac doesn't report is left out instead of guessed. Nothing is
   read while the popover is closed, so its chart starts when you open it. Hide it in Settings › Widgets.
 
+## [0.7.0] - 2026-11-26
+
+### Added
+- Top apps: right-click an app, in the line or the list, to copy its process ID or path, show it in Finder,
+  quit it, or force quit it (after asking).
+- CPU: fan speed next to the temperature ("2,140 rpm", or "fans off" while they're stopped). Hidden on Macs
+  without fans, such as the MacBook Air.
+- Power: the battery temperature, as the battery itself reports it. Heat is what wears a battery the most.
+
+### Changed
+- CPU: the app using the most CPU now shows its share of the whole Mac, on the same scale as the CPU total
+  above it (like btop). Before, it used Activity Monitor's scale, where 100% is one core, so an app could
+  read 46% while the whole Mac was at 21%. Settings → General can switch back to the per-core scale.
+
 ## [0.6.0] - 2026-11-26
 
 ### Added
@@ -157,7 +171,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Saissaken/dotwell/compare/v0.4.0...v0.4.1

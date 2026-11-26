@@ -120,6 +120,24 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(Format.processCPU(2.864), "286%")
     }
 
+    /// The case from btop on a 14-core M3 Max: an app busy on 0.46 of a core is 3.3 % of the whole Mac.
+    func testProcessCPUOnTheWholeMacScale() {
+        XCTAssertEqual(Format.processCPU(0.46, scale: .wholeMac, cores: 14), "3.3%")
+        XCTAssertEqual(Format.processCPU(0.46, scale: .perCore, cores: 14), "46%")
+        // Every core busy is 100 %, never more.
+        XCTAssertEqual(Format.processCPU(14, scale: .wholeMac, cores: 14), "100%")
+        XCTAssertEqual(Format.processCPU(0.5, scale: .wholeMac, cores: 0), "50%")
+    }
+
+    func testFanSpeed() {
+        let english = Locale(identifier: "en_US")
+        XCTAssertEqual(Format.fanRPM(2137.6, locale: english), "2,140 rpm")
+        XCTAssertEqual(Format.fanRPM(1200, locale: english), "1,200 rpm")
+        XCTAssertEqual(Format.fanRPM(0, locale: english), "fans off")
+        XCTAssertEqual(Format.fanRPM(40, locale: english), "fans off")
+        XCTAssertNil(Format.fanRPM(nil))  // no fans
+    }
+
     func testProcessMemorySwitchesToGigabytes() {
         XCTAssertEqual(Format.processMemory(671_088_640), "640 MB")
         XCTAssertEqual(Format.processMemory(1_045_000_000), "997 MB")

@@ -18,6 +18,20 @@ final class TemperatureProbeTests: XCTestCase {
         XCTAssertEqual(TemperatureProbe.decode([0xFF, 0x00], type: SMC.code("sp78")), -1)
     }
 
+    func testDecodesIntelFanSpeeds() {
+        // fpe2: 0x2138 >> 2 = 2126 rpm.
+        XCTAssertEqual(TemperatureProbe.decode([0x21, 0x38], type: SMC.code("fpe2")), 2126)
+        XCTAssertTrue(TemperatureProbe.isPlausibleRPM(0))
+        XCTAssertTrue(TemperatureProbe.isPlausibleRPM(6500))
+        XCTAssertFalse(TemperatureProbe.isPlausibleRPM(-1))
+        XCTAssertFalse(TemperatureProbe.isPlausibleRPM(65_535))
+    }
+
+    /// CI virtual machines have no fans, so this only checks nothing is made up.
+    func testFanSpeedIsNilOrPlausible() {
+        if let rpm = TemperatureProbe().fanRPM() { XCTAssertTrue(TemperatureProbe.isPlausibleRPM(rpm)) }
+    }
+
     func testRejectsUnknownTypesAndShortData() {
         XCTAssertNil(TemperatureProbe.decode([1, 2, 3, 4], type: SMC.code("ui32")))
         XCTAssertNil(TemperatureProbe.decode([1], type: SMC.code("sp78")))
