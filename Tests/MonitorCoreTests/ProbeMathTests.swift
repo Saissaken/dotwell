@@ -38,6 +38,31 @@ final class ProbeMathTests: XCTestCase {
         XCTAssertEqual(r.up, 0)
     }
 
+    func testMemoryUsedMatchesActivityMonitor() {
+        // Activity Monitor on a 36 GB Apple Silicon Mac: App 10.64 GB, Wired 4.15 GB, Compressed 2.59 GB,
+        // Cached Files 14.66 GB, Memory Used 18.85 GB (about 1.47 GB more than App + Wired + Compressed).
+        let gib = 1_073_741_824.0
+        let page: UInt64 = 16_384
+        func pages(_ gb: Double) -> UInt64 { UInt64((gb * gib / Double(page)).rounded()) }
+        let total = UInt64(36 * gib)
+        let counts = VMPageCounts(
+            free: pages(2.49), anonymous: pages(11.64), external: pages(13.66), purgeable: pages(1.0),
+            wired: pages(4.15), compressor: pages(2.59))
+        let used = Double(counts.usedBytes(pageSize: page, totalBytes: total)) / gib
+        XCTAssertEqual(used, 18.85, accuracy: 0.01)
+    }
+
+    func testMemoryUsedNeverBelowAppWiredCompressed() {
+        let counts = VMPageCounts(free: 900, anonymous: 300, external: 0, purgeable: 100, wired: 50, compressor: 50)
+        // Page counts add up to more than the total: fall back to App + Wired + Compressed.
+        XCTAssertEqual(counts.usedBytes(pageSize: 1, totalBytes: 1_000), 300)
+    }
+
+    func testMemoryUsedClampedToTotal() {
+        let counts = VMPageCounts(free: 0, anonymous: 2_000, external: 0, purgeable: 0, wired: 0, compressor: 0)
+        XCTAssertEqual(counts.usedBytes(pageSize: 1, totalBytes: 1_000), 1_000)
+    }
+
     func testWatts() {
         XCTAssertEqual(PowerProbe.watts(millivolts: 12_000, milliamps: -1_500), 18, accuracy: 0.0001)
     }

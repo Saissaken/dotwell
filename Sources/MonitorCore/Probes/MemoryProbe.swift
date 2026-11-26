@@ -9,7 +9,7 @@ public enum MemoryPressure: Int, Sendable {
 }
 
 public struct MemorySample: Equatable, Sendable {
-    /// "Memory Used" as Activity Monitor defines it: app + wired + compressed.
+    /// "Memory Used" as Activity Monitor defines it; see `VMPageCounts.usedBytes`.
     public var usedBytes: UInt64
     public var totalBytes: UInt64
     public var pressure: MemoryPressure
@@ -22,6 +22,31 @@ public struct MemorySample: Equatable, Sendable {
 
     public var usedFraction: Float {
         totalBytes == 0 ? 0 : Float(Double(usedBytes) / Double(totalBytes))
+    }
+}
+
+/// The `vm_statistics64` page counts that Activity Monitor's memory figures are built from.
+struct VMPageCounts: Equatable {
+    var free: UInt64
+    var anonymous: UInt64  // internal_page_count
+    var external: UInt64
+    var purgeable: UInt64
+    var wired: UInt64
+    var compressor: UInt64
+
+    /// Activity Monitor's "Memory Used": physical memory minus free pages and "Cached Files"
+    /// (file-backed plus purgeable pages).
+    ///
+    /// Summing "App Memory" (anonymous − purgeable), "Wired" and "Compressed" falls short of it on
+    /// Apple Silicon, because some physical memory (for example GPU and firmware reservations) is not
+    /// in any page queue. Counting down from the physical total includes that memory, as Activity
+    /// Monitor does. The sum is kept as a floor in case the page counts are briefly inconsistent.
+    func usedBytes(pageSize: UInt64, totalBytes: UInt64) -> UInt64 {
+        let appPages = anonymous > purgeable ? anonymous - purgeable : 0
+        let floor = (appPages + wired + compressor) * pageSize
+        let available = (free + external + purgeable) * pageSize
+        let counted = totalBytes > available ? totalBytes - available : 0
+        return min(max(counted, floor), totalBytes)
     }
 }
 
@@ -41,10 +66,13 @@ public final class MemoryProbe {
             }
         }
         guard kr == KERN_SUCCESS else { return nil }
-        let appPages = UInt64(stats.internal_page_count) &- UInt64(stats.purgeable_count)
-        let usedPages = appPages + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
+        let pages = VMPageCounts(
+            free: UInt64(stats.free_count), anonymous: UInt64(stats.internal_page_count),
+            external: UInt64(stats.external_page_count), purgeable: UInt64(stats.purgeable_count),
+            wired: UInt64(stats.wire_count), compressor: UInt64(stats.compressor_page_count))
         return MemorySample(
-            usedBytes: min(usedPages * pageSize, total), totalBytes: total, pressure: Self.readPressure())
+            usedBytes: pages.usedBytes(pageSize: pageSize, totalBytes: total), totalBytes: total,
+            pressure: Self.readPressure())
     }
 
     static func readPressure() -> MemoryPressure {

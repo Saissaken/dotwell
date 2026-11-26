@@ -116,7 +116,7 @@ public struct PopoverView: View {
         case .disk:
             MetricModule(
                 symbol: "internaldrive", title: "Disk", level: level,
-                reading: snap.disk.map { Format.gigabytes($0.availableBytes, decimal: true) } ?? .none,
+                reading: snap.disk.map { Format.storage($0.availableBytes) } ?? .none,
                 caption: diskCaption, values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
         case .network:
             NetworkModule(snapshot: snap, down: history(SeriesKey.netDown), up: history(SeriesKey.netUp))
