@@ -12,6 +12,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -28,3 +31,14 @@ jobs:
           name: Previews
           path: build/previews
           retention-days: 14
+      - name: Commit renders back to the design branch
+        if: always()
+        run: |
+          rm -rf design-renders && mkdir design-renders
+          cp build/previews/design/*.png build/previews/settings-*.png design-renders/ || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$GITHUB_HEAD_REF"
+          git checkout -B "$GITHUB_HEAD_REF" "origin/$GITHUB_HEAD_REF"
+          git add design-renders
+          git commit -m "chore: design renders [skip ci]" && git push origin "$GITHUB_HEAD_REF" || true
