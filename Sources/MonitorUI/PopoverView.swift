@@ -352,6 +352,8 @@ struct MetricModule: View {
 struct PingModule: View {
     var snapshot: Snapshot
     var level: HealthLevel
+    /// Opens the route's router list right away (screenshots).
+    var pathExpanded = false
 
     var body: some View {
         let primary = snapshot.primaryPing
@@ -384,6 +386,11 @@ struct PingModule: View {
                     maxValue: nil, color: levelColor(level)
                 )
                 .frame(height: 40)
+            }
+            if let trace = snapshot.path, let primary {
+                Divider().opacity(0.5)
+                NetworkPathView(
+                    path: NetworkPath(trace: trace), serverName: primary.target.name, expanded: pathExpanded)
             }
             if !others.isEmpty {
                 Divider().opacity(0.5)
