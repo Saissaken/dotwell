@@ -27,6 +27,7 @@ public final class PingEngine {
     private var addresses: [Int: CachedAddress] = [:]
     private var resolving: Set<Int> = []
     private let hostTTL: UInt64 = 300 * 1_000_000_000
+    /// Router and DNS server are re-read this often, to follow network changes.
     private let gatewayTTL: UInt64 = 30 * 1_000_000_000
 
     public init(targets: [PingTarget], queue: DispatchQueue) {
@@ -154,17 +155,30 @@ public final class PingEngine {
 
     // MARK: - Address resolution
 
+    /// The address target `index` is probed at, once known: the router, ISP router or DNS server found on
+    /// this network, or the resolved host. Must be called on `queue`.
+    public func probedAddress(_ index: Int) -> String? {
+        dispatchPrecondition(condition: .onQueue(queue))
+        guard targets.indices.contains(index) else { return nil }
+        let addr = targets[index].isISP ? isp?.addr : addresses[index]?.addr
+        return addr.map(Traceroute.text)
+    }
+
     private func address(for index: Int) -> in_addr? {
         let now = Self.now()
         let target = targets[index]
         if target.isISP { return ispAddress(now: now) }
-        if let cached = addresses[index], now - cached.resolvedAt < (target.isGateway ? gatewayTTL : hostTTL) {
+        let ttl = target.isGateway || target.isDNS ? gatewayTTL : hostTTL
+        if let cached = addresses[index], now - cached.resolvedAt < ttl {
             return cached.addr
         }
-        if target.isGateway {
-            guard let gw = Gateway.defaultIPv4() else { addresses[index] = nil; return nil }
-            addresses[index] = CachedAddress(addr: gw, resolvedAt: now)
-            return gw
+        if target.isGateway || target.isDNS {
+            guard let found = target.isGateway ? Gateway.defaultIPv4() : DNSServer.primaryIPv4() else {
+                addresses[index] = nil
+                return nil
+            }
+            addresses[index] = CachedAddress(addr: found, resolvedAt: now)
+            return found
         }
         var literal = in_addr()
         if inet_pton(AF_INET, target.host, &literal) == 1 {

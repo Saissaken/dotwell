@@ -38,9 +38,32 @@ final class ConfigurationTests: XCTestCase {
 
     func testDefaultTargets() {
         XCTAssertEqual(
-            PingTarget.defaults.map(\.name), ["Router", "ISP", "Cloudflare", "AWS São Paulo", "AWS Virginia"])
+            PingTarget.defaults.map(\.name),
+            ["Router", "ISP", "DNS", "Cloudflare", "AWS São Paulo", "AWS Virginia"])
         XCTAssertEqual(PingTarget.defaults[PingTarget.defaultPrimaryIndex].host, "1.1.1.1")
         XCTAssertTrue(PingTarget.defaults[1].isISP)
+        XCTAssertTrue(PingTarget.defaults[2].isDNS)
+    }
+
+    func testDNSRowName() {
+        func name(_ address: String?, router: String? = "192.168.1.1") -> String {
+            PingTargetState(index: 0, target: .dns, stats: PingStats.compute([]), isPrimary: false, address: address)
+                .displayName(routerAddress: router)
+        }
+        XCTAssertEqual(name(nil), "DNS")
+        XCTAssertEqual(name("1.1.1.1"), "DNS Cloudflare")
+        XCTAssertEqual(name("8.8.4.4"), "DNS Google")
+        XCTAssertEqual(name("192.168.1.1"), "DNS Router")
+        XCTAssertEqual(name("200.45.191.35"), "DNS 200.45.191.35")
+        let router = PingTargetState(
+            index: 0, target: .router, stats: PingStats.compute([]), isPrimary: false, address: "192.168.1.1")
+        XCTAssertEqual(router.displayName(routerAddress: "192.168.1.1"), "Router")
+    }
+
+    func testFirstIPv4DNSServer() {
+        XCTAssertNil(DNSServer.firstIPv4(["2606:4700:4700::1111"]))
+        let found = DNSServer.firstIPv4(["fe80::1", "192.168.1.1", "8.8.8.8"]).map(Traceroute.text)
+        XCTAssertEqual(found, "192.168.1.1")
     }
 
     func testPrimaryIsClampedToActiveTargets() {

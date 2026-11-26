@@ -378,6 +378,7 @@ struct PingModule: View {
     var body: some View {
         let primary = snapshot.primaryPing
         let others = snapshot.ping.filter { !$0.isPrimary }
+        let routerAddress = snapshot.ping.first { $0.target.isGateway }?.address
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 7) {
                 SymbolBadge(symbol: "network", level: level)
@@ -425,9 +426,11 @@ struct PingModule: View {
                             Circle()
                                 .fill(targetColor(target))
                                 .frame(width: 6, height: 6)
-                            Text(target.target.name)
+                            Text(target.displayName(routerAddress: routerAddress))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
+                                .truncationMode(.middle)
+                                .help(target.address ?? "")
                             Spacer(minLength: 4)
                             Text(target.stats.lastLost ? "—" : Format.msText(target.stats.latestMs))
                                 .monospacedDigit()

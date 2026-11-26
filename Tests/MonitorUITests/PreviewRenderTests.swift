@@ -202,14 +202,15 @@ enum SampleData {
     }
 
     private static func pingTargets(primaryMs: Float, primaryLoss: Float) -> [PingTargetState] {
-        let samples: [Float] = [3.1, 9.4, primaryMs, 34, 142]
+        let samples: [Float] = [3.1, 9.4, 3.1, primaryMs, 34, 142]
+        let addresses: [String?] = ["192.168.1.1", "181.30.128.1", "192.168.1.1", nil, nil, nil]
         return PingTarget.defaults.enumerated().map { index, target in
             var values = wave(10, base: samples[index], amplitude: samples[index] * 0.08, seed: Float(index))
             values[9] = samples[index]
             if index == PingTarget.defaultPrimaryIndex && primaryLoss > 0 { values[3] = PingStats.lost }
             return PingTargetState(
                 index: index, target: target, stats: PingStats.compute(values),
-                isPrimary: index == PingTarget.defaultPrimaryIndex)
+                isPrimary: index == PingTarget.defaultPrimaryIndex, address: addresses[index])
         }
     }
 }

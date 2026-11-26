@@ -7,12 +7,15 @@ public struct PingTargetState: Sendable, Identifiable {
     public var target: PingTarget
     public var stats: PingStats
     public var isPrimary: Bool
+    /// The IPv4 address being probed, once known.
+    public var address: String?
 
-    public init(index: Int, target: PingTarget, stats: PingStats, isPrimary: Bool) {
+    public init(index: Int, target: PingTarget, stats: PingStats, isPrimary: Bool, address: String? = nil) {
         self.index = index
         self.target = target
         self.stats = stats
         self.isPrimary = isPrimary
+        self.address = address
     }
 }
 
@@ -308,12 +311,13 @@ public final class Sampler: @unchecked Sendable {
         ping.probe(ping.targets.indices.filter { ping.targets[$0].method == .icmp || every(5) })
     }
 
-    /// Traces the route to the primary target while the popover is open. Not for the router itself
-    /// (the route is one hop) or TCP targets, which drop the ICMP probes.
+    /// Traces the route to the primary target while the popover is open. Not for the router, ISP or DNS rows
+    /// (their address is found on the current network, and the route to them is a hop or two) or TCP targets,
+    /// which drop the ICMP probes.
     private func startTrace() {
         guard ping.targets.indices.contains(primaryIndex) else { return }
         let target = ping.targets[primaryIndex]
-        guard !target.isGateway, target.method == .icmp else { return }
+        guard !target.isDiscovered, target.method == .icmp else { return }
         traceroute.start(host: target.host)
         traceroute.probeRound()
         current.path = traceroute.snapshot()  // the path shows "tracing" right away instead of popping in
@@ -330,7 +334,7 @@ public final class Sampler: @unchecked Sendable {
             PingTargetState(
                 index: i, target: ping.targets[i],
                 stats: PingStats.compute(pingSeries[i].recent(pingWindow)),
-                isPrimary: i == primaryIndex)
+                isPrimary: i == primaryIndex, address: ping.probedAddress(i))
         }
         if let primary = current.primaryPing, !pingSeries[primary.index].recent(1).isEmpty {
             raw[.ping] = thresholds.ping(primary.stats)
