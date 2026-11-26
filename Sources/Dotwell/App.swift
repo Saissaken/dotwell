@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if AppMover.moveIfNeeded() { return }  // relaunching from the Applications folder
+        AppMover.offerInstallerCleanup()
         statusController = StatusItemController(sampler: sampler, updater: updater)
         LoginItem.registerOnFirstLaunch()
         observeSleep()
