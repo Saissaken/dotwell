@@ -25,6 +25,8 @@ public struct Snapshot: Sendable {
     /// Only filled while the popover is open (`detailed == true`).
     public var history: [String: [Float]] = [:]
 
+    public init() {}
+
     public var overall: HealthLevel { levels.values.max() ?? .ok }
     public func level(_ kind: MetricKind) -> HealthLevel { levels[kind] ?? .ok }
 
@@ -44,7 +46,8 @@ public enum SeriesKey {
 }
 
 /// Drives all probes from a single timer on one serial utility queue.
-public final class Sampler {
+/// All mutable state is confined to `queue`, hence `@unchecked Sendable`.
+public final class Sampler: @unchecked Sendable {
     public let queue = DispatchQueue(label: "monitor.sampler", qos: .utility)
     /// Called on the main queue after each tick.
     public var onSnapshot: ((Snapshot) -> Void)?

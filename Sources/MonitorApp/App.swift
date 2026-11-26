@@ -28,11 +28,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Pause all sampling while the Mac or its displays sleep.
     private func observeSleep() {
         let center = NSWorkspace.shared.notificationCenter
+        let sampler = self.sampler
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification] {
-            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.sampler.stop() }
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in sampler.stop() }
         }
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
-            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.sampler.start() }
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in sampler.start() }
         }
     }
 }
