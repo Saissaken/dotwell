@@ -61,11 +61,11 @@ struct AppContextMenu: View {
         Button("Copy Path") {
             if let path = app.path { AppActions.copy(path) }
         }
-            .disabled(app.path == nil)
+        .disabled(app.path == nil)
         Button("Show in Finder") {
             if let path = app.path { AppActions.showInFinder(path) }
         }
-            .disabled(!(app.path?.hasPrefix("/") ?? false))
+        .disabled(!(app.path?.hasPrefix("/") ?? false))
         Divider()
         Button("Quit \(app.name)") { AppActions.quit(pid: app.pid) }
         Button("Force Quit \(app.name)…") {
