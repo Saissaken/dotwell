@@ -37,11 +37,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let sampler = self.sampler
         settings.onConfigurationChange = { sampler.apply($0) }
         statusController = StatusItemController(sampler: sampler, settings: settings, updater: updater) {
-            [weak self] in self?.openSettings(nil)
+            [weak self] page in self?.settingsWindow.show(page: page)
         }
         LoginItem.registerOnFirstLaunch()
         observeSleep()
         sampler.start()
+        if UserDefaults.standard.bool(forKey: "PerfOpenPopoverOnLaunch") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.statusController?.showPopoverForProfiling()
+            }
+        }
     }
 
     @objc func openSettings(_ sender: Any?) {

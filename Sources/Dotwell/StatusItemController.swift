@@ -15,12 +15,15 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private let sampler: Sampler
     private let settings: AppSettings
     private let updater: Updater
-    private let openSettings: () -> Void
+    private let openSettings: (SettingsPage?) -> Void
     private var model: PopoverModel?
     /// Lives as long as the app so the public address stays cached between openings.
     private let addressMonitor = NetworkAddressMonitor()
 
-    init(sampler: Sampler, settings: AppSettings, updater: Updater, openSettings: @escaping () -> Void) {
+    init(
+        sampler: Sampler, settings: AppSettings, updater: Updater,
+        openSettings: @escaping (SettingsPage?) -> Void
+    ) {
         self.sampler = sampler
         self.settings = settings
         self.updater = updater
@@ -79,27 +82,43 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            let model = PopoverModel(snapshot: sampler.latest())
-            model.openSettings = { [weak self] in
-                self?.popover.performClose(nil)
-                self?.openSettings()
-            }
-            model.quit = { NSApplication.shared.terminate(nil) }
-            if updater.isAvailable {
-                model.checkForUpdates = { [weak self] in self?.updater.checkForUpdates(nil) }
-            }
-            model.onRangeChange = { [weak self] range in self?.sampler.setDetailed(true, range: range) }
-            self.model = model
-            sampler.setDetailed(true, range: model.range)
-            if settings.wantsIPAddresses {
-                addressMonitor.onChange = { [weak model] in model?.addresses = $0 }
-                addressMonitor.start()
-                model.addresses = addressMonitor.addresses
-            }
-            popover.contentViewController = NSHostingController(rootView: PopoverView(model: model, settings: settings))
-            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            showPopover(from: sender)
         }
+    }
+
+    /// Opens the popover without a click. Only used by the performance check in CI, which launches the
+    /// app with `-PerfOpenPopoverOnLaunch YES` to measure it with the popover open.
+    func showPopoverForProfiling() {
+        guard !popover.isShown, let button = statusItem.button else { return }
+        showPopover(from: button)
+    }
+
+    private func showPopover(from sender: NSStatusBarButton) {
+        let model = PopoverModel(snapshot: sampler.latest())
+        model.openSettings = { [weak self] in
+            self?.popover.performClose(nil)
+            self?.openSettings(nil)
+        }
+        model.openPingSettings = { [weak self] in
+            self?.popover.performClose(nil)
+            self?.openSettings(.widget(.ping))
+        }
+        model.traceRoute = { [weak self] index in self?.sampler.traceRoute(to: index) }
+        model.quit = { NSApplication.shared.terminate(nil) }
+        if updater.isAvailable {
+            model.checkForUpdates = { [weak self] in self?.updater.checkForUpdates(nil) }
+        }
+        model.onRangeChange = { [weak self] range in self?.sampler.setDetailed(true, range: range) }
+        self.model = model
+        sampler.setDetailed(true, range: model.range)
+        if settings.wantsIPAddresses {
+            addressMonitor.onChange = { [weak model] in model?.addresses = $0 }
+            addressMonitor.start()
+            model.addresses = addressMonitor.addresses
+        }
+        popover.contentViewController = NSHostingController(rootView: PopoverView(model: model, settings: settings))
+        popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 
     /// Builds the menu on demand and releases it once it closes.
@@ -126,7 +145,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     @objc private func showSettings(_ sender: Any?) {
-        openSettings()
+        openSettings(nil)
     }
 
     func popoverDidClose(_ notification: Notification) {

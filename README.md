@@ -24,6 +24,9 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **Ping first**: latency, packet loss and jitter against your router, public DNS and cloud regions.
 - **Where it slows down**: the route to the ping server as five dots (Mac, router, ISP, internet, server)
   with the latency at each, so you can tell Wi-Fi trouble from an ISP problem. Click it for every router.
+- **Every ping row explained**: click a row (router, ISP, DNS, internet or a cloud region) to see its host and
+  address, how it is measured, and its last minute: average, minimum, maximum, loss, jitter and a chart.
+  Right-click it to copy its IP, trace the route to it, change its region or make it the main host.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
 - **GPU** (Apple silicon): how busy the GPU is, its cores, temperature and power draw, read only while the
   popover is open.
@@ -63,6 +66,10 @@ Built for one thing above all: **using as few resources as possible** while it r
 | Memory | < 25 MB |
 | Wakeups | < 2 per second |
 | App size | < 5 MB |
+
+Every pull request that touches the app is measured against `main` on CI, and the numbers are posted
+on the pull request ([scripts/perf](scripts/perf)). The budget is a soft limit: anything over it is flagged
+for discussion, not blocked.
 
 ## Install
 

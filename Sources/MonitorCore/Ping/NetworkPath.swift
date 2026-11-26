@@ -47,7 +47,11 @@ public struct NetworkPath: Sendable, Equatable {
         }
     }
 
-    public init(trace: PathTrace?, thresholds: Thresholds = Thresholds()) {
+    /// `serverStats` is the server's own measurement, for a server timed without ICMP (a TCP handshake, an
+    /// HTTPS request or a DNS query). Cloud hosts often drop the trace's ICMP probes while every router on the
+    /// way answers, so when the trace never reaches the server, the server's dot shows that measurement
+    /// instead of "No reply".
+    public init(trace: PathTrace?, thresholds: Thresholds = Thresholds(), serverStats: PingStats? = nil) {
         let hops = trace?.hops ?? []
         let groups = Self.group(hops)
         let effective = Self.effective(hops)
@@ -63,31 +67,19 @@ public struct NetworkPath: Sendable, Equatable {
                 segment.name = Self.organization(firstPublic?.hostname)?.name
             }
             if let last = members.last(where: { !$0.isSilent }), let value = effective[last.ttl] {
-                segment.latencyMs = value.latency
-                segment.lossFraction = value.loss
-                let limits = Self.latencyLimits(stage, thresholds)
-                let latency = value.latency ?? 0
-                let loss = value.loss
-                var latencyLevel = HealthLevel.ok
-                if latency > limits.critical {
-                    latencyLevel = .critical
-                } else if latency > limits.warning {
-                    latencyLevel = .warning
-                }
-                var lossLevel = HealthLevel.ok
-                if loss > thresholds.pingLossCritical {
-                    lossLevel = .critical
-                } else if loss > thresholds.pingLossWarning {
-                    lossLevel = .warning
-                }
-                segment.level = max(latencyLevel, lossLevel)
-                segment.isLoss = lossLevel >= latencyLevel && lossLevel != .ok
+                segment.judge(latency: value.latency, loss: value.loss, thresholds: thresholds)
             }
             segments.append(segment)
         }
-        // A destination that never answered after a few rounds is a problem, not missing data.
         let rounds = trace?.rounds ?? 0
-        let reached = trace?.reachedDestination == true
+        let traced = trace?.reachedDestination == true
+        var reached = traced
+        if !traced, trace != nil, let serverStats, serverStats.averageMs != nil {
+            segments[Stage.server.rawValue].judge(
+                latency: serverStats.averageMs, loss: serverStats.lossFraction, thresholds: thresholds)
+            reached = true
+        }
+        // A destination that never answered after a few rounds is a problem, not missing data.
         if !reached && rounds >= 3 {
             segments[Stage.server.rawValue].level = .critical
             segments[Stage.server.rawValue].isLoss = true
@@ -95,7 +87,7 @@ public struct NetworkPath: Sendable, Equatable {
         }
         self.segments = segments
 
-        if trace == nil || (rounds < 2 && !reached) {
+        if trace == nil || (rounds < 2 && !traced) {
             verdict = .tracing
         } else if let first = segments.first(where: { ($0.level ?? .ok) != .ok }) {
             if first.stage == .server && !reached {
@@ -210,5 +202,28 @@ public struct NetworkPath: Sendable, Equatable {
         guard !label.isEmpty else { return nil }
         let name = label.count <= 3 ? label.uppercased() : label.prefix(1).uppercased() + label.dropFirst()
         return (domainLabels.joined(separator: "."), name)
+    }
+}
+
+extension NetworkPath.Segment {
+    /// Sets the round trip and loss up to this stage, and how healthy they are.
+    fileprivate mutating func judge(latency: Float?, loss: Float, thresholds: Thresholds) {
+        latencyMs = latency
+        lossFraction = loss
+        let limits = NetworkPath.latencyLimits(stage, thresholds)
+        var latencyLevel = HealthLevel.ok
+        if (latency ?? 0) > limits.critical {
+            latencyLevel = .critical
+        } else if (latency ?? 0) > limits.warning {
+            latencyLevel = .warning
+        }
+        var lossLevel = HealthLevel.ok
+        if loss > thresholds.pingLossCritical {
+            lossLevel = .critical
+        } else if loss > thresholds.pingLossWarning {
+            lossLevel = .warning
+        }
+        level = max(latencyLevel, lossLevel)
+        isLoss = lossLevel >= latencyLevel && lossLevel != .ok
     }
 }

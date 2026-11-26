@@ -78,6 +78,42 @@ final class NetworkPathTests: XCTestCase {
         XCTAssertEqual(path.verdict, .noReply)
     }
 
+    /// A cloud host that drops ICMP: the routers on the way answer, the host doesn't, and its own TCP
+    /// measurement stands in for it.
+    func testServerMeasuredWithoutICMP() {
+        let hops = Array(healthyHops.prefix(6))
+        let stats = PingStats.compute([30, 32, 34, PingStats.lost])
+        let path = NetworkPath(trace: PathTrace(hops: hops, rounds: 5), serverStats: stats)
+        XCTAssertEqual(path[.server].latencyMs, 32)
+        XCTAssertEqual(path[.server].lossFraction, 0.25)
+        XCTAssertEqual(path[.server].level, .critical)  // 25 % loss
+        XCTAssertEqual(path.verdict, .losing(.server))
+
+        let healthy = NetworkPath(
+            trace: PathTrace(hops: hops, rounds: 5), serverStats: PingStats.compute([30, 32, 34]))
+        XCTAssertEqual(healthy[.server].level, .ok)
+        XCTAssertEqual(healthy.verdict, .healthy)
+    }
+
+    func testServerMeasuredWithoutICMPButSilent() {
+        let hops = Array(healthyHops.prefix(6))
+        let stats = PingStats.compute([PingStats.lost, PingStats.lost])
+        let path = NetworkPath(trace: PathTrace(hops: hops, rounds: 5), serverStats: stats)
+        XCTAssertEqual(path.verdict, .noReply)
+    }
+
+    func testTraceThatReachesTheServerIgnoresItsOwnMeasurement() {
+        let path = NetworkPath(
+            trace: PathTrace(hops: healthyHops, rounds: 10), serverStats: PingStats.compute([90, 90]))
+        XCTAssertEqual(path[.server].latencyMs, 14)
+    }
+
+    func testStillTracingWithServerMeasurement() {
+        let path = NetworkPath(
+            trace: PathTrace(hops: [], rounds: 1), serverStats: PingStats.compute([30]))
+        XCTAssertEqual(path.verdict, .tracing)
+    }
+
     func testTracingUntilThereIsData() {
         XCTAssertEqual(NetworkPath(trace: nil).verdict, .tracing)
         XCTAssertEqual(NetworkPath(trace: PathTrace(hops: [], rounds: 1)).verdict, .tracing)

@@ -9,14 +9,31 @@ public struct PingTargetState: Sendable, Identifiable {
     public var isPrimary: Bool
     /// The IPv4 address being probed, once known.
     public var address: String?
+    /// Every reading of the last minute, oldest first, each reply once and lost ones as `PingStats.lost`.
+    /// Only filled while the popover is open, for the row's detail.
+    public var lastMinute: [Float] = []
+    /// The last minute on the history's half-second clock (120 points), so a chart of it keeps time even
+    /// when readings came at different intervals. Only filled while the popover is open.
+    public var lastMinuteChart: [Float] = []
+    /// How many seconds `lastMinute` covers: 60 once the row has a minute of readings.
+    public var lastMinuteSeconds = 60
+    /// Milliseconds between two readings of this target at the current interval.
+    public var probeIntervalMilliseconds: Int
 
-    public init(index: Int, target: PingTarget, stats: PingStats, isPrimary: Bool, address: String? = nil) {
+    public init(
+        index: Int, target: PingTarget, stats: PingStats, isPrimary: Bool, address: String? = nil,
+        probeIntervalMilliseconds: Int = 1000
+    ) {
         self.index = index
         self.target = target
         self.stats = stats
         self.isPrimary = isPrimary
         self.address = address
+        self.probeIntervalMilliseconds = probeIntervalMilliseconds
     }
+
+    /// Average, minimum, maximum, loss and jitter over `lastMinute`.
+    public var minuteStats: PingStats { PingStats.compute(lastMinute) }
 }
 
 /// Immutable picture of the system handed to the UI once per tick.
@@ -44,8 +61,11 @@ public struct Snapshot: Sendable {
     public var history: [String: [Float]] = [:]
     /// The app using the most of each resource, only sampled while the popover is open.
     public var topApps: TopApps?
-    /// Route to the primary ping target, traced only while the popover is open.
+    /// Route to the primary ping target, or to the one picked with `Sampler.traceRoute(to:)`, traced only
+    /// while the popover is open.
     public var path: PathTrace?
+    /// Index in `ping` of the target `path` leads to.
+    public var pathIndex: Int?
     /// How far the charts have scrolled toward their next point, so they can slide instead of jumping.
     /// Only filled while the popover is open.
     public var chartMotion: ChartMotion?
@@ -136,7 +156,11 @@ public final class Sampler: @unchecked Sendable {
 
     private var series: [String: TieredSeries] = [:]
     private var pingSeries: [TieredSeries]
+    /// Each ping row's own readings, for the last minute in its detail.
+    private var pingLogs: [PingReadingLog]
     private var primaryIndex: Int
+    /// The target picked from a ping row's menu to trace instead of the primary one, until the popover closes.
+    private var traceOverride: Int?
     private var pendingPing: [Int: Float] = [:]
 
     private var debouncers: [MetricKind: LevelDebouncer] = [:]
@@ -162,6 +186,7 @@ public final class Sampler: @unchecked Sendable {
         let targets = configuration.activeTargets
         ping = PingEngine(targets: targets, queue: queue)
         pingSeries = Array(repeating: TieredSeries(), count: targets.count)
+        pingLogs = Array(repeating: PingReadingLog(), count: targets.count)
         pingSlots = Array(repeating: 0, count: targets.count)
         primaryIndex = configuration.activePrimaryIndex
         current.thresholds = configuration.thresholds
@@ -211,8 +236,7 @@ public final class Sampler: @unchecked Sendable {
             timer?.cancel()
             timer = nil
             ping.reset()
-            traceroute.stop()
-            current.path = nil
+            stopTrace()
             pendingPing.removeAll()
             lastNet = nil
             lastDiskIO = nil
@@ -234,6 +258,10 @@ public final class Sampler: @unchecked Sendable {
             let targets = newConfiguration.activeTargets
             if targets != old.activeTargets {
                 var previous: [PingTarget: TieredSeries] = [:]
+                var previousLogs: [PingTarget: PingReadingLog] = [:]
+                for (target, log) in zip(old.activeTargets, pingLogs) where previousLogs[target] == nil {
+                    previousLogs[target] = log
+                }
                 for (target, series) in zip(old.activeTargets, pingSeries) where previous[target] == nil {
                     previous[target] = series
                 }
@@ -241,13 +269,14 @@ public final class Sampler: @unchecked Sendable {
                 ping.targets = targets
                 pendingPing.removeAll()
                 pingSeries = targets.map { previous[$0] ?? TieredSeries() }
+                pingLogs = targets.map { previousLogs[$0] ?? PingReadingLog() }
                 pingSlots = Array(repeating: slots, count: targets.count)
             }
             let oldPrimary = primaryIndex
             primaryIndex = newConfiguration.activePrimaryIndex
+            if targets != old.activeTargets || primaryIndex != oldPrimary { traceOverride = nil }
             if detailedFlag, targets != old.activeTargets || primaryIndex != oldPrimary {
-                traceroute.stop()  // trace the new primary target instead
-                current.path = nil
+                stopTrace()  // trace the new primary target instead
                 startTrace()
             }
             current.thresholds = newConfiguration.thresholds
@@ -290,14 +319,34 @@ public final class Sampler: @unchecked Sendable {
                     current.topApps = processProbe.sample(gpuTimes: gpuTimes())
                 }
                 startTrace()
+                current.ping = pingStates()  // the rows' last minute, before the first tick fills it
             } else if !detailed {
                 processProbe.reset()
                 current.topApps = nil
                 stopGPU()
-                traceroute.stop()
-                current.path = nil
+                traceOverride = nil
+                stopTrace()
+                current.ping = pingStates()  // drop the last minute of readings
             }
             if detailed { publish() }  // immediate data when the popover opens
+        }
+    }
+
+    /// Traces the route to ping target `index` instead of the primary one, or back to the primary one with
+    /// nil. Only while the popover is open; closing it goes back to the primary target.
+    public func traceRoute(to index: Int?) {
+        queue.async { [self] in
+            guard detailedFlag else { return }
+            let wanted = index == primaryIndex ? nil : index
+            guard wanted != traceOverride else { return }
+            if let wanted {
+                let host = Self.traceHost(for: wanted, targets: ping.targets, picked: true, address: ping.probedAddress)
+                guard host != nil else { return }  // e.g. the ISP router isn't found yet
+            }
+            traceOverride = wanted
+            stopTrace()
+            startTrace()
+            publish(always: true)
         }
     }
 
@@ -322,6 +371,7 @@ public final class Sampler: @unchecked Sendable {
         ping.collect()
         for (i, value) in pendingPing where pingSeries.indices.contains(i) {
             pingSeries[i].append(value, slots: Int(min(slots &- pingSlots[i], 300)))
+            pingLogs[i].append(value, slot: slots)
             pingSlots[i] = slots
         }
         pendingPing.removeAll(keepingCapacity: true)
@@ -424,16 +474,44 @@ public final class Sampler: @unchecked Sendable {
         if current.gpu != nil { current.gpu = GPUSample(coreCount: gpuProbe.coreCount) }
     }
 
-    /// Traces the route to the primary target while the popover is open. Not for the router, ISP or DNS rows
-    /// (their address is found on the current network, and the route to them is a hop or two) or TCP targets,
-    /// which drop the ICMP probes.
+    /// Traces the route to the primary target, or the one picked from its row, while the popover is open.
+    /// The primary target is not traced when it is the router, ISP or DNS row: their address is found on the
+    /// current network and the route to them is a hop or two. Picked from its row, any target but the router
+    /// is traced, to the address it is measured at. Cloud hosts that drop ICMP still show every router on the
+    /// way; their own round trip comes from the row's measurement (see `NetworkPath`).
     private func startTrace() {
-        guard ping.targets.indices.contains(primaryIndex) else { return }
-        let target = ping.targets[primaryIndex]
-        guard !target.isDiscovered, target.method == .icmp else { return }
-        traceroute.start(host: target.host)
+        let index = traceOverride ?? primaryIndex
+        let host = Self.traceHost(
+            for: index, targets: ping.targets, picked: traceOverride != nil, address: ping.probedAddress)
+        guard let host else { return }
+        traceroute.start(host: host)
         traceroute.probeRound()
         current.path = traceroute.snapshot()  // the path shows "tracing" right away instead of popping in
+        current.pathIndex = index
+    }
+
+    private func stopTrace() {
+        traceroute.stop()
+        current.path = nil
+        current.pathIndex = nil
+    }
+
+    /// What to trace for target `index`: its host name, or for a target found on this network, the address
+    /// it is measured at. Nil when it shouldn't (or can't yet) be traced.
+    static func traceHost(
+        for index: Int, targets: [PingTarget], picked: Bool, address: (Int) -> String?
+    ) -> String? {
+        guard targets.indices.contains(index) else { return nil }
+        let target = targets[index]
+        if target.isGateway { return nil }
+        if target.isDiscovered { return picked ? address(index) : nil }
+        return target.host
+    }
+
+    /// Milliseconds between two readings of a target: ICMP every tick, the others every 5 s, or every tick when
+    /// ticks are further apart (see `tickOnce`).
+    static func probeInterval(_ method: PingTarget.Method, interval: SamplingInterval) -> Int {
+        method == .icmp ? interval.milliseconds : max(5000, interval.milliseconds)
     }
 
     private func append(_ key: String, _ value: Float) {
@@ -444,12 +522,7 @@ public final class Sampler: @unchecked Sendable {
     private func evaluate(covered: Int = 1) {
         let thresholds = configuration.thresholds
         var raw: [MetricKind: HealthLevel] = [:]
-        current.ping = ping.targets.indices.map { i in
-            PingTargetState(
-                index: i, target: ping.targets[i],
-                stats: PingStats.compute(pingSeries[i].recent(pingWindow)),
-                isPrimary: i == primaryIndex, address: ping.probedAddress(i))
-        }
+        current.ping = pingStates()
         if let primary = current.primaryPing, !pingSeries[primary.index].recent(1).isEmpty {
             raw[.ping] = thresholds.ping(primary.stats)
         } else if current.ping.isEmpty {
@@ -463,6 +536,29 @@ public final class Sampler: @unchecked Sendable {
 
         for (kind, level) in raw where configuration.alerts.contains(kind) {
             current.levels[kind] = debouncers[kind]?.feed(level, weight: covered) ?? level
+        }
+    }
+
+    /// The ping rows. The last minute is only copied while the popover is open.
+    private func pingStates() -> [PingTargetState] {
+        ping.targets.indices.map { i in
+            let method = ping.targets[i].method
+            var state = PingTargetState(
+                index: i, target: ping.targets[i],
+                stats: PingStats.compute(pingSeries[i].recent(pingWindow)),
+                isPrimary: i == primaryIndex, address: ping.probedAddress(i),
+                probeIntervalMilliseconds: Self.probeInterval(method, interval: interval))
+            if detailedFlag {
+                let minuteSlots = UInt64(60_000 / TieredSeries.slotMilliseconds)
+                let minute = pingLogs[i].readings(after: slots > minuteSlots ? slots - minuteSlots : 0)
+                state.lastMinute = minute.values
+                state.lastMinuteChart = pingSeries[i].recent(Int(minuteSlots))
+                if let first = minute.firstSlot {
+                    let span = Int(slots - first) * TieredSeries.slotMilliseconds + state.probeIntervalMilliseconds
+                    state.lastMinuteSeconds = min(60, span / 1000)
+                }
+            }
+            return state
         }
     }
 

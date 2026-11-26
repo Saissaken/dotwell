@@ -16,6 +16,8 @@ Thanks for your interest in Dotwell! This guide explains how to propose changes.
 - macOS 13 or later, Xcode 15 or later.
 - `make test` runs unit tests, `make app` builds `build/Dotwell.app`.
 - `make format` formats the code with `swift format`; `make lint` checks formatting the same way CI does.
+- On Linux, `scripts/setup-linux-dev.sh` installs the Swift toolchain so `make lint` and `make format` work
+  (building and testing still need macOS).
 
 ## Code style
 

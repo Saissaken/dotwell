@@ -8,7 +8,8 @@
 
 ## Resource impact
 
-<!-- Required if the sampling path or UI changed: before/after CPU %, memory and Energy Impact. Otherwise "None". -->
+<!-- The Performance check comments CPU, memory, wakeups and size against main on every pull request that touches the app.
+     If it flags something, say here whether it's expected and why it's worth it. Otherwise "None". -->
 
 ## Checklist
 
