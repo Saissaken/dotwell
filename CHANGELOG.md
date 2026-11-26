@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-26
+
 ### Fixed
 - Disk: free space stayed at the value read at launch instead of updating, so it drifted away from
   what System Settings shows. It now also shows one decimal place ("248.6 GB") in the same decimal units
@@ -46,6 +48,7 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Saissaken/dotwell/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Saissaken/dotwell/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Saissaken/dotwell/releases/tag/v0.1.0
