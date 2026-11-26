@@ -45,6 +45,7 @@ final class PingTests: XCTestCase {
     }
 
     /// Live: localhost answers ICMP and refuses TCP on an unused port, both within the timeout.
+    /// The ICMP reply is only read by the next `collect()`, but its round trip is the kernel's.
     func testLiveLoopback() {
         let queue = DispatchQueue(label: "ping.test")
         let engine = PingEngine(
@@ -52,17 +53,88 @@ final class PingTests: XCTestCase {
                 PingTarget(name: "lo", host: "127.0.0.1", method: .icmp),
                 PingTarget(name: "lo-tcp", host: "127.0.0.1", method: .tcp(port: 9)),
             ], queue: queue)
-        let got = expectation(description: "results")
-        got.expectedFulfillmentCount = 2
         var results: [Int: Float?] = [:]
-        engine.onResult = { i, ms in
-            results[i] = ms; got.fulfill()
-        }
-        queue.async { engine.probe([0, 1]) }
-        wait(for: [got], timeout: 3)
+        engine.onResult = { i, ms in results[i] = ms }
+        queue.sync { engine.probe([0, 1]) }
+        let waited = expectation(description: "replies arrive")
+        queue.asyncAfter(deadline: .now() + 0.5) { waited.fulfill() }
+        wait(for: [waited], timeout: 3)
         queue.sync {
-            XCTAssertNotNil(results[0] ?? nil, "ICMP to loopback should reply")
+            XCTAssertNil(results[0], "ICMP replies wait for collect()")
             XCTAssertNotNil(results[1] ?? nil, "TCP refused should count as a round trip")
+            engine.collect()
+            let ms = results[0] ?? nil
+            XCTAssertNotNil(ms, "ICMP to loopback should reply")
+            // Read half a second later, yet timed when it arrived.
+            XCTAssertLessThan(ms ?? .infinity, 50)
         }
+    }
+
+    /// Probes still unanswered at the next tick count as lost.
+    func testCollectReportsUnansweredAsLost() {
+        let queue = DispatchQueue(label: "ping.lost")
+        // TEST-NET-1 (RFC 5737) is never routed, so nothing answers.
+        let engine = PingEngine(targets: [PingTarget(name: "void", host: "192.0.2.1", method: .icmp)], queue: queue)
+        var results: [Float?] = []
+        engine.onResult = { _, ms in results.append(ms) }
+        queue.sync {
+            engine.probe([0])
+            engine.collect()
+            XCTAssertEqual(results, [nil])
+            engine.collect()
+            XCTAssertEqual(results, [nil], "reported once")
+        }
+    }
+
+    /// The kernel timestamps ICMP replies, so the app's own delays never count as latency.
+    func testLiveKernelTimestamp() throws {
+        let fd = ICMPSocket.open()
+        try XCTSkipIf(fd < 0, "No ICMP socket here")
+        defer { close(fd) }
+        let packet = ICMPPacket.echoRequest(identifier: 0x4242, sequence: 1)
+        var sa = sockaddr_in()
+        sa.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        sa.sin_family = sa_family_t(AF_INET)
+        sa.sin_addr.s_addr = inet_addr("127.0.0.1")
+        let sentAt = ICMPSocket.now()
+        _ = packet.withUnsafeBytes { buf in
+            withUnsafePointer(to: &sa) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    sendto(fd, buf.baseAddress, buf.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
+            }
+        }
+        usleep(200_000)
+        var buffer = [UInt8](repeating: 0, count: 256)
+        var reply: ICMPSocket.Packet?
+        while let next = ICMPSocket.receive(fd, into: &buffer) {
+            let parsed = buffer.withUnsafeBytes {
+                ICMPPacket.parseEchoReply(UnsafeRawBufferPointer(rebasing: $0[0..<next.length]))
+            }
+            if parsed?.identifier == 0x4242 { reply = next }
+        }
+        let got = try XCTUnwrap(reply, "loopback should reply")
+        XCTAssertTrue(got.kernelTimestamp)
+        XCTAssertGreaterThanOrEqual(got.receivedAt, sentAt)
+        XCTAssertLessThan(got.receivedAt - sentAt, 50_000_000, "stamped on arrival, not when read 200 ms later")
+    }
+
+    func testFindsTimestampAmongControlMessages() {
+        // An unrelated 16-byte message, then the 20-byte timestamp message.
+        var bytes = [UInt8](repeating: 0, count: 36)
+        func put(_ value: UInt32, at offset: Int) {
+            withUnsafeBytes(of: value) { bytes.replaceSubrange(offset..<offset + 4, with: $0) }
+        }
+        put(16, at: 0)
+        put(UInt32(IPPROTO_IP), at: 4)
+        put(1, at: 8)
+        put(20, at: 16)
+        put(UInt32(SOL_SOCKET), at: 20)
+        put(4, at: 24)
+        withUnsafeBytes(of: UInt64(123_456_789)) { bytes.replaceSubrange(28..<36, with: $0) }
+        let found = bytes.withUnsafeBytes { ICMPSocket.timestamp(in: $0, length: bytes.count) }
+        XCTAssertEqual(found, 123_456_789)
+        let missing = bytes.withUnsafeBytes { ICMPSocket.timestamp(in: $0, length: 16) }
+        XCTAssertNil(missing)
     }
 }

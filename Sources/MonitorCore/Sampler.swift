@@ -236,15 +236,10 @@ public final class Sampler: @unchecked Sendable {
         tick &+= 1
         let now = DispatchTime.now().uptimeNanoseconds
 
-        // Ping: record replies collected since the last tick, then send the next round.
-        // ICMP every second; TCP targets every 5 s to stay polite.
+        // Ping: record the replies to the last round. The next round goes out at the end of the tick.
+        ping.collect()
         for (i, value) in pendingPing { pingSeries[i].append(value) }
         pendingPing.removeAll(keepingCapacity: true)
-        let due = ping.targets.indices.filter { i in
-            if ping.targets[i].method != .icmp { return every(5) }
-            return true
-        }
-        ping.probe(due)
 
         if let cpu = cpuProbe.sample() {
             current.cpu = cpu
@@ -299,6 +294,10 @@ public final class Sampler: @unchecked Sendable {
 
         evaluate()
         publish()
+
+        // Sent last, so TCP handshakes complete while the queue is idle instead of waiting behind this tick.
+        // ICMP every tick; TCP and HTTPS targets every 5 s to stay polite.
+        ping.probe(ping.targets.indices.filter { ping.targets[$0].method == .icmp || every(5) })
     }
 
     /// Traces the route to the primary target while the popover is open. Not for the router itself
