@@ -6,7 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-26
+
 ### Added
+- Top apps: right-click an app, in the line or the list, to copy its process ID or path, show it in Finder,
+  quit it, or force quit it (after asking).
 - CPU: fan speed next to the temperature ("2,140 rpm", or "fans off" while they're stopped). Hidden on Macs
   without fans, such as the MacBook Air.
 - Power: the battery temperature, as the battery itself reports it. Heat is what wears a battery the most.
@@ -27,8 +31,6 @@ All notable changes to this project are documented here. The format is based on
 - Top apps: click the app line in CPU, Memory, Power or Disk to see the five apps using the most of it, each
   with its process ID. Click an app to copy its process ID (for example to `kill` it). An app's process ID is
   its own main process, not one of its helpers; hover an app to see how many processes were added up.
-- Top apps: right-click an app, in the line or the list, to copy its process ID or path, show it in Finder,
-  quit it, or force quit it (after asking).
 - Charts scroll smoothly: each new reading slides in from the right instead of the line jumping once a second
   (or every 5 or 30 seconds on the longer ranges). This only runs while the popover is open, at up to 30 frames
   per second, and not when Reduce Motion is on.
@@ -161,7 +163,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Saissaken/dotwell/compare/v0.4.0...v0.4.1
