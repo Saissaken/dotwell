@@ -118,6 +118,7 @@ extension MetricKind {
         case .power: return "Battery"
         case .network: return "Network"
         case .thermal: return "Heat"
+        case .gpu: return "GPU"
         }
     }
 }

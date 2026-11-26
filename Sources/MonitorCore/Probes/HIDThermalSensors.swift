@@ -1,7 +1,7 @@
 import CoreFoundation
 import Darwin
 
-/// CPU temperature on Apple silicon from the thermal sensors macOS publishes through `IOHIDEventSystem`.
+/// CPU or GPU temperature on Apple silicon from the thermal sensors macOS publishes through `IOHIDEventSystem`.
 ///
 /// Unlike SMC keys, whose meaning changes between chips (on M3, `Tp*` keys are not the CPU cores), these
 /// sensors carry descriptive names: `pACC MTR Temp Sensor*` and `eACC MTR Temp Sensor*` sit on the
@@ -9,9 +9,25 @@ import Darwin
 /// sensors and then to the `SOC MTR Temp Sensor*` ones on chips without cluster sensors. This is the same
 /// choice btop makes, so both tools agree.
 ///
+/// For the GPU it averages the `GPU MTR Temp Sensor*` sensors. Chips that don't publish them get no GPU
+/// temperature rather than a guess from another sensor.
+///
 /// The `IOHIDEventSystemClient` functions are not in the public headers, so they are looked up at runtime;
 /// when any is missing the reader finds no sensors and the caller falls back to the SMC.
 final class HIDThermalSensors {
+    /// The part of the chip whose temperature is read.
+    enum Part {
+        case cpu, gpu
+    }
+
+    static func isGPUSensor(_ name: String) -> Bool { name.hasPrefix("GPU MTR Temp Sensor") }
+
+    /// Average of the plausible GPU sensor readings, or nil.
+    static func gpuTemperature(_ readings: [(name: String, celsius: Double)]) -> Double? {
+        let values = readings.filter { isGPUSensor($0.name) && $0.celsius > 0 && $0.celsius < 150 }.map(\.celsius)
+        return values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+    }
+
     /// Sensor families in order of preference.
     enum Family: Int, CaseIterable {
         case cpuCluster  // pACC / eACC
@@ -97,8 +113,10 @@ final class HIDThermalSensors {
     private var sensors: [(name: String, service: UnsafeRawPointer)] = []
     private var discovered = false
     private var narrowed = false
+    private let part: Part
 
-    init() {
+    init(_ part: Part = .cpu) {
+        self.part = part
         api = API.load()
     }
 
@@ -106,7 +124,7 @@ final class HIDThermalSensors {
         if let client { Unmanaged<AnyObject>.fromOpaque(client).release() }
     }
 
-    /// Current CPU temperature in °C, or nil when the Mac has no such sensors (Intel, virtual machines).
+    /// Current temperature of `part` in °C, or nil when the Mac has no such sensors (Intel, virtual machines).
     func sample() -> Double? {
         if !discovered { discover() }
         guard let api, !sensors.isEmpty else { return nil }
@@ -115,6 +133,7 @@ final class HIDThermalSensors {
             defer { Unmanaged<AnyObject>.fromOpaque(event).release() }
             return (sensor.name, api.floatValue(event, Self.temperatureField))
         }
+        if part == .gpu { return Self.gpuTemperature(readings) }
         guard let result = Self.cpuReading(readings) else { return nil }
         if !narrowed {
             // Later samples only read the family in use, to keep each sample cheap.
@@ -124,7 +143,7 @@ final class HIDThermalSensors {
         return result.celsius
     }
 
-    /// Lists the thermal sensors once and keeps the ones `cpuTemperature` can use.
+    /// Lists the thermal sensors once and keeps the ones `part` can use.
     private func discover() {
         discovered = true
         guard let api, let client = api.create(kCFAllocatorDefault) else { return }
@@ -140,7 +159,8 @@ final class HIDThermalSensors {
                 let property = api.copyProperty(service, "Product" as CFString)
             else { continue }
             let value = Unmanaged<AnyObject>.fromOpaque(property).takeRetainedValue()
-            if let name = value as? String, Family(sensorName: name) != nil {
+            guard let name = value as? String else { continue }
+            if part == .gpu ? Self.isGPUSensor(name) : Family(sensorName: name) != nil {
                 sensors.append((name, service))
             }
         }

@@ -24,6 +24,8 @@ public struct SamplerConfiguration: Sendable, Equatable {
     public var pingEnabled: Bool
     /// False skips per-app sampling even while the popover is open.
     public var sampleTopApps: Bool
+    /// False leaves the GPU alone even while the popover is open (its card is hidden).
+    public var sampleGPU: Bool
 
     public init(
         interval: SamplingInterval = .oneSecond,
@@ -32,7 +34,8 @@ public struct SamplerConfiguration: Sendable, Equatable {
         thresholds: Thresholds = Thresholds(),
         alerts: Set<MetricKind> = MetricKind.alertable,
         pingEnabled: Bool = true,
-        sampleTopApps: Bool = true
+        sampleTopApps: Bool = true,
+        sampleGPU: Bool = true
     ) {
         self.interval = interval
         self.targets = targets
@@ -41,6 +44,7 @@ public struct SamplerConfiguration: Sendable, Equatable {
         self.alerts = alerts
         self.pingEnabled = pingEnabled
         self.sampleTopApps = sampleTopApps
+        self.sampleGPU = sampleGPU
     }
 
     /// The targets actually probed.

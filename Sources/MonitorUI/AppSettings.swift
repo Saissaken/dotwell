@@ -27,11 +27,17 @@ public struct WidgetSetting: Codable, Equatable, Identifiable, Sendable {
 
     public static let defaults: [WidgetSetting] = Module.allCases.map { WidgetSetting(module: $0) }
 
-    /// Keeps the saved order and choices, drops unknown modules and appends new ones at the end.
+    /// Keeps the saved order and choices and drops unknown modules. A module added in a later version goes
+    /// right after the one before it in the default order (GPU after CPU), or first if there is none.
     static func merged(_ saved: [WidgetSetting]) -> [WidgetSetting] {
         var seen = Set<Module>()
         var result = saved.filter { seen.insert($0.module).inserted }
-        result += defaults.filter { !seen.contains($0.module) }
+        for (index, widget) in defaults.enumerated() where !seen.contains(widget.module) {
+            let previous = defaults[..<index].last { seen.contains($0.module) }?.module
+            let position = previous.flatMap { module in result.firstIndex { $0.module == module } }.map { $0 + 1 }
+            result.insert(widget, at: position ?? 0)
+            seen.insert(widget.module)
+        }
         return result
     }
 }
@@ -131,7 +137,8 @@ public final class AppSettings: ObservableObject {
             thresholds: thresholds,
             alerts: alerts,
             pingEnabled: isVisible(.ping) || alerts.contains(.ping),
-            sampleTopApps: widgets.contains { $0.isVisible && $0.showsTopApp && $0.module.hasTopApp })
+            sampleTopApps: widgets.contains { $0.isVisible && $0.showsTopApp && $0.module.hasTopApp },
+            sampleGPU: isVisible(.gpu))
     }
 
     /// Whether the popover needs the IP addresses at all.
@@ -239,7 +246,7 @@ extension Module {
     /// Modules that can show the app using the most of their resource.
     public var hasTopApp: Bool {
         switch self {
-        case .cpu, .memory, .disk, .power: return true
+        case .cpu, .gpu, .memory, .disk, .power: return true
         case .ping, .network, .thermal: return false
         }
     }
@@ -248,6 +255,7 @@ extension Module {
         switch self {
         case .ping: return "Ping"
         case .cpu: return "CPU"
+        case .gpu: return "GPU"
         case .memory: return "Memory"
         case .power: return "Power"
         case .disk: return "Disk"
@@ -260,6 +268,7 @@ extension Module {
         switch self {
         case .ping: return "network"
         case .cpu: return "cpu"
+        case .gpu: return "cube"
         case .memory: return "memorychip"
         case .power: return "battery.75percent"
         case .disk: return "internaldrive"

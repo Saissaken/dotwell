@@ -126,6 +126,7 @@ enum SampleData {
         s.diskReadBytesPerSec = 2_400_000
         s.diskWriteBytesPerSec = 600_000
         s.power = PowerSample(source: .battery, watts: 7.8, isCharging: false)
+        s.gpu = GPUSample(utilization: 0.12, coreCount: 10, watts: 0.9, temperature: 41)
         s.networkDownBitsPerSec = 312_000_000
         s.networkUpBitsPerSec = 24_000_000
         s.ping = pingTargets(primaryMs: 14, primaryLoss: 0)
@@ -133,6 +134,7 @@ enum SampleData {
         s.history = [
             SeriesKey.ping(PingTarget.defaultPrimaryIndex): wave(30, base: 14, amplitude: 3),
             SeriesKey.cpu: wave(30, base: 0.18, amplitude: 0.08, seed: 3),
+            SeriesKey.gpu: wave(30, base: 0.12, amplitude: 0.05, seed: 6),
             SeriesKey.memory: wave(30, base: 0.66, amplitude: 0.01, seed: 1),
             SeriesKey.power: wave(30, base: 7.8, amplitude: 2, seed: 5),
             SeriesKey.diskRead: wave(30, base: 2_000_000, amplitude: 1_500_000, seed: 2),
@@ -141,7 +143,8 @@ enum SampleData {
         ]
         s.topApps = TopApps(
             cpu: app("Safari", cpu: 0.214), memory: app("Safari", memory: 2.4),
-            disk: app("Photos", disk: 1_800_000), power: app("Safari", watts: 2.1))
+            disk: app("Photos", disk: 1_800_000), power: app("Safari", watts: 2.1),
+            gpu: app("Safari", gpu: 0.06))
         s.path = path(ispMs: 9, internetMs: 12, serverMs: 14, serverLost: 0)
         return s
     }
@@ -193,12 +196,14 @@ enum SampleData {
 
     /// A system app that exists on every Mac, so the screenshot shows its real icon.
     private static func app(
-        _ name: String, cpu: Float = 0, memory gigabytes: Double = 0, disk: Double = 0, watts: Double = 0
+        _ name: String, cpu: Float = 0, memory gigabytes: Double = 0, disk: Double = 0, watts: Double = 0,
+        gpu: Float = 0
     ) -> ProcessUsage {
         let path = name == "Safari" ? "/Applications/Safari.app" : "/System/Applications/\(name).app"
         let bytes = UInt64(gigabytes * 1_073_741_824)
         return ProcessUsage(
-            id: path, name: name, path: path, cpu: cpu, memoryBytes: bytes, diskBytesPerSec: disk, watts: watts)
+            id: path, name: name, path: path, cpu: cpu, memoryBytes: bytes, diskBytesPerSec: disk, watts: watts,
+            gpu: gpu)
     }
 
     private static func pingTargets(primaryMs: Float, primaryLoss: Float) -> [PingTargetState] {

@@ -16,10 +16,12 @@ public struct ProcessUsage: Sendable, Equatable, Identifiable {
     public var diskBytesPerSec: Double
     /// Energy the kernel attributes to the app, in watts. Zero where macOS doesn't report it.
     public var watts: Double
+    /// Share of the GPU's time, like Activity Monitor's "% GPU" (1 = 100 %).
+    public var gpu: Float
 
     public init(
         id: String, name: String, path: String?, cpu: Float = 0, memoryBytes: UInt64 = 0,
-        diskBytesPerSec: Double = 0, watts: Double = 0
+        diskBytesPerSec: Double = 0, watts: Double = 0, gpu: Float = 0
     ) {
         self.id = id
         self.name = name
@@ -28,6 +30,7 @@ public struct ProcessUsage: Sendable, Equatable, Identifiable {
         self.memoryBytes = memoryBytes
         self.diskBytesPerSec = diskBytesPerSec
         self.watts = watts
+        self.gpu = gpu
     }
 }
 
@@ -38,17 +41,19 @@ public struct TopApps: Sendable, Equatable {
     public var memory: ProcessUsage?
     public var disk: ProcessUsage?
     public var power: ProcessUsage?
+    public var gpu: ProcessUsage?
     /// False until a second sample makes rates available.
     public var hasRates: Bool
 
     public init(
         cpu: ProcessUsage? = nil, memory: ProcessUsage? = nil, disk: ProcessUsage? = nil,
-        power: ProcessUsage? = nil, hasRates: Bool = true
+        power: ProcessUsage? = nil, gpu: ProcessUsage? = nil, hasRates: Bool = true
     ) {
         self.cpu = cpu
         self.memory = memory
         self.disk = disk
         self.power = power
+        self.gpu = gpu
         self.hasRates = hasRates
     }
 }
@@ -85,6 +90,8 @@ public final class ProcessProbe {
 
     private var known: [pid_t: Known] = [:]
     private var last: [pid_t: Counters] = [:]
+    /// GPU time per process at the last sample, in nanoseconds.
+    private var lastGPU: [pid_t: UInt64] = [:]
     private var lastSampleNanos: UInt64?
     private var pids = [pid_t](repeating: 0, count: 1024)
     private let timebase: (numer: UInt64, denom: UInt64)
@@ -100,8 +107,12 @@ public final class ProcessProbe {
         lastSampleNanos.map { now &- $0 }
     }
 
-    public func sample(now: UInt64 = DispatchTime.now().uptimeNanoseconds) -> TopApps {
-        let (all, hasRates) = usage(now: now)
+    /// - Parameter gpuTimes: each process's total GPU time so far (`GPUProbe.processGPUTimes()`), or nil to
+    ///   skip the GPU.
+    public func sample(
+        now: UInt64 = DispatchTime.now().uptimeNanoseconds, gpuTimes: [pid_t: UInt64]? = nil
+    ) -> TopApps {
+        let (all, hasRates) = usage(now: now, gpuTimes: gpuTimes)
         guard hasRates else {
             return TopApps(memory: Self.top(all, by: \.memoryBytes, minimum: 1), hasRates: false)
         }
@@ -109,11 +120,12 @@ public final class ProcessProbe {
             cpu: Self.top(all, by: \.cpu, minimum: 0.001),
             memory: Self.top(all, by: \.memoryBytes, minimum: 1),
             disk: Self.top(all, by: \.diskBytesPerSec, minimum: 1024),
-            power: Self.top(all, by: \.watts, minimum: 0.01))
+            power: Self.top(all, by: \.watts, minimum: 0.01),
+            gpu: Self.top(all, by: \.gpu, minimum: 0.001))
     }
 
     /// Usage of every readable app. Rates stay zero on the first call (`hasRates == false`).
-    func usage(now: UInt64) -> (apps: [ProcessUsage], hasRates: Bool) {
+    func usage(now: UInt64, gpuTimes: [pid_t: UInt64]? = nil) -> (apps: [ProcessUsage], hasRates: Bool) {
         let count = listPIDs()
         let elapsed = lastSampleNanos.map { now > $0 ? Double(now - $0) : 0 } ?? 0
 
@@ -152,6 +164,18 @@ public final class ProcessProbe {
             usage[group.id] = entry
         }
 
+        // GPU time also comes from processes this user can't read with proc_pid_rusage, such as WindowServer.
+        if let gpuTimes {
+            for (pid, nanos) in gpuTimes {
+                guard elapsed > 0, let previous = lastGPU[pid], nanos > previous else { continue }
+                let group = nextKnown[pid]?.group ?? Self.group(pid: pid)
+                var entry = usage[group.id] ?? group.emptyUsage
+                entry.gpu += Float(Double(nanos - previous) / elapsed)
+                usage[group.id] = entry
+            }
+            lastGPU = gpuTimes
+        }
+
         let hasRates = elapsed > 0
         known = nextKnown
         last = next
@@ -163,6 +187,7 @@ public final class ProcessProbe {
     public func reset() {
         known = [:]
         last = [:]
+        lastGPU = [:]
         lastSampleNanos = nil
     }
 
