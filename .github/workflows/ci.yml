@@ -58,3 +58,11 @@ jobs:
           printf -- '- Dry run.\n' > build/notes.md
           scripts/appcast.sh 0.0.0 1 build/Dotwell-0.0.0.zip https://example.com/app.zip build/notes.md
           cat build/appcast.xml
+          # Nightly feed: the new item on the "nightly" channel, followed by the release items.
+          mv build/appcast.xml build/stable-appcast.xml
+          CHANNEL=nightly INCLUDE_FEED=build/stable-appcast.xml \
+            scripts/appcast.sh 0.0.0+nightly.2 2 build/Dotwell-0.0.0.zip https://example.com/nightly.zip build/notes.md
+          cat build/appcast.xml
+          [[ "$(xmllint --xpath 'count(/rss/channel/item)' build/appcast.xml)" == 2 ]]
+          [[ "$(xmllint --xpath 'string(/rss/channel/item[1]/*[local-name()="channel"])' build/appcast.xml)" == nightly ]]
+          [[ "$(xmllint --xpath 'count(/rss/channel/item[2]/*[local-name()="channel"])' build/appcast.xml)" == 0 ]]
