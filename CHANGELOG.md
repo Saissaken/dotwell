@@ -11,6 +11,11 @@ All notable changes to this project are documented here. The format is based on
   they could read 20–35 ms too high, so the Router row showed 37 ms while the route above it showed 1.3 ms.
   Replies are now timestamped by macOS as they arrive. As a bonus, ICMP replies are read once per tick
   instead of waking the app for each one.
+- The route under Ping now also appears when every widget's top app is turned off.
+
+### Changed
+- Less work with the popover closed: the main thread is only woken when the menu bar dot changes color,
+  instead of every second, and the CPU temperature is only read while the popover is open.
 
 ## [0.5.0] - 2026-11-26
 

@@ -81,4 +81,19 @@ final class HealthTests: XCTestCase {
         XCTAssertNotNil(last?.memory)
         XCTAssertNotNil(last?.history[SeriesKey.cpu])
     }
+
+    /// With the popover closed, the main queue only hears about level changes: the menu bar dot is all that
+    /// shows them, and each delivery would wake the main thread once a second.
+    func testClosedSamplerOnlyPublishesLevelChanges() {
+        let sampler = Sampler(targets: [])
+        var count = 0
+        let counted = expectation(description: "ticks")
+        sampler.onSnapshot = { _ in count += 1 }
+        sampler.start()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.6) { counted.fulfill() }
+        wait(for: [counted], timeout: 6)
+        sampler.stop()
+        XCTAssertLessThan(count, 3, "the first level and at most one change, not one per tick")
+        XCTAssertNotNil(sampler.latest().cpu, "fresh values are still there for when the popover opens")
+    }
 }
