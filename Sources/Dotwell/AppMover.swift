@@ -65,8 +65,11 @@ enum AppMover {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         if fileManager.fileExists(atPath: destination.path) {
-            let running = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
-            for app in running where app.bundleURL?.resolvingSymlinksInPath() == destination.resolvingSymlinksInPath() {
+            // Quit an older copy that is still running from there before replacing it.
+            let identifier = Bundle.main.bundleIdentifier ?? ""
+            let target = destination.resolvingSymlinksInPath()
+            for app in NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
+            where app.bundleURL?.resolvingSymlinksInPath() == target {
                 app.terminate()
             }
             try fileManager.trashItem(at: destination, resultingItemURL: nil)
