@@ -61,9 +61,10 @@ final class GPUProbeTests: XCTestCase {
         let probe = ProcessProbe()
         let me = ProcessProbe.group(pid: getpid()).id
         let start: UInt64 = 1_000_000_000_000
-        _ = probe.usage(now: start, gpuTimes: [getpid(): 7_000])
+        let used: UInt64 = 7_000
+        _ = probe.usage(now: start, gpuTimes: [getpid(): used])
         // A quarter of a second of GPU time over one second.
-        let second = probe.usage(now: start + 1_000_000_000, gpuTimes: [getpid(): 7_000 + 250_000_000])
+        let second = probe.usage(now: start + 1_000_000_000, gpuTimes: [getpid(): used + 250_000_000])
         let mine = try XCTUnwrap(second.apps.first { $0.id == me })
         XCTAssertEqual(mine.gpu, 0.25, accuracy: 0.001)
         // A counter that went backwards (a reused pid) counts as nothing, not as a huge number.
