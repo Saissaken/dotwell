@@ -121,7 +121,8 @@ public struct PopoverView: View {
             MetricModule(
                 symbol: "internaldrive", title: "Disk", level: level,
                 reading: snap.disk.map { Format.storage($0.availableBytes) } ?? .none,
-                caption: diskCaption, topApp: topApp(.disk, \.byDisk, column: "Disk") {
+                caption: diskCaption,
+                topApp: topApp(.disk, \.byDisk, column: "Disk") {
                     Format.bytesPerSec($0.diskBytesPerSec)
                 },
                 values: history(SeriesKey.diskRead), maxValue: nil, unitSuffix: "free")
