@@ -1,0 +1,89 @@
+name: Performance
+
+# Measures CPU, memory, wakeups and app size of the pull request against main and posts the
+# numbers as a comment. Budgets are soft limits: this check reports, it never fails a pull request.
+on:
+  pull_request:
+    paths:
+      - 'Sources/**'
+      - 'Resources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - 'scripts/bundle.sh'
+      - 'scripts/perf/**'
+      - '.github/workflows/perf.yml'
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  measure:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build this pull request
+        run: |
+          ./scripts/bundle.sh
+          mkdir -p "$RUNNER_TEMP/head" && mv build/Dotwell.app "$RUNNER_TEMP/head/"
+      - name: Build main
+        id: base
+        continue-on-error: true
+        run: |
+          git worktree add "$RUNNER_TEMP/base-src" "${{ github.event.pull_request.base.sha }}"
+          cd "$RUNNER_TEMP/base-src" && ./scripts/bundle.sh
+          mkdir -p "$RUNNER_TEMP/base" && mv build/Dotwell.app "$RUNNER_TEMP/base/"
+      - name: Measure
+        continue-on-error: true
+        env:
+          ROUNDS: 3
+          WARMUP: 15
+          CLOSED_SECONDS: 45
+          OPEN_SECONDS: 20
+        run: |
+          builds=(head="$RUNNER_TEMP/head/Dotwell.app")
+          if [[ "${{ steps.base.outcome }}" == success ]]; then
+            builds=(base="$RUNNER_TEMP/base/Dotwell.app" "${builds[@]}")
+          fi
+          scripts/perf/run.sh "$RUNNER_TEMP/perf" "${builds[@]}"
+      - name: Report
+        if: always()
+        run: |
+          touch "$RUNNER_TEMP/perf/samples.jsonl"
+          python3 scripts/perf/report.py "$RUNNER_TEMP/perf"
+          cat "$RUNNER_TEMP/perf/report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment on the pull request
+        if: always()
+        # Pull requests from forks get a read-only token; the job summary still has the report.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          report="$RUNNER_TEMP/perf/report.md"
+          id="$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- dotwell-perf-report -->")) | .id' | head -n 1)"
+          if [[ -n "$id" ]]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@"$report" > /dev/null
+          else
+            gh api "repos/$REPO/issues/$PR/comments" -F body=@"$report" > /dev/null
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Performance
+          path: |
+            ${{ runner.temp }}/perf/*.jsonl
+            ${{ runner.temp }}/perf/*.json
+            ${{ runner.temp }}/perf/*.md
+            ${{ runner.temp }}/perf/*.png
+            ${{ runner.temp }}/perf/*.log
+          retention-days: 14

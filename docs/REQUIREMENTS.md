@@ -25,7 +25,8 @@ with the popover closed:
 | App bundle size | < 5 MB |
 
 With the popover open, more is allowed (redrawing charts), but usage must return to budget once it closes.
-Every release measures these numbers and records them in its pull request.
+Every pull request that touches the app is measured against `main` in CI (the Performance workflow posts
+the numbers as a comment). The budget is a soft limit: going over it is flagged for discussion, never blocked.
 
 ## 3. Features
 
