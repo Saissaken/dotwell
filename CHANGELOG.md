@@ -15,6 +15,9 @@ All notable changes to this project are documented here. The format is based on
 - Top apps: click the app line in CPU, Memory, Power or Disk to see the five apps using the most of it, each
   with its process ID. Click an app to copy its process ID (for example to `kill` it). An app's process ID is
   its own main process, not one of its helpers; hover an app to see how many processes were added up.
+- Charts scroll smoothly: each new reading slides in from the right instead of the line jumping once a second
+  (or every 5 or 30 seconds on the longer ranges). This only runs while the popover is open, at up to 30 frames
+  per second, and not when Reduce Motion is on.
 
 ### Fixed
 - Ping: round trips no longer include the time Dotwell itself took to read the reply. With the popover open
@@ -22,6 +25,10 @@ All notable changes to this project are documented here. The format is based on
   Replies are now timestamped by macOS as they arrive. As a bonus, ICMP replies are read once per tick
   instead of waking the app for each one.
 - The route under Ping now also appears when every widget's top app is turned off.
+- CPU temperature on Apple silicon read about 10 °C high on M3 chips (55 °C while btop showed 45 °C). It
+  averaged every SMC key starting with `Tp` or `Te`, but on M3 those keys aren't the CPU cores. It now
+  averages the sensors macOS itself names after the performance and efficiency core clusters, the same ones
+  btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
 - Less work with the popover closed: the main thread is only woken when the menu bar dot changes color,
