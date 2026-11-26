@@ -51,7 +51,8 @@ jobs:
             echo
             if [[ -n "$BASE_TAG" ]]; then
               echo "### Changes since $BASE_TAG"
-              git log --no-merges --format='- %s' "$BASE_TAG..HEAD"
+              CHANGES="$(git log --no-merges --format='- %s' "$BASE_TAG..HEAD")"
+              echo "${CHANGES:-- Same as $BASE_TAG.}"
             else
               echo "### Changes"
               git log --no-merges --format='- %s' -20
