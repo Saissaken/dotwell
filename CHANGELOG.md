@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-26
+
 ### Added
 - App icon: a green status dot glowing in a dark well, also used for the disk image volume.
 - Once installed, offer to eject the installer disk image and move the downloaded `.dmg` to the Trash.
@@ -13,6 +15,7 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 - Disk image window: the instructions were cut off at the bottom. It now also explains how to allow the
   first launch while the app is not notarized.
+
 ## [0.1.0] - 2026-11-26
 
 ### Added
@@ -35,5 +38,6 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Saissaken/dotwell/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Saissaken/dotwell/releases/tag/v0.1.0
