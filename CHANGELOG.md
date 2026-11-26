@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Ping → Region → Choose… lists every region of AWS, Google Cloud or Azure with how long it takes to reach
+  from your Mac right now, fastest first, so you can pick the ones that matter to you. It measures each region
+  four times the same way as its row in the popover and shows the best, and only while the window is open.
+
 ### Changed
 - Settings is redesigned like System Settings: a sidebar with a search field and colored icons, and one page per
   card with everything about it in one place: whether it shows, its options and its alert. The Alerts tab is

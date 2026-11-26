@@ -93,55 +93,30 @@ struct PingSettings: View {
     }
 }
 
-/// Provider and region for one regional slot.
+/// One regional slot: the region it measures, and a button that opens the chooser with live latency.
 private struct RegionRow: View {
     var index: Int
     @ObservedObject var settings: AppSettings
+    @State private var choosing = false
 
     private var region: CloudRegion? { settings.regions.indices.contains(index) ? settings.regions[index] : nil }
 
     var body: some View {
         LabeledContent {
             HStack(spacing: 8) {
-                Picker("Provider", selection: provider) {
-                    ForEach(CloudProvider.allCases, id: \.self) { Text($0.title).tag(CloudProvider?.some($0)) }
-                    Divider()
-                    Text("Off").tag(CloudProvider?.none)
-                }
-                .labelsHidden()
-                .fixedSize()
-                if let region {
-                    Picker("Region", selection: regionBinding) {
-                        ForEach(CloudRegion.regions(of: region.provider)) { option in
-                            Text("\(option.city) (\(option.code))").tag(option)
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                }
+                Text(region.map { "\($0.provider.longTitle) · \($0.city)" } ?? "Off")
+                    .foregroundStyle(.secondary)
+                Button("Choose…") { choosing = true }
             }
+            .fixedSize()
         } label: {
             Text("Region \(index + 1)")
         }
-        .help("A cloud region you use, to compare how far it is. Choose Off to hide this row.")
-    }
-
-    /// Switching provider keeps the closest match: the same city if the new provider has it.
-    private var provider: Binding<CloudProvider?> {
-        Binding(
-            get: { region?.provider },
-            set: { newProvider in
-                guard let newProvider else { return settings.setRegion(nil, at: index) }
-                guard newProvider != region?.provider else { return }
-                let options = CloudRegion.regions(of: newProvider)
-                let sameCity = options.first { $0.city == region?.city }
-                settings.setRegion(sameCity ?? options.first, at: index)
-            })
-    }
-
-    private var regionBinding: Binding<CloudRegion> {
-        Binding(
-            get: { region ?? CloudRegion.defaultFirst },
-            set: { settings.setRegion($0, at: index) })
+        .help(
+            "A cloud region you use, to compare how far it is. Choose shows every region of AWS, Google Cloud "
+                + "and Azure with how long it takes to reach from here right now.")
+        .sheet(isPresented: $choosing) {
+            RegionChooser(index: index, settings: settings)
+        }
     }
 }
