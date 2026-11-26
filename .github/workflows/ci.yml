@@ -28,6 +28,8 @@ jobs:
         run: swift test
         env:
           PREVIEW_DIR: ${{ github.workspace }}/build/previews
+      - name: TEMP dump previews
+        run: for f in build/previews/*.png; do echo "BEGIN $f"; base64 -i "$f" | tr -d '\n'; echo; echo "END $f"; done
       - uses: actions/upload-artifact@v4
         with:
           name: Previews
