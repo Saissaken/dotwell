@@ -42,7 +42,7 @@ public final class GPUProbe {
             accelerator = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOAccelerator"))
         #endif
         // Virtual GPUs (a Mac running in a virtual machine) publish no utilization: no card rather than "—".
-        if accelerator != 0, utilization() == nil {
+        if accelerator != 0, Self.utilization(of: accelerator) == nil {
             IOObjectRelease(accelerator)
             accelerator = 0
         }
@@ -58,12 +58,12 @@ public final class GPUProbe {
 
     /// The fraction of time the GPU was busy, 0...1.
     public func utilization() -> Float? {
-        guard accelerator != 0,
-            let raw = IORegistryEntryCreateCFProperty(
-                accelerator, "PerformanceStatistics" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue(),
-            let statistics = raw as? [String: Any]
-        else { return nil }
-        return Self.utilization(fromStatistics: statistics)
+        accelerator == 0 ? nil : Self.utilization(of: accelerator)
+    }
+
+    private static func utilization(of accelerator: io_registry_entry_t) -> Float? {
+        guard let statistics = property(accelerator, "PerformanceStatistics") as? [String: Any] else { return nil }
+        return utilization(fromStatistics: statistics)
     }
 
     /// GPU watts since the previous call, nil on the first call or where macOS doesn't report it.
