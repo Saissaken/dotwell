@@ -53,15 +53,27 @@ public struct TieredSeries: Sendable {
         case .seconds30:
             let step = max(1, stepSlots)
             let all = raw.values
+            let capacity = Self.points(for: range, stepSlots: step)
             var points: [Float] = []
             var i = all.count - 1
-            while i >= 0, points.count < max(2, 60 / step) {
+            while i >= 0, points.count < capacity {
                 points.append(all[i])
                 i -= step
             }
             return points.reversed()
         case .minutes5: return mid.values
         case .hour1: return long.values
+        }
+    }
+
+    /// How many points `values(for:stepSlots:)` returns once the range has filled up. Charts lay out this many
+    /// slots from the start, so while history is still short the line grows in from the right at its final
+    /// spacing instead of stretching across the whole width and jumping sideways with every new point.
+    public static func points(for range: HistoryRange, stepSlots: Int = 1) -> Int {
+        switch range {
+        case .seconds30: return max(2, 60 / max(1, stepSlots))
+        case .minutes5: return 60  // `mid` capacity
+        case .hour1: return 120  // `long` capacity
         }
     }
 

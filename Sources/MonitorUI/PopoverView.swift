@@ -32,6 +32,7 @@ public struct PopoverView: View {
         .padding(PopoverLayout.padding)
         .frame(width: PopoverLayout.width)
         .environment(\.chartMotion, snap.chartMotion)
+        .environment(\.chartPoints, snap.chartPoints)
     }
 
     // MARK: - Header

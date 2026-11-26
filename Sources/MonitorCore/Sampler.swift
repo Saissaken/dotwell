@@ -69,6 +69,9 @@ public struct Snapshot: Sendable {
     /// How far the charts have scrolled toward their next point, so they can slide instead of jumping.
     /// Only filled while the popover is open.
     public var chartMotion: ChartMotion?
+    /// Points a full chart of the range on screen holds (see `TieredSeries.points(for:stepSlots:)`), so charts
+    /// keep the same time scale while their history is still filling. Only filled while the popover is open.
+    public var chartPoints: Int?
 
     public init() {}
 
@@ -600,6 +603,7 @@ public final class Sampler: @unchecked Sendable {
             }
             snap.history = h
             snap.chartMotion = chartMotion()
+            snap.chartPoints = TieredSeries.points(for: historyRange, stepSlots: stepSlots)
         }
         guard let onSnapshot else { return }
         DispatchQueue.main.async { onSnapshot(snap) }
