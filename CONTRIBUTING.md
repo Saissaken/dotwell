@@ -30,12 +30,47 @@ Thanks for your interest in Mac Resource Monitor! This guide explains how to pro
   can be tested without real hardware.
 - Live probe tests must tolerate CI runners (no battery, virtualized hardware).
 
-## Commits and pull requests
+## Git workflow
 
-- Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`,
-  `test:`, `ci:`, `chore:`, with an optional scope, e.g. `feat(ping): add IPv6 targets`.
-- Keep pull requests small and focused. Fill in the pull request template.
-- Update `CHANGELOG.md` under **Unreleased** for user-visible changes.
+- `main` is always releasable. Never push to it directly; every change lands through a pull request with green CI.
+- Work on a short-lived branch named `<type>/<short-description>`, e.g. `feat/popover-redesign` or
+  `fix/ping-timeout`.
+- One focused change per pull request. Split unrelated work into separate pull requests.
+
+### Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<optional scope>): <imperative summary, lower case, no period>
+
+<optional body: what and why, wrapped at 72 columns>
+```
+
+Types: `feat`, `fix`, `perf`, `refactor`, `test`, `docs`, `style`, `ci`, `build`, `chore`.
+Scopes are optional and usually a module or area: `core`, `ping`, `popover`, `icon`, `ci`.
+Mark breaking changes with `!` (e.g. `feat(core)!: ...`) and a `BREAKING CHANGE:` footer.
+
+Examples:
+
+```
+feat(ping): add IPv6 targets
+fix(core): handle 32-bit tick counter wrap
+perf(sampler): skip history copy while popover is closed
+```
+
+### Pull requests and merging
+
+- The pull request title must be a Conventional Commit; CI checks it.
+- Pull requests are merged with **squash and merge**, so each pull request becomes exactly one commit on `main`
+  whose message is the pull request title (with its number). Commits inside a branch can be informal.
+- The branch is deleted after merging.
+- Fill in the pull request template and update `CHANGELOG.md` under **Unreleased** for user-visible changes.
+
+### Releases
+
+Releases follow [Semantic Versioning](https://semver.org/) and are tagged `vMAJOR.MINOR.PATCH` on `main`.
+The changelog's **Unreleased** section becomes the release notes.
 
 ## Reporting bugs and requesting features
 
