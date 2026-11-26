@@ -360,8 +360,9 @@ private struct RegionRow: View {
             HStack(spacing: 8) {
                 Text(name).fixedSize()
                 Text(ms).monospacedDigit().foregroundStyle(.secondary)
-                Button("Choose…") {}.fixedSize()
+                Button("Choose…") {}
             }
+            .fixedSize()
         }
     }
 }
