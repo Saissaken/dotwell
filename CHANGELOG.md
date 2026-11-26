@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- CPU temperature next to CPU usage, read from the SMC's CPU die sensors (Apple silicon and Intel). It follows
+  the temperature unit set in System Settings and is hidden when the Mac doesn't expose the sensors.
+- When macOS slows the Mac down to cool it (thermal state "serious" or "critical"), the Thermal module in
+  Needs Attention now also shows the CPU temperature.
 - Popover: the 3 apps using the most CPU and the most memory, with their icons. Helper processes count
   toward their app (all of Chrome's renderers show up as Chrome). Sampled every 2 s only while the popover
   is open, so it costs nothing the rest of the time.

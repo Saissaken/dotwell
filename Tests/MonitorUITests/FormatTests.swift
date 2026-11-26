@@ -18,6 +18,22 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(Format.gigabytes(17_179_869_184), Reading(value: "16.0", unit: "GB"))
     }
 
+    func testTemperatureFollowsTheLocaleUnit() throws {
+        let formatter = Format.temperatureFormatter
+        let locale = formatter.locale
+        defer { formatter.locale = locale }
+
+        formatter.locale = Locale(identifier: "en_GB")
+        let celsius = try XCTUnwrap(Format.temperature(52.4))
+        XCTAssertTrue(celsius.contains("52") && celsius.contains("C"), celsius)
+
+        formatter.locale = Locale(identifier: "en_US")
+        let fahrenheit = try XCTUnwrap(Format.temperature(52.4))
+        XCTAssertTrue(fahrenheit.contains("126") && fahrenheit.contains("F"), fahrenheit)
+
+        XCTAssertNil(Format.temperature(nil))
+    }
+
     func testProcessCPUUsesActivityMonitorScale() {
         XCTAssertEqual(Format.processCPU(0.042), "4.2%")
         XCTAssertEqual(Format.processCPU(2.864), "286%")

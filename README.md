@@ -14,13 +14,14 @@ Built for one thing above all: **using as few resources as possible** while it r
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/popover-issues-dark.png">
-    <img src="docs/images/popover-issues-light.png" alt="Popover with ping and CPU issues listed first" width="360">
+    <img src="docs/images/popover-issues-light.png" alt="Popover with ping, CPU and thermal issues listed first" width="360">
   </picture>
 </p>
 
 - **Traffic-light status dot** in the menu bar: green, yellow or red, with hysteresis so it never flickers.
 - **Ping first**: latency, packet loss and jitter against your router, public DNS and cloud regions.
 - **CPU, memory pressure, disk, battery power draw (W) and network throughput** with minimal sparklines.
+- **Heat warnings**: tells you when macOS slows the Mac down to cool it, and shows the CPU temperature.
 - **What's using it**: the top 3 apps by CPU and memory, sampled only while the popover is open.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.

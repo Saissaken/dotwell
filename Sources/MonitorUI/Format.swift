@@ -54,6 +54,21 @@ enum Format {
         return String(format: "%.0f KB/s", value / 1e3)
     }
 
+    /// Temperature in the unit the user prefers (System Settings → Language & Region), e.g. "52°C".
+    static func temperature(_ celsius: Float?) -> String? {
+        guard let celsius else { return nil }
+        return temperatureFormatter.string(from: Measurement(value: Double(celsius), unit: UnitTemperature.celsius))
+    }
+
+    /// Internal so tests and screenshots can pin a locale.
+    static let temperatureFormatter: MeasurementFormatter = {
+        let formatter = MeasurementFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.unitStyle = .medium
+        formatter.numberFormatter.maximumFractionDigits = 0
+        return formatter
+    }()
+
     /// Per-process CPU as Activity Monitor shows it, where 100 % is one full core.
     static func processCPU(_ fraction: Float) -> String {
         let percent = fraction * 100

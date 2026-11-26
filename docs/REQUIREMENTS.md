@@ -58,7 +58,7 @@ Every release measures these numbers and records them in its pull request.
 | M4 | Disk | Free space (GB) plus read/write throughput. **[ASSUMPTION]** |
 | M5 | Battery | Power in **watts** (battery discharge, or charger input when plugged in). Charge % is not repeated since macOS already shows it. **[OPEN: confirm]** |
 | M6 | Network | Download and upload throughput (Mbps) |
-| M7 | Thermal state | Shown only when macOS is throttling. Essentially free to read. **[ASSUMPTION]** |
+| M7 | Thermal state | Shown only when macOS is throttling. Essentially free to read. The CPU temperature is shown next to CPU usage when the SMC exposes it. |
 
 ### 3.5 Candidate extras **[OPEN]**
 - E1. ~~Top 3 processes by CPU~~ Shipped: top 3 apps by CPU and by memory, computed only while the popover is open.

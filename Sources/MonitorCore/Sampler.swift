@@ -27,6 +27,8 @@ public struct Snapshot: Sendable {
     public var networkDownBitsPerSec: Double = 0
     public var networkUpBitsPerSec: Double = 0
     public var thermal: ProcessInfo.ThermalState = .nominal
+    /// Average CPU die temperature in °C, when the Mac exposes its sensors.
+    public var cpuTemperature: Float?
     public var ping: [PingTargetState] = []
     public var levels: [MetricKind: HealthLevel] = [:]
     /// Only filled while the popover is open (`detailed == true`).
@@ -69,6 +71,7 @@ public final class Sampler: @unchecked Sendable {
     private let networkProbe = NetworkProbe()
     private let diskProbe = DiskProbe()
     private let powerProbe = PowerProbe()
+    private let temperatureProbe = TemperatureProbe()
     private let processProbe = ProcessProbe()
     private let ping: PingEngine
 
@@ -196,6 +199,7 @@ public final class Sampler: @unchecked Sendable {
         }
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
+        if tick % 5 == 1 { current.cpuTemperature = temperatureProbe.sample() }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
         // first CPU ranking one second after opening, then every 2 s like Activity Monitor's fast setting.
         if detailedFlag, let elapsed = processProbe.elapsed(now: now),
