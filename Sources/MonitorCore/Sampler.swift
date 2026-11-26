@@ -32,6 +32,8 @@ public struct Snapshot: Sendable {
     public var thermal: ProcessInfo.ThermalState = .nominal
     /// Average CPU die temperature in °C, when the Mac exposes its sensors.
     public var cpuTemperature: Float?
+    /// Average fan speed in RPM (0 while stopped); nil on Macs without fans.
+    public var fanRPM: Double?
     public var ping: [PingTargetState] = []
     public var levels: [MetricKind: HealthLevel] = [:]
     /// The thresholds the levels were computed with, so the UI can color secondary values the same way.
@@ -181,6 +183,7 @@ public final class Sampler: @unchecked Sendable {
             guard timer == nil else { return }
             _ = cpuProbe.sample()  // prime deltas
             current.cpuTemperature = temperatureProbe.sample()  // finds the sensors once, off the popover's path
+            current.fanRPM = temperatureProbe.fanRPM()
             let t = DispatchSource.makeTimerSource(queue: queue)
             t.setEventHandler { [weak self] in self?.tickOnce() }
             timer = t
@@ -267,6 +270,7 @@ public final class Sampler: @unchecked Sendable {
             historyRange = range
             if opening {
                 current.cpuTemperature = temperatureProbe.sample()
+                current.fanRPM = temperatureProbe.fanRPM()
                 if configuration.sampleTopApps {
                     current.topApps = processProbe.sample()  // memory right away, rates from the next sample
                 }
@@ -343,8 +347,11 @@ public final class Sampler: @unchecked Sendable {
         }
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
-        // The temperature is only shown in the popover.
-        if detailedFlag, every(5) { current.cpuTemperature = temperatureProbe.sample() }
+        // Temperature and fans are only shown in the popover.
+        if detailedFlag, every(5) {
+            current.cpuTemperature = temperatureProbe.sample()
+            current.fanRPM = temperatureProbe.fanRPM()
+        }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
         // first rates one second after opening, then every 2 s like Activity Monitor's fast setting.
         if detailedFlag, configuration.sampleTopApps, let elapsed = processProbe.elapsed(now: now),

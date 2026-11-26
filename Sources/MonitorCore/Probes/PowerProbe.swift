@@ -7,11 +7,14 @@ public struct PowerSample: Equatable, Sendable {
     /// On battery: power drawn from the battery. On adapter: power entering the system (if the Mac reports it).
     public var watts: Double?
     public var isCharging: Bool
+    /// Battery temperature in °C, as the battery's own gauge reports it.
+    public var batteryCelsius: Double?
 
-    public init(source: Source, watts: Double?, isCharging: Bool) {
+    public init(source: Source, watts: Double?, isCharging: Bool, batteryCelsius: Double? = nil) {
         self.source = source
         self.watts = watts
         self.isCharging = isCharging
+        self.batteryCelsius = batteryCelsius
     }
 }
 
@@ -33,6 +36,7 @@ public final class PowerProbe {
         guard service != 0 else { return nil }
         let external = bool("ExternalConnected") ?? false
         let charging = bool("IsCharging") ?? false
+        let celsius = number("Temperature").flatMap { Self.batteryCelsius(hundredths: $0.int64Value) }
 
         if external {
             var watts: Double?
@@ -41,16 +45,23 @@ public final class PowerProbe {
             {
                 watts = mw / 1000
             }
-            return PowerSample(source: .adapter, watts: watts, isCharging: charging)
+            return PowerSample(source: .adapter, watts: watts, isCharging: charging, batteryCelsius: celsius)
         }
 
         guard let millivolts = number("Voltage")?.doubleValue,
             let milliamps = number("InstantAmperage")?.int64Value ?? number("Amperage")?.int64Value
         else {
-            return PowerSample(source: .battery, watts: nil, isCharging: false)
+            return PowerSample(source: .battery, watts: nil, isCharging: false, batteryCelsius: celsius)
         }
         let watts = Self.watts(millivolts: millivolts, milliamps: milliamps)
-        return PowerSample(source: .battery, watts: watts, isCharging: false)
+        return PowerSample(source: .battery, watts: watts, isCharging: false, batteryCelsius: celsius)
+    }
+
+    /// The gauge's `Temperature` is in hundredths of a degree Celsius (3062 is 30.62 °C).
+    /// Values outside what a working battery can reach are dropped.
+    static func batteryCelsius(hundredths: Int64) -> Double? {
+        let celsius = Double(hundredths) / 100
+        return celsius > -20 && celsius < 90 ? celsius : nil
     }
 
     /// Amperage is negative while discharging; we report magnitude.

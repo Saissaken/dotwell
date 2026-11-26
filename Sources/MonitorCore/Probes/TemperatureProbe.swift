@@ -23,6 +23,7 @@ public final class TemperatureProbe {
 
     private var connection: io_connect_t = 0
     private var sensors: [Sensor]?  // nil until discovered
+    private var fans: [Sensor]?  // nil until discovered, empty on fanless Macs
     #if arch(arm64)
         private let hid = HIDThermalSensors()
     #endif
@@ -58,6 +59,30 @@ public final class TemperatureProbe {
             count += 1
         }
         return count > 0 ? sum / Float(count) : nil
+    }
+
+    /// Average speed of the fans in RPM, 0 while they're stopped. Nil on fanless Macs (MacBook Air) and
+    /// where the SMC can't be read.
+    public func fanRPM() -> Double? {
+        guard connection != 0 else { return nil }
+        if fans == nil { fans = discoverFans() }
+        guard let fans, !fans.isEmpty else { return nil }
+        let speeds = fans.compactMap { read($0) }.map(Double.init).filter(Self.isPlausibleRPM)
+        return speeds.isEmpty ? nil : speeds.reduce(0, +) / Double(speeds.count)
+    }
+
+    static func isPlausibleRPM(_ rpm: Double) -> Bool { rpm >= 0 && rpm < 15_000 }
+
+    /// `FNum` holds the number of fans, `F<n>Ac` the current speed of fan n.
+    private func discoverFans() -> [Sensor] {
+        let countKey = SMC.code("FNum")
+        guard let info = keyInfo(countKey), let bytes = read(countKey, size: info.size), let count = bytes.first
+        else { return [] }
+        return (0..<min(Int(count), 9)).compactMap { index in
+            let key = SMC.code("F\(index)Ac")
+            guard let info = keyInfo(key) else { return nil }
+            return Sensor(key: key, size: info.size, type: info.type)
+        }
     }
 
     // MARK: - Discovery
@@ -99,6 +124,9 @@ public final class TemperatureProbe {
             let bits = bytes.prefix(4).reversed().reduce(UInt32(0)) { $0 << 8 | UInt32($1) }
             let value = Float(bitPattern: bits)
             return value.isFinite ? value : nil
+        case SMC.code("fpe2") where bytes.count >= 2:
+            // Big-endian unsigned fixed point with 2 fractional bits (Intel fan speeds).
+            return Float(UInt16(bytes[0]) << 8 | UInt16(bytes[1])) / 4
         case SMC.code("sp78") where bytes.count >= 2:
             // Big-endian signed fixed point with 8 fractional bits.
             return Float(Int16(bitPattern: UInt16(bytes[0]) << 8 | UInt16(bytes[1]))) / 256

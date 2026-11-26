@@ -178,16 +178,21 @@ public struct PopoverView: View {
 
     private var powerCaption: String {
         guard let power = snap.power else { return "" }
+        let state: String
         switch power.source {
-        case .battery: return "Drawing from battery"
-        case .adapter: return power.isCharging ? "Charging" : "Plugged in"
+        case .battery: state = "Drawing from battery"
+        case .adapter: state = power.isCharging ? "Charging" : "Plugged in"
         }
+        guard let temperature = Format.temperature(power.batteryCelsius.map(Float.init)) else { return state }
+        return "\(state) · \(temperature)"
     }
 
     private var cpuCaption: String {
-        let cores = "\(ProcessInfo.processInfo.activeProcessorCount) cores"
-        guard let temperature = Format.temperature(snap.cpuTemperature) else { return cores }
-        return "\(cores) · \(temperature)"
+        let parts = [
+            "\(ProcessInfo.processInfo.activeProcessorCount) cores", Format.temperature(snap.cpuTemperature),
+            Format.fanRPM(snap.fanRPM),
+        ]
+        return parts.compactMap { $0 }.joined(separator: " · ")
     }
 
     private var thermalCaption: String {
