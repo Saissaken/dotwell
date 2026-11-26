@@ -51,8 +51,7 @@ final class HTTPProber: NSObject, URLSessionDataDelegate {
 
     // MARK: - URLSessionDataDelegate (called on `queue`)
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics)
-    {
+    func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics) {
         guard session === self.session, let transaction = metrics.transactionMetrics.last,
             let start = transaction.requestStartDate, let end = transaction.responseStartDate
         else { return }
