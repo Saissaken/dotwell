@@ -97,3 +97,16 @@ final class HealthTests: XCTestCase {
         XCTAssertNotNil(sampler.latest().cpu, "fresh values are still there for when the popover opens")
     }
 }
+
+final class ChartMotionTests: XCTestCase {
+    func testProgressSlidesOverOnePeriod() {
+        let start = Date(timeIntervalSinceReferenceDate: 0)
+        let raw = ChartMotion(takenAt: start, phase: 0, period: 1)
+        XCTAssertEqual(raw.progress(at: start), 0)
+        XCTAssertEqual(raw.progress(at: start.addingTimeInterval(0.25)), 0.25, accuracy: 1e-9)
+        XCTAssertEqual(raw.progress(at: start.addingTimeInterval(3)), 1, "rests when the next tick is late")
+        // 5 min range: 3 of the 5 samples of the next point are already in.
+        let averaged = ChartMotion(takenAt: start, phase: 0.6, period: 5)
+        XCTAssertEqual(averaged.progress(at: start.addingTimeInterval(1)), 0.8, accuracy: 1e-9)
+    }
+}
