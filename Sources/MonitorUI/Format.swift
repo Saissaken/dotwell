@@ -26,10 +26,18 @@ enum Format {
         return r.unit.isEmpty ? r.value : "\(r.value) \(r.unit)"
     }
 
-    static func gigabytes(_ bytes: UInt64, decimal: Bool = false) -> Reading {
-        let divisor = decimal ? 1_000_000_000.0 : 1_073_741_824.0
-        let gb = Double(bytes) / divisor
+    /// Memory size in binary gigabytes (GiB, shown as "GB" like Activity Monitor does).
+    static func gigabytes(_ bytes: UInt64) -> Reading {
+        let gb = Double(bytes) / 1_073_741_824.0
         return Reading(value: gb >= 100 ? String(format: "%.0f", gb) : String(format: "%.1f", gb), unit: "GB")
+    }
+
+    /// Storage size in decimal units with one decimal place, matching Finder and System Settings,
+    /// so "248.6 GB" can be compared directly with the "248.62 GB" macOS shows.
+    static func storage(_ bytes: UInt64) -> Reading {
+        let gb = Double(bytes) / 1_000_000_000.0
+        if gb >= 1000 { return Reading(value: String(format: "%.2f", gb / 1000), unit: "TB") }
+        return Reading(value: String(format: "%.1f", gb), unit: "GB")
     }
 
     /// Network speed in bits per second.

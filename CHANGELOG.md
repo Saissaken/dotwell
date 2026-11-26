@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- Disk: free space stayed at the value read at launch instead of updating, so it drifted away from
+  what System Settings shows. It now also shows one decimal place ("248.6 GB") in the same decimal units
+  as macOS.
+
 ## [0.1.1] - 2026-11-26
 
 ### Added

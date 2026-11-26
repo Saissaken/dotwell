@@ -21,12 +21,17 @@ public struct DiskIOCounters: Equatable, Sendable {
 }
 
 public final class DiskProbe {
-    private let root = URL(fileURLWithPath: "/")
+    private var root = URL(fileURLWithPath: "/")
 
     public init() {}
 
-    /// Free space on the boot volume, counting purgeable space the way Finder does.
+    /// Free space on the boot volume, counting purgeable space the way Finder and
+    /// System Settings → General → Storage do ("Available").
     public func space() -> DiskSpace? {
+        // URL caches resource values, and the cache is only flushed automatically on the main
+        // run loop. The sampler reads from a background queue, so without this the figure would
+        // stay frozen at whatever it was on the first read.
+        root.removeAllCachedResourceValues()
         let keys: Set<URLResourceKey> = [.volumeAvailableCapacityForImportantUsageKey, .volumeTotalCapacityKey]
         guard let values = try? root.resourceValues(forKeys: keys),
             let available = values.volumeAvailableCapacityForImportantUsage,
