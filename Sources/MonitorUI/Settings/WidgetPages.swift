@@ -284,8 +284,9 @@ private struct NetworkSettings: View {
             } label: {
                 SettingLabel("Show speed in", detail: "Mbps matches internet plans; MB/s matches downloads in Finder.")
             }
-            .help("Internet plans and speed tests use bits (Mbps). Browsers and Finder show downloads in bytes "
-                + "(MB/s), which is 8 times smaller for the same speed.")
+            .help(
+                "Internet plans and speed tests use bits (Mbps). Browsers and Finder show downloads in bytes "
+                    + "(MB/s), which is 8 times smaller for the same speed.")
         }
         Section {
             SwitchRow(

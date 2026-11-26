@@ -138,7 +138,8 @@ final class AppSettingsTests: XCTestCase {
 
     /// Saved settings from a version with a Thermal card still load, keeping the rest of the order.
     func testSavedWidgetsDropRemovedModules() throws {
-        let json = #"[{"module":"network","isVisible":false,"showsTopApp":true},"#
+        let json =
+            #"[{"module":"network","isVisible":false,"showsTopApp":true},"#
             + #"{"module":"thermal","isVisible":true,"showsTopApp":true},"#
             + #"{"module":"cpu","isVisible":true,"showsTopApp":false}]"#
         defaults.set(Data(json.utf8), forKey: "widgets")
