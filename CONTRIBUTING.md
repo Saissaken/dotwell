@@ -36,6 +36,10 @@ pull request.
 - New logic in `MonitorCore` needs unit tests. Keep math (deltas, thresholds, parsing) in pure functions so it
   can be tested without real hardware.
 - Live probe tests must tolerate CI runners (no battery, virtualized hardware).
+- Every reading is checked against ground truth in `AccuracyTests`: macOS's own tools (`vm_stat`, `sysctl`,
+  `df`, `ping`, `dig`) or a load the test creates (busy threads, a 64 MB write, a 10 MB download, a 256 MB
+  allocation). A new metric needs such a test. Where the machine can't provide the reading (no internet, no
+  sensors in a VM), the test is skipped, never faked.
 
 ## Git workflow
 
