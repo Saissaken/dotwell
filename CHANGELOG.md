@@ -19,6 +19,10 @@ All notable changes to this project are documented here. The format is based on
   Replies are now timestamped by macOS as they arrive. As a bonus, ICMP replies are read once per tick
   instead of waking the app for each one.
 - The route under Ping now also appears when every widget's top app is turned off.
+- CPU temperature on Apple silicon read about 10 °C high on M3 chips (55 °C while btop showed 45 °C). It
+  averaged every SMC key starting with `Tp` or `Te`, but on M3 those keys aren't the CPU cores. It now
+  averages the sensors macOS itself names after the performance and efficiency core clusters, the same ones
+  btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
 - Less work with the popover closed: the main thread is only woken when the menu bar dot changes color,

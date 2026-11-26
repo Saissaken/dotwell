@@ -50,6 +50,62 @@ final class TemperatureProbeTests: XCTestCase {
         XCTAssertEqual(payload.raw[44], 7)
     }
 
+    // MARK: - Apple silicon sensors
+
+    func testNamesSensorFamilies() {
+        XCTAssertEqual(HIDThermalSensors.Family(sensorName: "pACC MTR Temp Sensor2"), .cpuCluster)
+        XCTAssertEqual(HIDThermalSensors.Family(sensorName: "eACC MTR Temp Sensor0"), .cpuCluster)
+        XCTAssertEqual(HIDThermalSensors.Family(sensorName: "PMU tdie4"), .die)
+        XCTAssertEqual(HIDThermalSensors.Family(sensorName: "SOC MTR Temp Sensor1"), .soc)
+        XCTAssertNil(HIDThermalSensors.Family(sensorName: "GPU MTR Temp Sensor1"))
+        XCTAssertNil(HIDThermalSensors.Family(sensorName: "PMU tdev3"))
+        XCTAssertNil(HIDThermalSensors.Family(sensorName: "gas gauge battery"))
+    }
+
+    /// The case from btop on an M3 Max: core clusters at 44–45 °C while other die sensors run hotter.
+    /// Only the cluster sensors count, so the hotter ones can't push the CPU temperature up.
+    func testAveragesTheCoreClustersOnly() throws {
+        let readings: [(name: String, celsius: Double)] = [
+            ("pACC MTR Temp Sensor2", 44), ("pACC MTR Temp Sensor3", 45), ("pACC MTR Temp Sensor4", 45),
+            ("eACC MTR Temp Sensor0", 44), ("PMU tdie1", 62), ("PMU tdie2", 64), ("SOC MTR Temp Sensor0", 58),
+            ("GPU MTR Temp Sensor1", 70), ("gas gauge battery", 31),
+        ]
+        let celsius = try XCTUnwrap(HIDThermalSensors.cpuTemperature(readings))
+        XCTAssertEqual(celsius, 44.5, accuracy: 0.001)
+    }
+
+    func testFallsBackToDieThenSoCSensors() {
+        let die: [(name: String, celsius: Double)] = [
+            ("PMU tdie1", 50), ("PMU tdie2", 54), ("SOC MTR Temp Sensor0", 70),
+        ]
+        XCTAssertEqual(HIDThermalSensors.cpuTemperature(die), 52)
+        let soc: [(name: String, celsius: Double)] = [("SOC MTR Temp Sensor0", 40), ("SOC MTR Temp Sensor1", 42)]
+        XCTAssertEqual(HIDThermalSensors.cpuTemperature(soc), 41)
+    }
+
+    func testIgnoresImplausibleReadings() {
+        // A cluster sensor reading 0 or garbage must not hide the valid ones or drag the average down.
+        let zero: [(name: String, celsius: Double)] = [("pACC MTR Temp Sensor2", 0), ("pACC MTR Temp Sensor3", 46)]
+        XCTAssertEqual(HIDThermalSensors.cpuTemperature(zero), 46)
+        XCTAssertEqual(HIDThermalSensors.cpuTemperature([("pACC MTR Temp Sensor2", -20), ("PMU tdie1", 48)]), 48)
+        XCTAssertNil(HIDThermalSensors.cpuTemperature([("pACC MTR Temp Sensor2", 400)]))
+        XCTAssertNil(HIDThermalSensors.cpuTemperature([]))
+    }
+
+    /// On an Apple silicon Mac with sensors, the reading must sit in a plausible range for a running CPU.
+    /// CI virtual machines have no sensors, so there it only checks that nothing is made up.
+    func testAppleSiliconSensorsReadPlausibly() {
+        #if arch(arm64)
+            let sensors = HIDThermalSensors()
+            if let celsius = sensors.sample() {
+                XCTAssertGreaterThan(celsius, 15)
+                XCTAssertLessThan(celsius, 110)
+                // Narrowed to one family after the first sample, the next reading stays close.
+                if let again = sensors.sample() { XCTAssertEqual(again, celsius, accuracy: 15) }
+            }
+        #endif
+    }
+
     /// Real sensors are missing in CI virtual machines, so this only checks the probe behaves.
     func testSampleIsNilOrPlausible() {
         let probe = TemperatureProbe()
