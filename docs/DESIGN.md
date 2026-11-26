@@ -2,6 +2,8 @@
 
 Estado: **borrador v0.1** (2026-11-26). Acompaña a [REQUIREMENTS.md](REQUIREMENTS.md).
 
+> **Decisión confirmada (2026-11-26, Cabezon):** Swift nativo, solo macOS. Los detalles finos de abajo (AppKit + SwiftUI, gráficos propios, Swift Package, macOS 13+) siguen siendo propuesta y se pueden revisar.
+
 ## 1. Stack recomendado
 
 **Swift 5.10+ nativo, AppKit para la barra de menú + SwiftUI para el contenido del popover.** Sin Electron, sin Python, sin dependencias externas.
@@ -66,11 +68,12 @@ Nunca se lanzan procesos (`ping`, `top`, `ioreg`): crear procesos es lo más car
 
 ## 4. Cadencia de muestreo y ahorro
 
-| Estado | CPU/Mem/Red/Batería | Ping | Disco espacio |
-|---|---|---|---|
-| Popover cerrado | cada 2 s | cada 2 s, solo destino principal | cada 60 s |
-| Popover abierto | cada 1 s | cada 1 s, todos los destinos | cada 10 s |
-| Mac dormida / pantalla apagada | pausado (`NSWorkspace` notifications) | pausado | pausado |
+| Estado | CPU/Mem/Red/Disco I/O | Ping ICMP | Ping TCP | Batería | Disco espacio |
+|---|---|---|---|---|---|
+| Siempre (popover abierto o cerrado) | cada 1 s | cada 1 s, todos los destinos | cada 5 s | cada 2 s | cada 30 s |
+| Mac dormida / pantalla apagada | pausado | pausado | pausado | pausado | pausado |
+
+Se muestrea a 1 s siempre para que el historial sea continuo: cada tick son ~6 syscalls (microsegundos). Con el popover cerrado no se arma historial para la UI ni se dibuja nada. Si las mediciones reales superan el presupuesto, se pasa a 2 s con el popover cerrado.
 
 - **Un solo timer** con `leeway` para que el sistema agrupe wakeups.
 - Todas las probes corren en una cola serial de baja prioridad (`.utility`).
