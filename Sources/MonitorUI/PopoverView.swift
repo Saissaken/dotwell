@@ -292,7 +292,7 @@ func levelColor(_ level: HealthLevel) -> Color {
 
 /// Popover metrics shared by the views and by the tests that check labels fit at a fixed size.
 enum PopoverLayout {
-    static let width: CGFloat = 360
+    static let width: CGFloat = 396
     static let padding: CGFloat = 12
     static let spacing: CGFloat = 8
     static let modulePadding: CGFloat = 10

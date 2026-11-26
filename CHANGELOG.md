@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format is based on
   has a problem just turns yellow or red where it is.
 - Disk and Network are now half-width cards like CPU and Memory, so the popover is shorter. Only Ping still
   spans the full width. A card left alone in the last row keeps its half width.
+- The popover is 10% wider (396 pt), so the half-width cards have more room.
 
 ### Fixed
 - The icons in the cards' colored circles, and in the route's dots under Ping, are now centered exactly.
