@@ -146,7 +146,8 @@ private struct CPUSettings<TopApp: View>: View {
             }
             .help(
                 "Share of the whole Mac uses the same scale as the card's total, so apps add up to it. Share of one "
-                    + "core is how Activity Monitor counts: an app busy on 4 cores shows 400%.")
+                    + "core is how Activity Monitor counts: an app busy on 4 cores shows 400%."
+            )
             .disabled(!settings.showsTopApp(.cpu))
             SwitchRow(
                 title: "Show temperature and fan speed",
