@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let sampler = self.sampler
         settings.onConfigurationChange = { sampler.apply($0) }
         statusController = StatusItemController(sampler: sampler, settings: settings, updater: updater) {
-            [weak self] tab in self?.settingsWindow.show(tab: tab)
+            [weak self] page in self?.settingsWindow.show(page: page)
         }
         LoginItem.registerOnFirstLaunch()
         observeSleep()
