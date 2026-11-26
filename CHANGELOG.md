@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-26
+
 ### Added
 - GPU card on Macs with Apple silicon, next to CPU: how busy the GPU is, with its chart, the number of GPU
   cores, its temperature, the power it draws and the app using the most of it (WindowServer included). Use
@@ -171,7 +173,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Saissaken/dotwell/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Saissaken/dotwell/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Saissaken/dotwell/compare/v0.4.1...v0.5.0
