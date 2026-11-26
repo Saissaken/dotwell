@@ -46,20 +46,20 @@ final class ProbeMathTests: XCTestCase {
         func pages(_ gb: Double) -> UInt64 { UInt64((gb * gib / Double(page)).rounded()) }
         let total = UInt64(36 * gib)
         let counts = VMPageCounts(
-            free: pages(2.49), internal: pages(11.64), external: pages(13.66), purgeable: pages(1.0),
+            free: pages(2.49), anonymous: pages(11.64), external: pages(13.66), purgeable: pages(1.0),
             wired: pages(4.15), compressor: pages(2.59))
         let used = Double(counts.usedBytes(pageSize: page, totalBytes: total)) / gib
         XCTAssertEqual(used, 18.85, accuracy: 0.01)
     }
 
     func testMemoryUsedNeverBelowAppWiredCompressed() {
-        let counts = VMPageCounts(free: 900, internal: 300, external: 0, purgeable: 100, wired: 50, compressor: 50)
+        let counts = VMPageCounts(free: 900, anonymous: 300, external: 0, purgeable: 100, wired: 50, compressor: 50)
         // Page counts add up to more than the total: fall back to App + Wired + Compressed.
         XCTAssertEqual(counts.usedBytes(pageSize: 1, totalBytes: 1_000), 300)
     }
 
     func testMemoryUsedClampedToTotal() {
-        let counts = VMPageCounts(free: 0, internal: 2_000, external: 0, purgeable: 0, wired: 0, compressor: 0)
+        let counts = VMPageCounts(free: 0, anonymous: 2_000, external: 0, purgeable: 0, wired: 0, compressor: 0)
         XCTAssertEqual(counts.usedBytes(pageSize: 1, totalBytes: 1_000), 1_000)
     }
 

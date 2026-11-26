@@ -28,7 +28,7 @@ public struct MemorySample: Equatable, Sendable {
 /// The `vm_statistics64` page counts that Activity Monitor's memory figures are built from.
 struct VMPageCounts: Equatable {
     var free: UInt64
-    var internal: UInt64
+    var anonymous: UInt64  // internal_page_count
     var external: UInt64
     var purgeable: UInt64
     var wired: UInt64
@@ -37,12 +37,12 @@ struct VMPageCounts: Equatable {
     /// Activity Monitor's "Memory Used": physical memory minus free pages and "Cached Files"
     /// (file-backed plus purgeable pages).
     ///
-    /// Summing "App Memory" (internal − purgeable), "Wired" and "Compressed" falls short of it on
+    /// Summing "App Memory" (anonymous − purgeable), "Wired" and "Compressed" falls short of it on
     /// Apple Silicon, because some physical memory (for example GPU and firmware reservations) is not
     /// in any page queue. Counting down from the physical total includes that memory, as Activity
     /// Monitor does. The sum is kept as a floor in case the page counts are briefly inconsistent.
     func usedBytes(pageSize: UInt64, totalBytes: UInt64) -> UInt64 {
-        let appPages = internal > purgeable ? internal - purgeable : 0
+        let appPages = anonymous > purgeable ? anonymous - purgeable : 0
         let floor = (appPages + wired + compressor) * pageSize
         let available = (free + external + purgeable) * pageSize
         let counted = totalBytes > available ? totalBytes - available : 0
@@ -67,7 +67,7 @@ public final class MemoryProbe {
         }
         guard kr == KERN_SUCCESS else { return nil }
         let pages = VMPageCounts(
-            free: UInt64(stats.free_count), internal: UInt64(stats.internal_page_count),
+            free: UInt64(stats.free_count), anonymous: UInt64(stats.internal_page_count),
             external: UInt64(stats.external_page_count), purgeable: UInt64(stats.purgeable_count),
             wired: UInt64(stats.wire_count), compressor: UInt64(stats.compressor_page_count))
         return MemorySample(

@@ -9,9 +9,8 @@ final class DiskProbeTests: XCTestCase {
         _ = probe.space()  // Prime any resource value cache.
 
         let space = try XCTUnwrap(probe.space())
-        let fresh = try URL(fileURLWithPath: "/").resourceValues(forKeys: [
-            .volumeAvailableCapacityForImportantUsageKey, .volumeTotalCapacityKey,
-        ])
+        let keys: Set<URLResourceKey> = [.volumeAvailableCapacityForImportantUsageKey, .volumeTotalCapacityKey]
+        let fresh = try URL(fileURLWithPath: "/").resourceValues(forKeys: keys)
         let available = try XCTUnwrap(fresh.volumeAvailableCapacityForImportantUsage)
         let total = try XCTUnwrap(fresh.volumeTotalCapacity)
 
