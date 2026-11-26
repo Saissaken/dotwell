@@ -40,7 +40,8 @@ final class PreviewRenderTests: XCTestCase {
     }
 
     private func render(_ content: some View, appearance: NSAppearance.Name) throws -> Data {
-        let root = content
+        let root =
+            content
             .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .padding(24)
