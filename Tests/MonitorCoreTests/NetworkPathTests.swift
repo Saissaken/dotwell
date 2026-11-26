@@ -102,6 +102,23 @@ final class NetworkPathTests: XCTestCase {
         XCTAssertNil(NetworkPath.organization(nil))
     }
 
+    func testISPHopIsTheFirstProviderRouter() {
+        XCTAssertEqual(NetworkPath.ispHop(in: healthyHops, gateway: "192.168.1.1"), "100.64.0.1")
+        let doubleNAT = [
+            hop(1, "192.168.68.1"), hop(2, "192.168.1.1"), hop(3, nil), hop(4, "181.30.1.5"),
+        ]
+        XCTAssertEqual(NetworkPath.ispHop(in: doubleNAT, gateway: "192.168.68.1"), "181.30.1.5")
+        let onlyDestination = [hop(1, "192.168.1.1"), hop(2, "1.1.1.1", destination: true)]
+        XCTAssertNil(NetworkPath.ispHop(in: onlyDestination, gateway: "192.168.1.1"))
+    }
+
+    func testCarrierNAT() {
+        XCTAssertTrue(NetworkPath.isCarrierNAT("100.64.0.1"))
+        XCTAssertTrue(NetworkPath.isCarrierNAT("100.127.255.1"))
+        XCTAssertFalse(NetworkPath.isCarrierNAT("100.128.0.1"))
+        XCTAssertFalse(NetworkPath.isCarrierNAT("10.0.0.1"))
+    }
+
     // MARK: - Packets
 
     func testParseTimeExceededQuotingOurProbe() {
@@ -165,5 +182,22 @@ final class NetworkPathTests: XCTestCase {
         for hop in result.hops {
             print("trace", hop.ttl, hop.address ?? "*", hop.hostname ?? "", hop.stats.averageMs ?? -1)
         }
+    }
+
+    /// Finds and pings the provider's first router when the machine has internet access; never fails on CI.
+    func testLiveISPTarget() throws {
+        let queue = DispatchQueue(label: "isp.test")
+        let engine = PingEngine(targets: [.isp], queue: queue)
+        var replies: [Float?] = []
+        engine.onResult = { _, ms in replies.append(ms) }
+        for second in 0..<5 {
+            queue.asyncAfter(deadline: .now() + Double(second)) { engine.probe([0]) }
+        }
+        let done = expectation(description: "probes")
+        queue.asyncAfter(deadline: .now() + 5.5) { done.fulfill() }
+        wait(for: [done], timeout: 8)
+        let results = queue.sync { replies }
+        guard !results.isEmpty else { throw XCTSkip("No provider router found here") }
+        print("isp", results)
     }
 }

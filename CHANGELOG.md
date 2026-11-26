@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- Ping: the ISP row now measures your internet provider's first router. Dotwell finds it with a short
+  traceroute (about 60 tiny packets every 5 minutes, and again when you join another network), so you can
+  tell whether a slow connection starts at your router or at your provider.
 - Settings window (⋯ → Settings…, right-click the menu bar icon, or ⌘,), with changes applied right away:
   - General: open at login, how often to take readings (1, 2, 5 or 10 seconds) and network speed in bits
     or bytes per second.
