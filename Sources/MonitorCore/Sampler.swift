@@ -242,6 +242,7 @@ public final class Sampler: @unchecked Sendable {
                 startTrace()
             }
             current.thresholds = newConfiguration.thresholds
+            if !newConfiguration.readsTemperature { current.cpuTemperature = nil }
             if !newConfiguration.sampleTopApps {
                 processProbe.reset()
                 current.topApps = nil
@@ -266,7 +267,7 @@ public final class Sampler: @unchecked Sendable {
             if interval != wasInterval { schedule() }
             historyRange = range
             if opening {
-                current.cpuTemperature = temperatureProbe.sample()
+                current.cpuTemperature = configuration.readsTemperature ? temperatureProbe.sample() : nil
                 if configuration.sampleTopApps {
                     current.topApps = processProbe.sample()  // memory right away, rates from the next sample
                 }
@@ -344,7 +345,9 @@ public final class Sampler: @unchecked Sendable {
         if let w = current.power?.watts { append(SeriesKey.power, Float(w)) }
         current.thermal = ProcessInfo.processInfo.thermalState
         // The temperature is only shown in the popover.
-        if detailedFlag, every(5) { current.cpuTemperature = temperatureProbe.sample() }
+        if detailedFlag, configuration.readsTemperature, every(5) {
+            current.cpuTemperature = temperatureProbe.sample()
+        }
         // Per-process usage costs one syscall per process, so it only runs with the popover open:
         // first rates one second after opening, then every 2 s like Activity Monitor's fast setting.
         if detailedFlag, configuration.sampleTopApps, let elapsed = processProbe.elapsed(now: now),

@@ -36,7 +36,7 @@ final class AppSettingsTests: XCTestCase {
         settings.internetHost = .quad9
         settings.setRegion(CloudRegion.find(.azure, "brazilsouth"), at: 1)
         settings.primarySlot = .region2
-        settings.moveWidgets(from: [6], to: 0)
+        settings.moveWidgets(from: [5], to: 0)
         settings.widgets[1].showsTopApp = false
 
         let reloaded = AppSettings(defaults: defaults)
@@ -123,10 +123,36 @@ final class AppSettingsTests: XCTestCase {
         var widgets = WidgetSetting.defaults
         XCTAssertEqual(Module.visible(in: snap, widgets: widgets), [.ping, .cpu, .memory, .disk, .network])
         snap.power = PowerSample(source: .battery, watts: 5, isCharging: false)
-        snap.thermal = .serious
-        widgets.move(fromOffsets: [6], toOffset: 0)
+        widgets.move(fromOffsets: [5], toOffset: 0)
         widgets[2].isVisible = false  // CPU
-        XCTAssertEqual(
-            Module.visible(in: snap, widgets: widgets), [.network, .ping, .memory, .power, .disk, .thermal])
+        XCTAssertEqual(Module.visible(in: snap, widgets: widgets), [.network, .ping, .memory, .power, .disk])
+    }
+
+    /// Thermal used to be a card of its own; it is now part of CPU.
+    func testCPUCardCarriesTheSlowDown() {
+        var snap = Snapshot()
+        snap.levels = [.cpu: .ok, .thermal: .warning]
+        XCTAssertEqual(Module.cpu.level(in: snap), .warning)
+        XCTAssertEqual(Module.memory.level(in: snap), .ok)
+    }
+
+    /// Saved settings from a version with a Thermal card still load, keeping the rest of the order.
+    func testSavedWidgetsDropRemovedModules() throws {
+        let json = #"[{"module":"network","isVisible":false,"showsTopApp":true},"#
+            + #"{"module":"thermal","isVisible":true,"showsTopApp":true},"#
+            + #"{"module":"cpu","isVisible":true,"showsTopApp":false}]"#
+        defaults.set(Data(json.utf8), forKey: "widgets")
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.widgets.prefix(2).map(\.module), [.network, .cpu])
+        XCTAssertFalse(settings.widgets[0].isVisible)
+        XCTAssertFalse(settings.widgets[1].showsTopApp)
+        XCTAssertEqual(settings.widgets.count, Module.allCases.count)
+    }
+
+    func testHidingTheTemperatureStopsReadingIt() {
+        let settings = AppSettings(defaults: nil)
+        XCTAssertTrue(settings.configuration.readsTemperature)
+        settings.showsCPUTemperature = false
+        XCTAssertFalse(settings.configuration.readsTemperature)
     }
 }

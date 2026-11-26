@@ -1,31 +1,6 @@
 import Foundation
 import MonitorCore
 
-/// The tabs of the Settings window, in toolbar order.
-public enum SettingsTab: String, CaseIterable, Sendable {
-    case general, widgets, ping, alerts, updates
-
-    public var title: String {
-        switch self {
-        case .general: return "General"
-        case .widgets: return "Widgets"
-        case .ping: return "Ping"
-        case .alerts: return "Alerts"
-        case .updates: return "Updates"
-        }
-    }
-
-    public var symbol: String {
-        switch self {
-        case .general: return "gearshape"
-        case .widgets: return "square.grid.2x2"
-        case .ping: return "network"
-        case .alerts: return "exclamationmark.triangle"
-        case .updates: return "arrow.triangle.2.circlepath"
-        }
-    }
-}
-
 /// Settings that live outside `AppSettings` because the system owns them: the login item and
 /// Sparkle's update preferences. The app target fills in the closures.
 @MainActor
@@ -36,7 +11,7 @@ public final class SettingsModel: ObservableObject {
     public let updates: UpdateSettings?
     /// Applies the launch-at-login setting and returns the resulting state.
     public var setLaunchAtLogin: ((Bool) -> Bool)?
-    /// Shown in the Updates tab, e.g. "0.4.0 (14)".
+    /// Shown on the Updates and About pages, e.g. "0.4.0 (14)".
     public var version = SettingsModel.bundleVersion
 
     static var bundleVersion: String {

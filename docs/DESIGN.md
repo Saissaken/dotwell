@@ -66,7 +66,7 @@ Modules (Swift Package):
 | Disk I/O | IOKit `IOBlockStorageDriver` `Statistics`, delta | 1 IOKit query |
 | Battery W | IOKit `AppleSmartBattery`: `Voltage × InstantAmperage`. On AC: `PowerTelemetryData.SystemPowerIn` | 1 IOKit query |
 | Network | `sysctl(NET_RT_IFLIST2)` 64-bit counters (`getifaddrs` uses 32-bit counters that wrap at 4 GB). Loopback and point-to-point (VPN) interfaces are excluded to avoid double counting | 1 syscall |
-| Thermal state | `ProcessInfo.thermalState`: serious = yellow, critical = red (macOS is throttling) | 1 property read |
+| Thermal state | `ProcessInfo.thermalState`: serious = yellow, critical = red (macOS is throttling). Shown in the CPU card ("Slowed down to cool"), not a card of its own | 1 property read |
 | CPU temperature | `AppleSMC` user client: CPU die sensors (`Tp*`/`Te*` floats on Apple silicon, `TC*` sp78 on Intel), found once by listing the SMC keys, averaged, every 5 s **while the popover is open**. No root or entitlements; hidden when no sensor answers (VMs) | 1 IOKit call per sensor |
 | Ping | `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)`, which macOS allows unprivileged. Targets that drop ICMP (e.g. AWS endpoints) use **TCP handshake time on :443** | 1 packet per target |
 | Local IP | interface of the default route (`sysctl(NET_RT_FLAGS)` `rtm_index`), its IPv4 from `getifaddrs`, its kind (Wi‑Fi, Ethernet) from `SCNetworkInterfaceCopyAll`. **Only while the popover is open**, again on `NWPathMonitor` path changes | 1 syscall + 1 `getifaddrs` |

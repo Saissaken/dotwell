@@ -31,9 +31,14 @@ final class PreviewRenderTests: XCTestCase {
             }
         }
         for (mode, appearance) in appearances {
-            for tab in SettingsTab.allCases {
-                let data = try renderSettings(tab: tab, appearance: appearance)
-                try data.write(to: url.appendingPathComponent("settings-\(tab.rawValue)-\(mode).png"))
+            let pages: [SettingsPage] = [
+                .general, .widget(.ping), .widget(.cpu), .widget(.network), .widget(.memory), .widget(.disk),
+                .widget(.power), .updates, .about,
+            ]
+            for page in pages {
+                let data = try renderSettings(page: page, appearance: appearance)
+                let name = page.id.replacingOccurrences(of: "widget.", with: "")
+                try data.write(to: url.appendingPathComponent("settings-\(name)-\(mode).png"))
             }
         }
         // The Ping module with the route's router list open.
@@ -55,8 +60,8 @@ final class PreviewRenderTests: XCTestCase {
         }
     }
 
-    /// Renders the real Settings window, title bar and toolbar included, on one tab.
-    private func renderSettings(tab: SettingsTab, appearance: NSAppearance.Name) throws -> Data {
+    /// Renders the real Settings window, title bar, sidebar and toolbar included, on one page.
+    private func renderSettings(page: SettingsPage, appearance: NSAppearance.Name) throws -> Data {
         let updates = UpdateSettings(
             UpdateSettings.Backend(
                 automaticallyChecks: { true }, setAutomaticallyChecks: { _ in },
@@ -64,9 +69,8 @@ final class PreviewRenderTests: XCTestCase {
                 lastCheck: { Date().addingTimeInterval(-2 * 3600) }, checkNow: {}))
         let model = SettingsModel(settings: AppSettings(defaults: nil), launchAtLogin: true, updates: updates)
         model.version = "0.4.0 (14)"
-        let tabs = SettingsTabViewController(model: model)
-        tabs.selectedTabViewItemIndex = SettingsTab.allCases.firstIndex(of: tab) ?? 0
-        let window = tabs.makeWindow()
+        let controller = SettingsSplitViewController(model: model, page: page)
+        let window = controller.makeWindow()
         window.appearance = NSAppearance(named: appearance)
         window.setFrameOrigin(NSPoint(x: 100, y: 100))
         window.orderFront(nil)
@@ -168,7 +172,7 @@ enum SampleData {
         s.cpu = 0.91
         s.cpuTemperature = 97
         s.thermal = .serious
-        s.levels[.thermal] = .warning
+        s.levels[.thermal] = .warning  // the CPU card says it's slowed down to cool
         s.ping = pingTargets(primaryMs: 96, primaryLoss: 0.03)
         s.levels[.ping] = .warning
         s.levels[.cpu] = .warning

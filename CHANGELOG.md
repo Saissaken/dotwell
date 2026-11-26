@@ -33,6 +33,18 @@ All notable changes to this project are documented here. The format is based on
   btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
+- Settings is redesigned like System Settings: a sidebar with a search field and colored icons, and one page per
+  card with everything about it in one place: whether it shows, its options and its alert. The Alerts tab is
+  gone; each alert now lives on its card's page. Drag cards in the sidebar to reorder the popover. Back and
+  Forward buttons sit next to the page title, every setting explains itself in a line underneath and in a
+  tooltip, and nothing is cut off any more.
+- The Thermal card is now part of CPU. It only ever appeared while macOS slowed the Mac down to cool it, which
+  was easy to mistake for a missing card. When that happens, the CPU card says "Slowed down to cool" and turns
+  yellow or red; CPU → "Warn when macOS slows the Mac down" turns this off. Saved card orders keep working.
+- CPU: a "Show temperature" switch. Off, Dotwell doesn't read the temperature sensors at all.
+- "Top app" is now "Show the busiest app", and "Status light follows" is now "Main host", with what each does.
+- Network speed units and the IP addresses switch moved from General to the Network page.
+- The website is linked from Settings → General, the About page and the About Dotwell panel.
 - Readings have two intervals in Settings → General: one while the popover is open (0.5, 1 or 2 seconds,
   default 1) and one while it's closed (1, 2, 5, 10 or 30 seconds, default 5). Until now Dotwell measured every
   second all day, even with nothing on screen; the closed popover now wakes the Mac five times less often,

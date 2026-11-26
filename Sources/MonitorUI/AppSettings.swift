@@ -27,6 +27,22 @@ public struct WidgetSetting: Codable, Equatable, Identifiable, Sendable {
 
     public static let defaults: [WidgetSetting] = Module.allCases.map { WidgetSetting(module: $0) }
 
+    /// Decodes saved widgets one by one, so a card a later version removed (like Thermal, now part of CPU)
+    /// is dropped instead of making the whole list unreadable.
+    static func decodeSaved(_ data: Data) -> [WidgetSetting] {
+        struct Saved: Decodable {
+            var module: String
+            var isVisible: Bool?
+            var showsTopApp: Bool?
+        }
+        let saved = (try? JSONDecoder().decode([Saved].self, from: data)) ?? []
+        return saved.compactMap { item in
+            Module(rawValue: item.module).map {
+                WidgetSetting(module: $0, isVisible: item.isVisible ?? true, showsTopApp: item.showsTopApp ?? true)
+            }
+        }
+    }
+
     /// Keeps the saved order and choices, drops unknown modules and appends new ones at the end.
     static func merged(_ saved: [WidgetSetting]) -> [WidgetSetting] {
         var seen = Set<Module>()
@@ -56,6 +72,10 @@ public final class AppSettings: ObservableObject {
     /// Show the local and public IP addresses in the Network card. Off also skips the public address lookup.
     @Published public var showsIPAddresses: Bool {
         didSet { store(showsIPAddresses, .showsIPAddresses) }
+    }
+    /// Show the CPU temperature in the CPU card. Off also stops reading the sensors.
+    @Published public var showsCPUTemperature: Bool {
+        didSet { store(showsCPUTemperature, .showsCPUTemperature) }
     }
     @Published public var widgets: [WidgetSetting] {
         didSet { storeJSON(widgets, .widgets) }
@@ -93,6 +113,7 @@ public final class AppSettings: ObservableObject {
         case closedInterval = "closedIntervalMs"
         case networkUnit
         case showsIPAddresses
+        case showsCPUTemperature
         case widgets
         case internetHost
         case regions = "pingRegions"
@@ -119,7 +140,9 @@ public final class AppSettings: ObservableObject {
         closedInterval = savedInterval(.closedInterval) ?? legacy ?? .fiveSeconds
         networkUnit = defaults?.string(forKey: Key.networkUnit.rawValue).flatMap(NetworkUnit.init) ?? .bits
         showsIPAddresses = defaults?.object(forKey: Key.showsIPAddresses.rawValue) as? Bool ?? true
-        widgets = WidgetSetting.merged(load([WidgetSetting].self, .widgets) ?? [])
+        showsCPUTemperature = defaults?.object(forKey: Key.showsCPUTemperature.rawValue) as? Bool ?? true
+        widgets = WidgetSetting.merged(
+            defaults?.data(forKey: Key.widgets.rawValue).map(WidgetSetting.decodeSaved) ?? [])
         internetHost = defaults?.string(forKey: Key.internetHost.rawValue).flatMap(InternetHost.init) ?? .cloudflare
         if let saved = load([SavedRegion?].self, .regions), saved.count == PingSlot.regionCount {
             regions = saved.map { $0.flatMap { CloudRegion.find($0.provider, $0.code) } }
@@ -147,7 +170,8 @@ public final class AppSettings: ObservableObject {
             thresholds: thresholds,
             alerts: alerts,
             pingEnabled: isVisible(.ping) || alerts.contains(.ping),
-            sampleTopApps: widgets.contains { $0.isVisible && $0.showsTopApp && $0.module.hasTopApp })
+            sampleTopApps: widgets.contains { $0.isVisible && $0.showsTopApp && $0.module.hasTopApp },
+            readsTemperature: showsCPUTemperature && isVisible(.cpu))
     }
 
     /// Whether the popover needs the IP addresses at all.
@@ -256,7 +280,7 @@ extension Module {
     public var hasTopApp: Bool {
         switch self {
         case .cpu, .memory, .disk, .power: return true
-        case .ping, .network, .thermal: return false
+        case .ping, .network: return false
         }
     }
 
@@ -268,7 +292,6 @@ extension Module {
         case .power: return "Power"
         case .disk: return "Disk"
         case .network: return "Network"
-        case .thermal: return "Thermal"
         }
     }
 
@@ -280,7 +303,6 @@ extension Module {
         case .power: return "battery.75percent"
         case .disk: return "internaldrive"
         case .network: return "arrow.up.arrow.down"
-        case .thermal: return "thermometer.medium"
         }
     }
 }

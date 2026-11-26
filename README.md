@@ -16,7 +16,7 @@ Built for one thing above all: **using as few resources as possible** while it r
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/popover-issues-dark.png">
-    <img src="docs/images/popover-issues-light.png" alt="Popover with ping, CPU and thermal issues listed first" width="360">
+    <img src="docs/images/popover-issues-light.png" alt="Popover with ping and CPU issues listed first" width="360">
   </picture>
 </p>
 
@@ -30,8 +30,9 @@ Built for one thing above all: **using as few resources as possible** while it r
 - **What's using it**: CPU, Memory, Disk and Battery each show the app using the most of it, sampled only while
   the popover is open. Click it to see the top five with their process IDs, and click one to copy its PID.
 - **Problems on top**: anything that needs attention is listed first. No scrolling.
-- **Yours to arrange**: a native Settings window to pick and reorder cards, choose ping hosts (presets for
-  public DNS and every major AWS region), tune alert thresholds and how often readings are taken with the popover open and closed.
+- **Yours to arrange**: a Settings window laid out like System Settings, with one page per card: show, hide
+  and reorder cards, choose ping hosts (Cloudflare, Google or Quad9, and AWS, Google Cloud or Azure regions),
+  set each card's alert, and choose how often readings are taken with the popover open and closed.
 - **Updates itself** quietly in the background via [Sparkle](https://sparkle-project.org), its only dependency.
 - **No helpers, no subprocesses.** Reads everything directly from Mach, IOKit and `sysctl`.
 - **Private by default.** Besides ping and update checks, the only request it makes is the public IP lookup
@@ -40,12 +41,12 @@ Built for one thing above all: **using as few resources as possible** while it r
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-widgets-dark.png">
-    <img src="docs/images/settings-widgets-light.png" alt="Settings window, Widgets tab: cards to show and reorder" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-cpu-dark.png">
+    <img src="docs/images/settings-cpu-light.png" alt="Settings window, CPU page: card options, slow-down warning and alert" width="420">
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-ping-dark.png">
-    <img src="docs/images/settings-ping-light.png" alt="Settings window, Ping tab: hosts and the one that drives the status light" width="420">
+    <img src="docs/images/settings-ping-light.png" alt="Settings window, Ping page: hosts, main host and alert" width="420">
   </picture>
 </p>
 
