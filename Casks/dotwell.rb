@@ -9,7 +9,7 @@ cask "dotwell" do
   url "https://github.com/Saissaken/dotwell/releases/latest/download/Dotwell.dmg"
   name "Dotwell"
   desc "Tiny menu bar monitor for ping, CPU, memory, disk, power and network"
-  homepage "https://github.com/Saissaken/dotwell"
+  homepage "https://saissaken.github.io/dotwell/"
 
   auto_updates true
   depends_on macos: ">= :ventura"
