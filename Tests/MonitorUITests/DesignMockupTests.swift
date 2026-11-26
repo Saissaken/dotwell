@@ -238,6 +238,12 @@ private struct CPUPage: View {
                 }
                 .zIndex(1)
                 RowDivider()
+                Row(
+                    title: "App usage as",
+                    detail: "Whole Mac: 100% means every core is busy. Per core: like Activity Monitor, "
+                        + "can pass 100%."
+                ) { MenuPicker(selected: "Share of whole Mac", options: ["Share of whole Mac", "Per core"]) }
+                RowDivider()
                 Row(title: "Show temperature", detail: "Read from the Mac's sensors. Not every Mac has them.") {
                     OnSwitch()
                 }
@@ -560,6 +566,9 @@ private struct ExpandableWidgetsTab: View {
             Row(title: "Show the busiest app", detail: "Names the app using the most CPU while the panel is open.") {
                 OnSwitch()
             }
+            Row(title: "App usage as", detail: "Whole Mac (max 100%) or per core, like Activity Monitor.") {
+                MenuPicker(selected: "Share of whole Mac", options: ["Share of whole Mac", "Per core"])
+            }
             Row(title: "Show temperature", detail: "Read from the Mac's sensors.") { OnSwitch() }
             Row(
                 title: "Warn when macOS slows the Mac down to cool it",
@@ -593,6 +602,10 @@ private struct ColumnsCPUTab: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Toggle("Show the busiest app", isOn: .constant(true))
                     note("The app using the most CPU, checked only while the panel is open.")
+                    HStack(spacing: 6) {
+                        Text("App usage as")
+                        MenuPicker(selected: "Share of whole Mac", options: ["Share of whole Mac", "Per core"])
+                    }
                     Toggle("Show temperature", isOn: .constant(true))
                 }
             }
