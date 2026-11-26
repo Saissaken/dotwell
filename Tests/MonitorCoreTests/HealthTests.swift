@@ -51,18 +51,39 @@ final class HealthTests: XCTestCase {
 
     func testTieredSeriesDownsamples() {
         var s = TieredSeries()
-        for i in 0..<10 { s.append(Float(i)) }
-        XCTAssertEqual(s.values(for: .minutes5), [2, 7])  // avg(0..4), avg(5..9)
-        XCTAssertEqual(s.values(for: .seconds30).count, 10)
+        for i in 0..<20 { s.append(Float(i)) }
+        XCTAssertEqual(s.values(for: .minutes5), [4.5, 14.5])  // avg(0..9), avg(10..19): 5 s each
+        XCTAssertEqual(s.values(for: .seconds30).count, 20)
     }
 
     func testTieredSeriesSkipsMissing() {
         var s = TieredSeries()
-        for v: Float in [10, -1, 20, -1, -1] { s.append(v) }
+        for v: Float in [10, -1, 20, -1, -1, -1, -1, -1, -1, -1] { s.append(v) }
         XCTAssertEqual(s.values(for: .minutes5), [15])
         var lost = TieredSeries()
-        for _ in 0..<5 { lost.append(-1) }
+        lost.append(-1, slots: 10)
         XCTAssertEqual(lost.values(for: .minutes5), [-1])
+    }
+
+    /// A reading fills the slots it stands for, so the time scale holds when the interval changes.
+    func testTieredSeriesHoldsSlowReadings() {
+        var s = TieredSeries()
+        s.append(10, slots: 10)  // one reading 5 s after the last: the popover was closed
+        for _ in 0..<10 { s.append(20) }  // then ten every 0.5 s
+        XCTAssertEqual(s.values(for: .minutes5), [10, 20])
+        XCTAssertEqual(s.recent(12), [10, 10] + Array(repeating: 20, count: 10))
+        // Lost replies keep their share of the time: one of two 5 s readings lost is half the window.
+        var ping = TieredSeries()
+        ping.append(30, slots: 10)
+        ping.append(-1, slots: 10)
+        XCTAssertEqual(PingStats.compute(ping.recent(20)).lossFraction, 0.5, accuracy: 1e-6)
+    }
+
+    func testDebouncerCountsTime() {
+        var d = LevelDebouncer(raiseWarning: 6, raiseCritical: 6, lowerAfter: 10)  // 3 s and 5 s in slots
+        XCTAssertEqual(d.feed(.warning, weight: 2), .ok)  // 1 s
+        XCTAssertEqual(d.feed(.warning, weight: 10), .warning, "one 5 s reading covers the 3 s hold")
+        XCTAssertEqual(d.feed(.ok, weight: 10), .ok)
     }
 
     func testSamplerProducesSnapshots() {
@@ -85,7 +106,7 @@ final class HealthTests: XCTestCase {
     /// With the popover closed, the main queue only hears about level changes: the menu bar dot is all that
     /// shows them, and each delivery would wake the main thread once a second.
     func testClosedSamplerOnlyPublishesLevelChanges() {
-        let sampler = Sampler(targets: [])
+        let sampler = Sampler(configuration: SamplerConfiguration(closedInterval: .oneSecond, targets: []))
         var count = 0
         let counted = expectation(description: "ticks")
         sampler.onSnapshot = { _ in count += 1 }
@@ -95,6 +116,24 @@ final class HealthTests: XCTestCase {
         sampler.stop()
         XCTAssertLessThan(count, 3, "the first level and at most one change, not one per tick")
         XCTAssertNotNil(sampler.latest().cpu, "fresh values are still there for when the popover opens")
+    }
+}
+
+extension HealthTests {
+    /// Opening the popover switches to its own, faster interval right away.
+    func testOpenPopoverUsesItsOwnInterval() {
+        let sampler = Sampler(
+            configuration: SamplerConfiguration(openInterval: .halfSecond, closedInterval: .thirtySeconds, targets: []))
+        var count = 0
+        sampler.onSnapshot = { _ in count += 1 }
+        sampler.start()
+        sampler.setDetailed(true, range: .seconds30)
+        let counted = expectation(description: "ticks")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.3) { counted.fulfill() }
+        wait(for: [counted], timeout: 5)
+        sampler.stop()
+        // One snapshot on opening, then one every 0.5 s: about 5, never the 0 or 1 a 30 s interval gives.
+        XCTAssertGreaterThanOrEqual(count, 4)
     }
 }
 

@@ -33,6 +33,11 @@ All notable changes to this project are documented here. The format is based on
   btop uses, and falls back to the SMC only where they're missing (Intel Macs).
 
 ### Changed
+- Readings have two intervals in Settings → General: one while the popover is open (0.5, 1 or 2 seconds,
+  default 1) and one while it's closed (1, 2, 5, 10 or 30 seconds, default 5). Until now Dotwell measured every
+  second all day, even with nothing on screen; the closed popover now wakes the Mac five times less often,
+  and the menu bar light still reacts to a problem within about 5 seconds. Charts keep the same time scale
+  whatever the interval, and an older slower choice carries over to the closed setting.
 - Less work with the popover closed: the main thread is only woken when the menu bar dot changes color,
   instead of every second, and the CPU temperature is only read while the popover is open.
 
