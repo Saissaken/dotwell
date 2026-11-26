@@ -57,7 +57,7 @@ final class PreviewRenderTests: XCTestCase {
             let issues = SampleData.issues
             let module = PingModule(snapshot: issues, level: issues.level(.ping), pathExpanded: true)
                 .padding(12)
-                .frame(width: 360)
+                .frame(width: PopoverLayout.width)
             let data = try render(module, appearance: appearance)
             try data.write(to: url.appendingPathComponent("ping-path-\(mode).png"))
         }

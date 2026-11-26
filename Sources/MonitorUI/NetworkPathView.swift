@@ -52,8 +52,7 @@ struct NetworkPathView: View {
                     Rectangle().fill(outgoing)
                 }
                 .frame(height: 2)
-                Image(systemName: Self.symbol(segment.stage))
-                    .font(.system(size: 9, weight: .semibold))
+                CenteredSymbol(name: Self.symbol(segment.stage), size: 11, weight: .semibold)
                     .foregroundStyle(.white)
                     .frame(width: 20, height: 20)
                     .background(Circle().fill(dotColor(segment.level)))

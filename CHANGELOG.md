@@ -20,9 +20,19 @@ All notable changes to this project are documented here. The format is based on
   and AdGuard servers, and a resolver running on this Mac). A server with no known name is shown as plain "DNS"
   with its address in the detail, instead of a long "DNS 100.100.100.100" cut off with an ellipsis.
 
+## [0.10.0] - 2026-11-26
+
+### Changed
+- Cards no longer move when something needs attention: the "Needs Attention" group is gone, and a card that
+  has a problem just turns yellow or red where it is.
+- Disk and Network are now half-width cards like CPU and Memory, so the popover is shorter. Only Ping still
+  spans the full width. A card left alone in the last row keeps its half width.
+- The popover is 10% wider (396 pt), so the half-width cards have more room.
+
 ### Fixed
 - Charts no longer jump sideways while their time range is still filling (for example the first 30 s after
   opening the popover or switching ranges): the line now grows in from the right at its final spacing.
+- The icons in the cards' colored circles, and in the route's dots under Ping, are now centered exactly.
 
 ## [0.9.0] - 2026-11-26
 
@@ -226,7 +236,8 @@ All notable changes to this project are documented here. The format is based on
 - Offer to move the app to the Applications folder when it is opened from anywhere else.
 - Homebrew cask: `brew install --cask dotwell` from this repository's tap.
 
-[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/Saissaken/dotwell/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/Saissaken/dotwell/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Saissaken/dotwell/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Saissaken/dotwell/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Saissaken/dotwell/compare/v0.6.0...v0.7.0
