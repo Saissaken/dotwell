@@ -73,7 +73,11 @@ public enum SettingsPage: Hashable, Sendable {
         case .widget(let module):
             switch module {
             case .ping: return ["latency", "router", "isp", "dns", "cloudflare", "aws", "gcp", "azure", "region"]
-            case .cpu: return ["processor", "temperature", "heat", "thermal", "slow", "throttle", "busiest app", "fan", "core", "activity monitor"]
+            case .cpu:
+                return [
+                    "processor", "temperature", "heat", "thermal", "slow", "throttle", "busiest app", "fan", "core",
+                    "activity monitor",
+                ]
             case .memory: return ["ram", "pressure", "swap", "busiest app"]
             case .power: return ["battery", "watts", "energy", "adapter", "charging", "busiest app"]
             case .disk: return ["storage", "free space", "ssd", "read", "write", "busiest app"]
