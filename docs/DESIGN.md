@@ -78,7 +78,12 @@ The app never spawns processes (`ping`, `top`, `ioreg`): process creation is by 
 | Running (popover open or closed) | 1 s | 1 s, all targets | 5 s | 2 s | 30 s |
 | Mac or displays asleep | paused | paused | paused | paused | paused |
 
-Sampling at a fixed 1 s keeps history continuous; each tick is a handful of syscalls (microseconds).
+The interval is 1 s by default and can be set to 2, 5 or 10 s in Settings; every other column is a
+duration and keeps it (or runs every tick, if the interval is longer). History ranges, ping statistics
+(at least 5 samples) and alert hold times are also defined in seconds, so they adapt to the interval.
+Settings are applied live through `Sampler.apply(_:)` without restarting the timer's history.
+
+Sampling at a fixed interval keeps history continuous; each tick is a handful of syscalls (microseconds).
 With the popover closed no history is copied for the UI, nothing is drawn and processes are not sampled
 (the probe drops its caches on close). If real measurements exceed the
 budget, the closed-popover cadence drops to 2 s.
@@ -125,6 +130,6 @@ attention; optionally the primary ping in ms next to the glyph.
 
 1. Docs, skeleton, probes, ping, sampler, popover (v0.1).
 2. Measure the resource budget on real hardware and tune.
-3. Settings: ping targets, primary target, thresholds.
+3. Settings: ping targets, primary target, thresholds, cards, interval (v0.4).
 4. Decisions from REQUIREMENTS §6 as they land.
 5. v1.0 release with signed builds.
