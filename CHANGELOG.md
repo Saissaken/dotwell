@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Settings › Updates › Get nightly builds: follow every change as soon as it's merged, before it's released.
+  Official releases stay the default.
+
 ### Changed
 - Settings is redesigned like System Settings: a sidebar with a search field and colored icons, and one page per
   card with everything about it in one place: whether it shows, its options and its alert. The Alerts tab is
