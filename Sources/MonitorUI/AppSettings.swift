@@ -28,14 +28,14 @@ public struct WidgetSetting: Codable, Equatable, Identifiable, Sendable {
     public static let defaults: [WidgetSetting] = Module.allCases.map { WidgetSetting(module: $0) }
 
     /// Keeps the saved order and choices and drops unknown modules. A module added in a later version goes
-    /// right after the one before it in the default order (GPU after CPU), or first if there is none.
+    /// right after the one before it in the default order (GPU after CPU), or at the end if there is none.
     static func merged(_ saved: [WidgetSetting]) -> [WidgetSetting] {
         var seen = Set<Module>()
         var result = saved.filter { seen.insert($0.module).inserted }
         for (index, widget) in defaults.enumerated() where !seen.contains(widget.module) {
             let previous = defaults[..<index].last { seen.contains($0.module) }?.module
             let position = previous.flatMap { module in result.firstIndex { $0.module == module } }.map { $0 + 1 }
-            result.insert(widget, at: position ?? 0)
+            result.insert(widget, at: position ?? result.count)
             seen.insert(widget.module)
         }
         return result

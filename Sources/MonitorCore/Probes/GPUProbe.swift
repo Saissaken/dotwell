@@ -41,6 +41,11 @@ public final class GPUProbe {
         #if arch(arm64)
             accelerator = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOAccelerator"))
         #endif
+        // Virtual GPUs (a Mac running in a virtual machine) publish no utilization: no card rather than "—".
+        if accelerator != 0, utilization() == nil {
+            IOObjectRelease(accelerator)
+            accelerator = 0
+        }
         coreCount = accelerator == 0 ? nil : Self.integer(accelerator, "gpu-core-count")
     }
 
@@ -48,7 +53,7 @@ public final class GPUProbe {
         if accelerator != 0 { IOObjectRelease(accelerator) }
     }
 
-    /// False on Macs without an Apple silicon GPU the probe can read.
+    /// False on Macs without an Apple silicon GPU that reports its utilization.
     public var isAvailable: Bool { accelerator != 0 }
 
     /// The fraction of time the GPU was busy, 0...1.
