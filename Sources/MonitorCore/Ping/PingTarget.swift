@@ -5,6 +5,9 @@ public struct PingTarget: Hashable, Sendable, Codable {
         case icmp
         /// Time to complete a TCP handshake. Used for hosts that drop ICMP (e.g. AWS endpoints).
         case tcp(port: UInt16)
+        /// Time from sending a small HTTPS GET to the first byte of the answer, on a kept-alive
+        /// connection. For hosts behind an anycast edge, where the handshake would only reach the edge.
+        case https(path: String)
     }
 
     /// Special host value meaning "the current default IPv4 gateway (your router)".
@@ -49,19 +52,20 @@ public enum InternetHost: String, CaseIterable, Codable, Sendable {
 }
 
 public enum CloudProvider: String, CaseIterable, Codable, Sendable {
-    case aws, azure
+    case aws, gcp, azure
 
     public var title: String {
         switch self {
         case .aws: return "AWS"
+        case .gcp: return "GCP"
         case .azure: return "Azure"
         }
     }
 }
 
-/// A cloud region and the endpoint that measures it. Cloud providers drop ICMP, so these are timed
-/// with a TCP handshake on port 443. The endpoints must terminate inside the region; anycast front ends
-/// (Google Cloud's, for instance) would measure the nearest edge instead, so they aren't offered.
+/// A cloud region and the endpoint that measures it. Cloud providers drop ICMP, so AWS and Azure are timed
+/// with a TCP handshake on port 443 to an endpoint inside the region. Google Cloud terminates connections
+/// at the nearest edge, so its regions are timed with a small HTTPS request answered by the region.
 public struct CloudRegion: Hashable, Codable, Sendable, Identifiable {
     public var provider: CloudProvider
     /// The provider's region code, e.g. "sa-east-1" or "brazilsouth".
@@ -73,7 +77,8 @@ public struct CloudRegion: Hashable, Codable, Sendable, Identifiable {
     public var id: String { "\(provider.rawValue):\(code)" }
 
     public var target: PingTarget {
-        PingTarget(name: "\(provider.title) \(city)", host: host, method: .tcp(port: 443))
+        let method: PingTarget.Method = provider == .gcp ? .https(path: "/storage/v1/b/_") : .tcp(port: 443)
+        return PingTarget(name: "\(provider.title) \(city)", host: host, method: method)
     }
 
     public static let defaultFirst = aws("sa-east-1", "São Paulo")
@@ -93,6 +98,12 @@ public struct CloudRegion: Hashable, Codable, Sendable, Identifiable {
         CloudRegion(provider: .aws, code: code, city: city, host: "dynamodb.\(code).amazonaws.com")
     }
 
+    /// Cloud Storage's regional endpoints answer from inside their region. The request names no real
+    /// bucket, so it gets a tiny error response without touching anyone's data.
+    private static func gcp(_ code: String, _ city: String) -> CloudRegion {
+        CloudRegion(provider: .gcp, code: code, city: city, host: "storage.\(code).rep.googleapis.com")
+    }
+
     /// Azure has no public per-region endpoint of its own, so these are the storage accounts that the
     /// open-source Azure Speed Test (github.com/richorama/AzureSpeedTest2) keeps in each region.
     private static func azure(_ code: String, _ city: String, _ host: String) -> CloudRegion {
@@ -106,6 +117,15 @@ public struct CloudRegion: Hashable, Codable, Sendable, Identifiable {
         aws("eu-west-3", "Paris"), aws("eu-central-1", "Frankfurt"), aws("eu-south-2", "Spain"),
         aws("eu-north-1", "Stockholm"), aws("ap-south-1", "Mumbai"), aws("ap-southeast-1", "Singapore"),
         aws("ap-southeast-2", "Sydney"), aws("ap-northeast-1", "Tokyo"), aws("ap-northeast-2", "Seoul"),
+        gcp("us-east4", "Virginia"), gcp("us-east1", "South Carolina"), gcp("us-central1", "Iowa"),
+        gcp("us-south1", "Dallas"), gcp("us-west1", "Oregon"), gcp("us-west2", "Los Angeles"),
+        gcp("northamerica-northeast1", "Montréal"), gcp("northamerica-south1", "Querétaro"),
+        gcp("southamerica-east1", "São Paulo"), gcp("southamerica-west1", "Santiago"),
+        gcp("europe-west1", "Belgium"), gcp("europe-west2", "London"), gcp("europe-west3", "Frankfurt"),
+        gcp("europe-west4", "Netherlands"), gcp("europe-west9", "Paris"), gcp("europe-southwest1", "Madrid"),
+        gcp("europe-north1", "Finland"), gcp("asia-south1", "Mumbai"), gcp("asia-southeast1", "Singapore"),
+        gcp("asia-east1", "Taiwan"), gcp("asia-northeast1", "Tokyo"), gcp("asia-northeast3", "Seoul"),
+        gcp("australia-southeast1", "Sydney"),
         azure("eastus", "Virginia", "steus09377.z13"),
         azure("centralus", "Iowa", "stcus09377.z19"),
         azure("southcentralus", "Texas", "speedtestscus18632.z21"),

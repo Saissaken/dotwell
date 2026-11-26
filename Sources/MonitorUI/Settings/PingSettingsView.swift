@@ -31,7 +31,7 @@ struct PingSettingsView: View {
             }
             SettingNote(
                 "Compare the cloud regions you use. Clouds ignore ping, so Dotwell times how long a connection "
-                    + "takes to open.")
+                    + "takes to open, or for Google Cloud, how long a small request takes.")
             Spacer().frame(height: 8)
             Picker("Status light follows:", selection: $settings.primarySlot) {
                 ForEach(settings.pingSlots, id: \.slot) { row in

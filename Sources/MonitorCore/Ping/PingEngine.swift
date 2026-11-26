@@ -31,6 +31,8 @@ public final class PingEngine {
         self.queue = queue
     }
 
+    private lazy var http = HTTPProber(queue: queue) { [weak self] target, ms in self?.onResult?(target, ms) }
+
     deinit {
         readSource?.cancel()
         for (_, p) in pendingTCP { p.source.cancel() }
@@ -41,10 +43,15 @@ public final class PingEngine {
         dispatchPrecondition(condition: .onQueue(queue))
         expire(now: Self.now())
         for i in indices where targets.indices.contains(i) {
+            if case .https(let path) = targets[i].method {
+                http.probe(target: i, host: targets[i].host, path: path)
+                continue
+            }
             guard let addr = address(for: i) else { continue }
             switch targets[i].method {
             case .icmp: sendICMP(target: i, to: addr)
             case .tcp(let port): connectTCP(target: i, to: addr, port: port)
+            case .https: break
             }
         }
     }
@@ -57,6 +64,7 @@ public final class PingEngine {
         pendingTCP.removeAll()
         pendingICMP.removeAll()
         addresses.removeAll()
+        http.reset()
     }
 
     // MARK: - Address resolution

@@ -227,7 +227,7 @@ public final class Sampler: @unchecked Sendable {
         for (i, value) in pendingPing { pingSeries[i].append(value) }
         pendingPing.removeAll(keepingCapacity: true)
         let due = ping.targets.indices.filter { i in
-            if case .tcp = ping.targets[i].method { return every(5) }
+            if ping.targets[i].method != .icmp { return every(5) }
             return true
         }
         ping.probe(due)

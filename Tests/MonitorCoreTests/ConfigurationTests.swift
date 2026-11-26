@@ -33,6 +33,7 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(CloudRegion.find(.aws, "sa-east-1"), CloudRegion.defaultFirst)
         XCTAssertEqual(CloudRegion.defaultSecond.target.host, "dynamodb.us-east-1.amazonaws.com")
         XCTAssertNil(CloudRegion.find(.azure, "nowhere"))
+        XCTAssertEqual(CloudRegion.find(.gcp, "us-east4")?.target.method, .https(path: "/storage/v1/b/_"))
     }
 
     func testDefaultTargets() {

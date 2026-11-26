@@ -11,8 +11,8 @@ All notable changes to this project are documented here. The format is based on
   - General: open at login, how often to take readings (1, 2, 5 or 10 seconds) and network speed in bits
     or bytes per second.
   - Widgets: show, hide and reorder the popover's cards, and choose which ones show their top app.
-  - Ping: pick the internet host (Cloudflare, Google or Quad9), two cloud regions to compare (18 AWS and
-    19 Azure regions, or off) and the host that drives the status light.
+  - Ping: pick the internet host (Cloudflare, Google or Quad9), two cloud regions to compare (18 AWS, 23 Google
+    Cloud and 19 Azure regions, or off) and the host that drives the status light.
   - Alerts: turn each alert on or off and set its yellow and red thresholds.
   - Updates: automatic checks and installs, Check Now, and the installed version.
 - Hiding the ping card with its alert off stops all pings, and turning off every top-app line stops
@@ -21,7 +21,9 @@ All notable changes to this project are documented here. The format is based on
 ### Changed
 - Ping now measures a few well-chosen hosts: your router, your internet provider's first router, Cloudflare,
   and two cloud regions (AWS São Paulo and AWS Virginia by default). Google DNS left the defaults, since it
-  measures the same thing as Cloudflare, but it can still be picked in Settings.
+  measures the same thing as Cloudflare, but it can still be picked in Settings. AWS and Azure regions are
+  timed with a TCP connection; Google Cloud, whose connections end at the nearest edge, with a small HTTPS
+  request answered by the region.
 - "Open at Login" moved from the popover's ⋯ menu to Settings → General.
 
 ## [0.3.0] - 2026-11-26

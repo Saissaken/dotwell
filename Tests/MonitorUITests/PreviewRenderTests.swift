@@ -54,7 +54,7 @@ final class PreviewRenderTests: XCTestCase {
         defer { window.orderOut(nil) }
         // The theme frame is the window's root view: it draws the title bar and toolbar too.
         guard let frame = window.contentView?.superview else { throw XCTSkip("No window frame view") }
-        return try snapshot(of: frame)
+        return try pngData(of: frame)
     }
 
     private func render(snapshot: Snapshot, appearance: NSAppearance.Name) throws -> Data {
@@ -75,10 +75,10 @@ final class PreviewRenderTests: XCTestCase {
         window.contentView = host
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
-        return try snapshot(of: host)
+        return try pngData(of: host)
     }
 
-    private func snapshot(of view: NSView) throws -> Data {
+    private func pngData(of view: NSView) throws -> Data {
         let size = view.bounds.size
         let scale = 2
         guard
