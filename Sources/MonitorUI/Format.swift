@@ -84,18 +84,6 @@ enum Format {
         }
     }
 
-    /// Network speed in bytes per second, like download progress in Finder.
-    static func bytes(_ bytesPerSec: Double) -> Reading {
-        if bytesPerSec >= 1_000_000_000 {
-            return Reading(value: String(format: "%.2f", bytesPerSec / 1e9), unit: "GB/s")
-        }
-        if bytesPerSec >= 1_000_000 {
-            let format = bytesPerSec >= 100e6 ? "%.0f" : "%.1f"
-            return Reading(value: String(format: format, bytesPerSec / 1e6), unit: "MB/s")
-        }
-        return Reading(value: String(format: "%.0f", bytesPerSec / 1e3), unit: "KB/s")
-    }
-
     static func bytesPerSec(_ value: Double) -> String {
         bytes(value).text
     }
